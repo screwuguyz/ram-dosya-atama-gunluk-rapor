@@ -1,0 +1,154 @@
+import { NextRequest, NextResponse } from "next/server";
+
+export const runtime = "nodejs";
+
+const AI_PROVIDER = (process.env.AI_PROVIDER || "openai").toLowerCase();
+const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
+const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"; // OpenAI-compatible
+const MODEL = process.env.OPENAI_MODEL || (AI_PROVIDER === "groq" ? "llama-3.1-8b-instant" : "gpt-3.5-turbo");
+
+export async function POST(req: NextRequest) {
+  let body: any = null;
+  try {
+    // Sağlayıcı ve anahtar seçimi
+    let apiBase = OPENAI_API_URL;
+    let apiKey = process.env.OPENAI_API_KEY;
+    if (AI_PROVIDER === "groq") {
+      apiBase = GROQ_API_URL;
+      apiKey = process.env.GROQ_API_KEY;
+    }
+    if (!apiKey) {
+      const res = NextResponse.json(
+        { error: "API anahtarı eksik", details: AI_PROVIDER === "groq" ? "GROQ_API_KEY tanımlı değil." : "OPENAI_API_KEY tanımlı değil." },
+        { status: 500 }
+      );
+      addCors(res);
+      return res;
+    }
+
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json(
+        { error: "Geçersiz istek gövdesi", details: "JSON parse edilemedi." },
+        { status: 400 }
+      );
+    }
+
+    const { question, caseFile, selectedTeacher, rules, context, messages } = body || {};
+
+    const safeQuestion = String(question || "Bu dosyayı neden bu öğretmen aldı?");
+
+    const systemPrompt = [
+      "Türkçe konuşan, kısa ve düzenli yanıt veren bir asistansın.",
+      "Görev: Verilen KURALLAR ve BAĞLAM içindeki VERİYE dayanarak, dosyanın neden ilgili öğretmene atandığını açıkla.",
+      "KESİN KURALLAR:",
+      "- SADECE SAĞLANAN VERİYE DAYAN. Varsayım yapma. Bilgi verilmemişse 'Bu bilgi verilmedi.' de.",
+      "- Manuel atama (caseFile.assignReason) varsa ilk maddede belirt ve ana gerekçe olarak kabul et.",
+      "- Test dosyası (caseFile.isTest) ise sadece 'test' olgusunu ve sağlanan kuralları kullan; testör/uygunluk gibi ek bilgiler VERİ OLARAK VERİLMEDİYSE yazma.",
+      "- Her madde tek cümle ve kısa olacak. Sadece 3-5 madde üret.",
+      "- Sayı ve eşiklerde (ör. günlük üst sınır) SADECE sağlanan metinde geçtiği kadarına atıf yap.",
+      "BIÇIM:",
+      "1) İlk satır: Atanan Öğretmen: <AD>",
+      "2) Sonra en fazla 5 madde (• ile başlamalı).",
+      "3) Ardından bir başlık ekle: Diğer Öğretmenlere Neden Atanmadı?",
+      "4) Bu başlığın altında, otherTeachers listesindeki (seçilen hariç) her öğretmen için tek satırlık madde ver: '• <Ad>: <kısa gerekçe>'.",
+      "5) Gerekçe olarak sadece sağlanan alanları (isTester, isAbsent, active, yearlyLoad, todayCount, hasTestToday, dailyLimit vb.) ve dosya verisini kullan.",
+      "6) Veri yoksa 'gerekçe için veri yok' yaz. Tahmin etme.",
+    ].join("\n");
+
+    const ruleText = `Kurallar:\n${(rules || []).map((r: string, i: number) => `${i + 1}. ${r}`).join("\n")}`;
+
+    const ctxText = `\nBağlam (özet):\n- Dosya: ${JSON.stringify(caseFile)}\n- Atanan Öğretmen: ${JSON.stringify(selectedTeacher)}\n- Öğretmen Özeti (listelenebilir): ${JSON.stringify(body?.otherTeachers || [])}\n- Ek Bağlam: ${JSON.stringify(context)}`;
+
+    const userPrompt = `${safeQuestion}\n\n${ruleText}\n${ctxText}`;
+
+    // TLS ayarı (son çare): Kurumsal self-signed CA nedeniyle TLS hatası alınıyorsa,
+    // .env.local içine OPENAI_INSECURE_TLS=1 ekleyin. Bu global bir ayardır ve güvensizdir.
+    if (process.env.OPENAI_INSECURE_TLS === "1") {
+      // eslint-disable-next-line no-process-env
+      process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+    }
+
+    // Mesaj geçmişi (opsiyonel) desteği: varsa kullanıcı/assistant mesajlarını ekle
+    const chatMessages: Array<{ role: "system"|"user"|"assistant"; content: string }> = [
+      { role: "system", content: systemPrompt },
+    ];
+    if (Array.isArray(messages) && messages.length) {
+      for (const m of messages) {
+        const role = m?.role === 'assistant' ? 'assistant' : 'user';
+        const content = String(m?.content || "");
+        if (content) chatMessages.push({ role, content });
+      }
+      // Son kullanıcı sorusu yoksa güvenli soru ekleyelim
+      chatMessages.push({ role: "user", content: userPrompt });
+    } else {
+      chatMessages.push({ role: "user", content: userPrompt });
+    }
+
+    const resp = await fetch(apiBase, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: MODEL,
+        messages: chatMessages,
+        temperature: 0.0,
+        // max_tokens: 300, // sağlayıcı destekliyorsa açılabilir
+      }),
+    });
+
+    const text = await resp.text();
+    if (!resp.ok) {
+      console.error(`/api/explain ${AI_PROVIDER} error`, resp.status, text);
+      const r = NextResponse.json(
+        { error: `${AI_PROVIDER.toUpperCase()} API hatası`, details: text },
+        { status: 502 }
+      );
+      addCors(r);
+      return r;
+    }
+
+    let data: any = null;
+    try { data = JSON.parse(text); } catch {}
+    const answer = data?.choices?.[0]?.message?.content?.trim() || "(Yanıt alınamadı)";
+
+    const ok = NextResponse.json({ answer });
+    addCors(ok);
+    return ok;
+  } catch (e: any) {
+    console.error("/api/explain server error", e);
+    const r = NextResponse.json(
+      { error: "Sunucu hatası", details: String(e?.message || e) },
+      { status: 500 }
+    );
+    addCors(r);
+    return r;
+  }
+}
+
+export async function GET() {
+  const provider = (process.env.AI_PROVIDER || "openai").toLowerCase();
+  const hasKey = provider === "groq" ? !!process.env.GROQ_API_KEY : !!process.env.OPENAI_API_KEY;
+  const model = process.env.OPENAI_MODEL || (provider === "groq" ? "llama-3.1-8b-instant" : "gpt-3.5-turbo");
+  const res = NextResponse.json({ ok: true, provider, hasKey, model });
+  addCors(res);
+  return res;
+}
+
+export async function OPTIONS() {
+  const res = new NextResponse(null, { status: 204 });
+  addCors(res);
+  return res;
+}
+
+function addCors(res: NextResponse) {
+  // İzinli origin: herkese açık (local → vercel testi için)
+  res.headers.set("Access-Control-Allow-Origin", "*");
+  res.headers.set("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+  // Bazı tarayıcılar preflight'ta farklı header'lar ister; '*' daha toleranslıdır
+  res.headers.set("Access-Control-Allow-Headers", "*");
+  res.headers.set("Vary", "Origin");
+}

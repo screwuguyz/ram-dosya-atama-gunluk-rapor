@@ -1,0 +1,53 @@
+{
+  "teachers": [
+    {
+      "id": "t1",
+      "name": "ANIL DENİZ ÖZGÜL",
+      "isAbsent": false,
+      "archived": false,
+      "yearlyLoad": 0,
+      "monthly": {}
+    },
+    {
+      "id": "t2",
+      "name": "ARMAN GÖKDAĞ",
+      "isAbsent": false,
+      "archived": false,
+      "yearlyLoad": 0,
+      "monthly": {}
+    },
+    {
+      "id": "t3",
+      "name": "AYTEN DİNÇEL",
+      "isAbsent": false,
+      "archived": false,
+      "yearlyLoad": 0,
+      "monthly": {}
+    },
+    {
+      "id": "t4",
+      "name": "AYGÜN ÇELİK",
+      "isAbsent": false,
+      "archived": false,
+      "yearlyLoad": 0,
+      "monthly": {}
+    },
+    {
+      "id": "t5",
+      "name": "NESLİHAN ŞAHİNER",
+      "isAbsent": false,
+      "archived": false,
+      "yearlyLoad": 0,
+      "monthly": {}
+    },
+    {
+      "id": "t6",
+      "name": "NURAY KIZILGÜNEŞ",
+      "isAbsent": false,
+      "archived": false,
+      "yearlyLoad": 0,
+      "monthly": {}
+    }
+  ],
+  "history": []
+}
