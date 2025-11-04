@@ -4,6 +4,12 @@ import { createClient } from "@supabase/supabase-js";
 
 export const runtime = "nodejs";
 
+// Optional: allow insecure TLS for local corporate proxies (development only)
+if (process.env.ALLOW_INSECURE_TLS === "1") {
+  console.warn("[api/state] ALLOW_INSECURE_TLS=1 → Disabling TLS verification for local dev");
+  process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+}
+
 type Teacher = {
   id: string;
   name: string;
@@ -64,18 +70,20 @@ export async function GET() {
   if (!url || !anon) {
     return NextResponse.json(DEFAULT_STATE, { headers: { "Cache-Control": "no-store" } });
   }
-  const client = createClient(url, anon);
-  const { data, error } = await client
-    .from("app_state")
-    .select("state")
-    .eq("id", "global")
-    .maybeSingle();
-  if (error) {
-    // Fail-soft: boş state dön
+  try {
+    const client = createClient(url, anon);
+    const { data, error } = await client
+      .from("app_state")
+      .select("state")
+      .eq("id", "global")
+      .maybeSingle();
+    if (error) throw error;
+    const s = (data?.state as StateShape) || DEFAULT_STATE;
+    return NextResponse.json(s, { headers: { "Cache-Control": "no-store" } });
+  } catch (err: any) {
+    console.error("[api/state][GET]", err?.message || err);
     return NextResponse.json(DEFAULT_STATE, { headers: { "Cache-Control": "no-store" } });
   }
-  const s = (data?.state as StateShape) || DEFAULT_STATE;
-  return NextResponse.json(s, { headers: { "Cache-Control": "no-store" } });
 }
 
 export async function POST(req: NextRequest) {
@@ -104,13 +112,16 @@ export async function POST(req: NextRequest) {
   if (!url || !service) {
     return NextResponse.json({ ok: false, error: "Missing Supabase envs" }, { status: 500 });
   }
-  const admin = createClient(url, service);
-  const { error } = await admin
-    .from("app_state")
-    .upsert({ id: "global", state: s, updated_at: new Date().toISOString() })
-    .single();
-  if (error) {
-    return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+  try {
+    const admin = createClient(url, service);
+    const { error } = await admin
+      .from("app_state")
+      .upsert({ id: "global", state: s, updated_at: new Date().toISOString() })
+      .single();
+    if (error) throw error;
+    return NextResponse.json({ ok: true });
+  } catch (err: any) {
+    console.error("[api/state][POST]", err?.message || err);
+    return NextResponse.json({ ok: false, error: String(err?.message || err) }, { status: 500 });
   }
-  return NextResponse.json({ ok: true });
 }

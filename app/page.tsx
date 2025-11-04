@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -136,6 +136,8 @@ const DEFAULT_SETTINGS: Settings = {
 };
 
 export default function DosyaAtamaApp() {
+  ;
+
   // ---- Öğretmenler
   const [teachers, setTeachers] = useState<Teacher[]>([
     { id: uid(), name: "ANIL DENİZ ÖZGÜL", isAbsent: false, yearlyLoad: 0, monthly: {}, active: true, isTester: false },
@@ -177,7 +179,7 @@ export default function DosyaAtamaApp() {
   // Duyurular (gün içinde gösterilir, gece sıfırlanır)
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [announcementText, setAnnouncementText] = useState("");
-// Persist hydration guard: LS'den ilk yükleme bitene kadar yazma yapma
+// Persist hydration guard: LS'den ilk y�kleme bitene kadar yazma yapma
 const [hydrated, setHydrated] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   // Ayarlar (persist)
@@ -343,7 +345,6 @@ const [hydrated, setHydrated] = useState(false);
   const [filterYM, setFilterYM] = useState<string>(ymOf(nowISO()));
   // Admin oturum durumu
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
-  const [sessionLoaded, setSessionLoaded] = useState<boolean>(false);
   const [loginOpen, setLoginOpen] = useState(false);
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
@@ -408,19 +409,14 @@ const [hydrated, setHydrated] = useState(false);
     try { localStorage.setItem(LS_LAST_ROLLOVER, lastRollover); } catch {}
   }, [lastRollover, hydrated]);
 
-  // ---- Merkezi durum: açılışta Supabase'den oku (varsa LS'yi override eder)
+
+  // ---- Merkezi durum: açılışta Supabase'den oku (LS olsa bile override et)
   useEffect(() => {
     (async () => {
       try {
         const res = await fetch("/api/state", { cache: "no-store" });
         if (!res.ok) return;
         const s = await res.json();
-        const hasCentral =
-          (Array.isArray(s?.teachers) && s.teachers.length > 0) ||
-          (Array.isArray(s?.cases) && s.cases.length > 0) ||
-          (s?.history && Object.keys(s.history || {}).length > 0) ||
-          (typeof s?.lastRollover === "string" && s.lastRollover.length > 0);
-        if (!hasCentral) return;
         setTeachers(s.teachers ?? []);
         setCases(s.cases ?? []);
         setHistory(s.history ?? {});
@@ -433,23 +429,15 @@ const [hydrated, setHydrated] = useState(false);
       } catch {}
     })();
   }, []);
-
   // Oturum bilgisini sunucudan çek
   useEffect(() => {
-    fetch("/api/session")
-      .then(r => r.ok ? r.json() : { isAdmin: false })
+    fetch("/api/session").then(r => r.ok ? r.json() : { isAdmin: false })
       .then((d: any) => setIsAdmin(!!d.isAdmin))
-      .catch(() => {})
-      .finally(() => setSessionLoaded(true));
+      .catch(() => {});
   }, []);
-
-  // Non-admin açılış varsayılanı: Atanan Dosyalar görünümü
-  useEffect(() => {
-    if (!sessionLoaded) return;
-    if (!isAdmin) setReportMode("archive");
-  }, [sessionLoaded, isAdmin]);
 // === Realtime abonelik: canlı güncelleme + ilk açılışta snapshot ===
 useEffect(() => {
+  if (process.env.NEXT_PUBLIC_DISABLE_REALTIME === '1') { setLive('offline'); return; }
   const ch = supabase.channel("dosya-atama");
   channelRef.current = ch;
 
@@ -503,7 +491,6 @@ useEffect(() => {
     payload: { sender: clientId, teachers, cases, history },
   });
 }, [teachers, cases, history, isAdmin, clientId, hydrated]);
-
 // === Admin değiştirince merkezi state'e de yaz (kalıcılık)
 useEffect(() => {
   if (!isAdmin) return;
