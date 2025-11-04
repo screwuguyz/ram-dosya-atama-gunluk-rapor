@@ -158,6 +158,7 @@ export default function DosyaAtamaApp() {
   const clientId = React.useMemo(() => uid(), []);
   const channelRef = React.useRef<RealtimeChannel | null>(null);
   const [live, setLive] = useState<"connecting" | "online" | "offline">("connecting");
+  const studentRef = React.useRef<HTMLInputElement | null>(null);
   // ---- Öneri/Şikayet modal durumu
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [fbName, setFbName] = useState("");
@@ -1529,7 +1530,9 @@ function AssignedArchiveSingleDay() {
               </div>
               <div className="flex items-center justify-between mt-3">
                 <div className="text-sm text-muted-foreground">Puan: <span className="font-semibold">{calcScore()}</span></div>
-                <Button data-silent="true" onClick={addCase} disabled={!student.trim()}>Ekle</Button>
+                <Button data-silent="true" onClick={addCase} disabled={!student.trim()}>
+                  <Plus className="h-4 w-4 mr-1" /> Ekle
+                </Button>
               </div>
             </div>
 
@@ -1540,7 +1543,9 @@ function AssignedArchiveSingleDay() {
                 <div className="flex-1">
                   <Input value={announcementText} onChange={(e) => setAnnouncementText(e.target.value)} placeholder="Kısa duyuru metni" />
                 </div>
-                <Button data-silent="true" onClick={async () => { await sendAnnouncement(); playAnnouncementSound(); }}>Duyuru Gönder</Button>
+                <Button data-silent="true" onClick={async () => { await sendAnnouncement(); playAnnouncementSound(); }}>
+                  <Volume2 className="h-4 w-4 mr-1" /> Duyuru Gönder
+                </Button>
               </div>
               <div className="text-xs text-muted-foreground mt-1">Gönderince tüm öğretmenlere bildirim gider. Gece sıfırlanır.</div>
               {announcements.length > 0 && (
