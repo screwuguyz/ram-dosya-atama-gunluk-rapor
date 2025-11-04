@@ -158,6 +158,12 @@ export default function DosyaAtamaApp() {
   const clientId = React.useMemo(() => uid(), []);
   const channelRef = React.useRef<RealtimeChannel | null>(null);
   const [live, setLive] = useState<"connecting" | "online" | "offline">("connecting");
+  // ---- Öneri/Şikayet modal durumu
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [fbName, setFbName] = useState("");
+  const [fbEmail, setFbEmail] = useState("");
+  const [fbType, setFbType] = useState<"oneri" | "sikayet">("oneri");
+  const [fbMessage, setFbMessage] = useState("");
 
   // ---- Girdi durumları
   const [student, setStudent] = useState("");
@@ -1293,6 +1299,8 @@ function AssignedArchiveSingleDay() {
         Canlı: {live}
       </span>
 
+      <Button size="sm" variant="outline" className="min-h-9" onClick={() => setFeedbackOpen(true)}>Öneri/Şikayet</Button>
+
       {isAdmin ? (
   <>
     <span className="text-sm text-emerald-700 font-medium">Admin</span>
@@ -1852,6 +1860,54 @@ function AssignedArchiveSingleDay() {
 
 
       
+      {/* Öneri/Şikayet Modal */}
+      {feedbackOpen && (
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50" onClick={() => setFeedbackOpen(false)}>
+          <Card className="w-[420px]" onClick={(e) => e.stopPropagation()}>
+            <CardHeader><CardTitle>Öneri / Şikayet</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              <div className="grid grid-cols-1 gap-3">
+                <div>
+                  <Label>Ad Soyad</Label>
+                  <Input value={fbName} onChange={e => setFbName(e.target.value)} placeholder="Ad Soyad" />
+                </div>
+                <div>
+                  <Label>E‑posta</Label>
+                  <Input value={fbEmail} onChange={e => setFbEmail(e.target.value)} placeholder="ornek@eposta.com" />
+                </div>
+                <div className="flex items-center gap-2">
+                  <Label className="whitespace-nowrap">Tür</Label>
+                  <Select value={fbType} onValueChange={(v) => setFbType(v as any)}>
+                    <SelectTrigger className="w-[160px]"><SelectValue placeholder="Tür seç" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="oneri">Öneri</SelectItem>
+                      <SelectItem value="sikayet">Şikayet</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Mesaj</Label>
+                  <textarea className="w-full border rounded-md p-2 text-sm min-h-28" value={fbMessage} onChange={e => setFbMessage(e.target.value)} placeholder="Mesajınızı yazın..." />
+                </div>
+              </div>
+              <div className="flex justify-end gap-2 pt-1">
+                <Button variant="outline" onClick={() => setFeedbackOpen(false)}>Kapat</Button>
+                <Button onClick={async () => {
+                  const payload = { name: fbName.trim(), email: fbEmail.trim(), type: fbType, message: fbMessage.trim() } as any;
+                  if (!payload.name || !payload.email || payload.message.length < 10) { toast("Lütfen ad, e‑posta ve en az 10 karakterlik mesaj girin."); return; }
+                  try {
+                    const res = await fetch("/api/feedback", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+                    if (res.ok) { toast("Gönderildi. Teşekkür ederiz!"); setFeedbackOpen(false); setFbName(""); setFbEmail(""); setFbMessage(""); setFbType("oneri"); }
+                    else { const j = await res.json().catch(() => ({})); toast("Gönderilemedi: " + (j?.error || res.statusText)); }
+                  } catch { toast("Ağ hatası: Gönderilemedi"); }
+                }}>Gönder</Button>
+              </div>
+              <div className="text-[11px] text-muted-foreground">Gönderimler <strong>ataafurkan@gmail.com</strong> adresine iletilir.</div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
         {/* Settings Modal */}
       {settingsOpen && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50" onClick={() => setSettingsOpen(false)}>
