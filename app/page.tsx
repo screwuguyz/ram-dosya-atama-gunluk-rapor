@@ -139,14 +139,7 @@ export default function DosyaAtamaApp() {
   ;
 
   // ---- Öğretmenler
-  const [teachers, setTeachers] = useState<Teacher[]>([
-    { id: uid(), name: "ANIL DENİZ ÖZGÜL", isAbsent: false, yearlyLoad: 0, monthly: {}, active: true, isTester: false },
-    { id: uid(), name: "ARMAN GÖKDAĞ",    isAbsent: false, yearlyLoad: 0, monthly: {}, active: true, isTester: false },
-    { id: uid(), name: "AYTEN DİNÇEL",     isAbsent: false, yearlyLoad: 0, monthly: {}, active: true, isTester: false },
-    { id: uid(), name: "AYGÜN ÇELİK",      isAbsent: false, yearlyLoad: 0, monthly: {}, active: true, isTester: false },
-    { id: uid(), name: "NESLİHAN ŞAHİNER", isAbsent: false, yearlyLoad: 0, monthly: {}, active: true, isTester: false },
-    { id: uid(), name: "NURAY KIZILGÜNEŞ", isAbsent: false, yearlyLoad: 0, monthly: {}, active: true, isTester: false },
-  ])
+  const [teachers, setTeachers] = useState<Teacher[]>([])
 
   // ---- Dosyalar (BUGÜN)
   const [cases, setCases] = useState<CaseFile[]>([]);
