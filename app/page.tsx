@@ -384,6 +384,31 @@ const [hydrated, setHydrated] = useState(false);
     }
   }, []);
 
+  const fetchCentralState = React.useCallback(async () => {
+    try {
+      const res = await fetch(`/api/state?ts=${Date.now()}`, { cache: "no-store" });
+      if (!res.ok) return;
+      const s = await res.json();
+      const incomingTs = Date.parse(String(s.updatedAt || 0));
+      const currentTs = Date.parse(String(lastAppliedAtRef.current || 0));
+      if (!isNaN(incomingTs) && incomingTs <= currentTs) return;
+      lastAppliedAtRef.current = s.updatedAt || new Date().toISOString();
+      setTeachers(s.teachers ?? []);
+      setCases(s.cases ?? []);
+      setHistory(s.history ?? {});
+      setLastRollover(s.lastRollover ?? "");
+      if (Array.isArray(s.announcements)) {
+        const today = ymdLocal(new Date());
+        setAnnouncements((s.announcements || []).filter((a: any) => (a.createdAt || "").slice(0, 10) === today));
+      }
+      if (s.settings) setSettings((prev) => ({ ...prev, ...s.settings }));
+    } catch (err) {
+      console.warn("state fetch failed", err);
+    } finally {
+      setCentralLoaded(true);
+    }
+  }, []);
+
   function handlePdfFileChange(file: File | null) {
     setPdfFile(file);
     setPdfUploadError(null);
@@ -586,31 +611,44 @@ const [hydrated, setHydrated] = useState(false);
 
   // ---- Merkezi durum: açılışta Supabase'den oku (LS olsa bile override et)
   useEffect(() => {
-    (async () => {
-      try {
-        const res = await fetch(`/api/state?ts=${Date.now()}`, { cache: "no-store" });
-        if (!res.ok) return;
-        const s = await res.json();
-        const inc = Date.parse(String(s.updatedAt || 0));
-        const cur = Date.parse(String(lastAppliedAtRef.current || 0));
-        if (!isNaN(inc) && inc <= cur) { /* older snapshot; ignore */ } else {
-        lastAppliedAtRef.current = s.updatedAt || new Date().toISOString();
-        setTeachers(s.teachers ?? []);
-        setCases(s.cases ?? []);
-        setHistory(s.history ?? {});
-        setLastRollover(s.lastRollover ?? "");
-        if (Array.isArray(s.announcements)) {
-          const today = ymdLocal(new Date());
-          setAnnouncements((s.announcements || []).filter((a: any) => (a.createdAt || "").slice(0,10) === today));
+    fetchCentralState();
+  }, [fetchCentralState]);
+
+  useEffect(() => {
+    if (process.env.NEXT_PUBLIC_DISABLE_REALTIME === "1") return;
+    const channel = supabase
+      .channel("realtime:app_state")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "app_state" },
+        (payload: any) => {
+          const targetId = payload?.new?.id ?? payload?.old?.id;
+          if (targetId && targetId !== "global") return;
+          fetchCentralState();
         }
-        if (s.settings) setSettings((prev) => ({ ...prev, ...s.settings }));
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [fetchCentralState]);
+
+  useEffect(() => {
+    if (process.env.NEXT_PUBLIC_DISABLE_REALTIME === "1") return;
+    const channel = supabase
+      .channel("realtime:ram_pdf_appointments")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "ram_pdf_appointments" },
+        () => {
+          fetchPdfEntriesFromServer();
         }
-      } catch {}
-      finally {
-        setCentralLoaded(true);
-      }
-    })();
-  }, []);
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [fetchPdfEntriesFromServer]);
   // Oturum bilgisini sunucudan çek
   useEffect(() => {
     fetch("/api/session").then(r => r.ok ? r.json() : { isAdmin: false })
