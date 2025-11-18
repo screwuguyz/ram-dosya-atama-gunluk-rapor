@@ -31,6 +31,13 @@ export type Teacher = {
   isTester: boolean; // <-- YENİ: Testör
 };
 type Announcement = { id: string; text: string; createdAt: string };
+type PdfAppointment = {
+  id: string;
+  time: string;
+  name: string;
+  fileNo: string;
+  extra?: string;
+};
 
 export type CaseFile = {
   id: string;
@@ -81,7 +88,9 @@ const LS_HISTORY = "dosya_atama_history_v1";      // YYYY-MM-DD -> CaseFile[]
 const LS_LAST_ROLLOVER = "dosya_atama_last_rollover";
 const LS_ANNOUNCEMENTS = "dosya_atama_announcements_v1";
 const LS_SETTINGS = "dosya_atama_settings_v1";
-
+const LS_PDF_ENTRIES = "dosya_atama_pdf_entries_v1";
+const LS_PDF_DATE = "dosya_atama_pdf_date_v1";
+const LS_PDF_DATE_ISO = "dosya_atama_pdf_date_iso_v1";
 // ---- Tarih yardımcıları
 function daysInMonth(year: number, month: number) { // month: 1-12
   return new Date(year, month, 0).getDate();
@@ -176,10 +185,20 @@ export default function DosyaAtamaApp() {
   const [manualTeacherId, setManualTeacherId] = useState<string>("");
   const [manualReason, setManualReason] = useState<string>("");
   // Manuel atama alanı (ref gerekirse ileride kullanırız)
-  const manualAssignRef = React.useRef<HTMLDivElement | null>(null);
+const manualAssignRef = React.useRef<HTMLDivElement | null>(null);
+const pdfInputRef = React.useRef<HTMLInputElement | null>(null);
   // Duyurular (gün içinde gösterilir, gece sıfırlanır)
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [announcementText, setAnnouncementText] = useState("");
+  const [pdfEntries, setPdfEntries] = useState<PdfAppointment[]>([]);
+  const [pdfFile, setPdfFile] = useState<File | null>(null);
+  const [pdfUploading, setPdfUploading] = useState(false);
+  const [pdfUploadError, setPdfUploadError] = useState<string | null>(null);
+  const [selectedPdfEntryId, setSelectedPdfEntryId] = useState<string | null>(null);
+  const [pdfDate, setPdfDate] = useState<string | null>(null);
+  const [pdfDateIso, setPdfDateIso] = useState<string | null>(null);
+  const [pdfLoading, setPdfLoading] = useState(false);
+  const activePdfEntry = useMemo(() => pdfEntries.find(e => e.id === selectedPdfEntryId) || null, [pdfEntries, selectedPdfEntryId]);
 // Persist hydration guard: LS'den ilk y�kleme bitene kadar yazma yapma
 const [hydrated, setHydrated] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -341,6 +360,119 @@ const [hydrated, setHydrated] = useState(false);
     setAnnouncements(prev => prev.filter(a => a.id !== id));
   }
 
+  const fetchPdfEntriesFromServer = React.useCallback(async () => {
+    setPdfLoading(true);
+    try {
+      const res = await fetch("/api/pdf-import", { cache: "no-store" });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setPdfEntries([]);
+        setPdfDate(null);
+        setPdfDateIso(null);
+        return;
+      }
+      setPdfEntries(Array.isArray(json.entries) ? json.entries : []);
+      setPdfDate(json?.date || null);
+      setPdfDateIso(json?.dateIso || null);
+    } catch (err) {
+      console.warn("pdf fetch failed", err);
+      setPdfEntries([]);
+      setPdfDate(null);
+      setPdfDateIso(null);
+    } finally {
+      setPdfLoading(false);
+    }
+  }, []);
+
+  function handlePdfFileChange(file: File | null) {
+    setPdfFile(file);
+    setPdfUploadError(null);
+  }
+
+  async function uploadPdfFromFile() {
+    if (!pdfFile) {
+      toast("Lütfen PDF seçin");
+      return;
+    }
+    const formData = new FormData();
+    formData.append("pdf", pdfFile);
+    setPdfUploading(true);
+    setPdfUploadError(null);
+    try {
+      const res = await fetch("/api/pdf-import", {
+        method: "POST",
+        body: formData,
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setPdfUploadError(json?.error || "PDF yüklenemedi.");
+        return;
+      }
+      setPdfEntries(Array.isArray(json.entries) ? json.entries : []);
+      setPdfDate(json?.date || null);
+      setPdfDateIso(json?.dateIso || null);
+      setSelectedPdfEntryId(null);
+      setPdfFile(null);
+      if (pdfInputRef.current) pdfInputRef.current.value = "";
+      toast("PDF başarıyla içe aktarıldı");
+    } catch (err) {
+      console.warn("pdf upload failed", err);
+      setPdfUploadError("Sunucuya ulaşılamadı.");
+    } finally {
+      setPdfUploading(false);
+    }
+  }
+
+  async function clearPdfEntries(confirmFirst = true) {
+    if (!pdfEntries.length) return;
+    if (confirmFirst && !confirm("Yüklenen tüm PDF kayıtlarını silmek istiyor musunuz?")) return;
+    try {
+      const qs = pdfDateIso ? `?date=${encodeURIComponent(pdfDateIso)}` : "";
+      const res = await fetch(`/api/pdf-import${qs}`, { method: "DELETE" });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast(json?.error || "PDF kayıtları silinemedi");
+        return;
+      }
+      setPdfEntries([]);
+      setSelectedPdfEntryId(null);
+      setPdfFile(null);
+      setPdfDate(null);
+      setPdfDateIso(null);
+      if (pdfInputRef.current) pdfInputRef.current.value = "";
+      toast("PDF kayıtları temizlendi");
+    } catch (err) {
+      console.warn("pdf clear failed", err);
+      toast("PDF kayıtları silinemedi");
+    }
+  }
+
+  async function removePdfEntry(id: string, silent = false) {
+    if (!id) return;
+    try {
+      const res = await fetch(`/api/pdf-import?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        if (!silent) toast(json?.error || "Kayıt silinemedi");
+        return;
+      }
+      setPdfEntries(prev => prev.filter(entry => entry.id !== id));
+      if (selectedPdfEntryId === id) setSelectedPdfEntryId(null);
+      if (!silent) toast("Kayıt silindi");
+    } catch (err) {
+      console.warn("pdf delete failed", err);
+      if (!silent) toast("Kayıt silinemedi");
+    }
+  }
+
+  function applyPdfEntry(entry: PdfAppointment) {
+    setStudent(entry.name || "");
+    if (entry.fileNo) setFileNo(entry.fileNo);
+    setSelectedPdfEntryId(entry.id);
+    toast("PDF kaydı forma aktarıldı");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
   // ---- Rapor & filtre
   const [reportMode, setReportMode] = useState<"none" | "monthly" | "daily" | "archive">("none");
 
@@ -364,6 +496,9 @@ const [hydrated, setHydrated] = useState(false);
       const hRaw = localStorage.getItem(LS_HISTORY);
       const lrRaw = localStorage.getItem(LS_LAST_ROLLOVER);
       const aRaw = localStorage.getItem(LS_ANNOUNCEMENTS);
+      const pRaw = localStorage.getItem(LS_PDF_ENTRIES);
+      const pdRaw = localStorage.getItem(LS_PDF_DATE);
+      const pdIsoRaw = localStorage.getItem(LS_PDF_DATE_ISO);
 
       if (tRaw) {
         const arr = JSON.parse(tRaw);
@@ -387,10 +522,22 @@ const [hydrated, setHydrated] = useState(false);
         const today = ymdLocal(new Date());
         setAnnouncements((arr || []).filter(a => (a.createdAt || "").slice(0,10) === today));
       }
+      if (pRaw) {
+        try {
+          const parsed = JSON.parse(pRaw);
+          if (Array.isArray(parsed)) setPdfEntries(parsed);
+        } catch {}
+      }
+      if (pdRaw) setPdfDate(pdRaw);
+      if (pdIsoRaw) setPdfDateIso(pdIsoRaw);
     } catch {}
     // Hydration tamam
     setHydrated(true);
   }, []);
+
+  useEffect(() => {
+    fetchPdfEntriesFromServer();
+  }, [fetchPdfEntriesFromServer]);
 
   // Duyuruları LS'ye yaz
   useEffect(() => {
@@ -415,6 +562,26 @@ const [hydrated, setHydrated] = useState(false);
     if (!hydrated) return;
     try { localStorage.setItem(LS_LAST_ROLLOVER, lastRollover); } catch {}
   }, [lastRollover, hydrated]);
+  useEffect(() => {
+    if (!hydrated) return;
+    try { localStorage.setItem(LS_PDF_ENTRIES, JSON.stringify(pdfEntries)); } catch {}
+  }, [pdfEntries, hydrated]);
+  useEffect(() => {
+    if (!hydrated) return;
+    if (pdfDate) {
+      try { localStorage.setItem(LS_PDF_DATE, pdfDate); } catch {}
+    } else {
+      try { localStorage.removeItem(LS_PDF_DATE); } catch {}
+    }
+  }, [pdfDate, hydrated]);
+  useEffect(() => {
+    if (!hydrated) return;
+    if (pdfDateIso) {
+      try { localStorage.setItem(LS_PDF_DATE_ISO, pdfDateIso); } catch {}
+    } else {
+      try { localStorage.removeItem(LS_PDF_DATE_ISO); } catch {}
+    }
+  }, [pdfDateIso, hydrated]);
 
 
   // ---- Merkezi durum: açılışta Supabase'den oku (LS olsa bile override et)
@@ -722,6 +889,9 @@ useEffect(() => {
       }
     }
     setCases(prev => [newCase, ...prev]);
+    if (selectedPdfEntryId) {
+      void removePdfEntry(selectedPdfEntryId, true);
+    }
 
     // reset inputs
     setStudent("");
@@ -1421,6 +1591,122 @@ function AssignedArchiveSingleDay() {
         </div>
       )}
 
+      {/* PDF yükleme alanı (herkese açık) */}
+      <Card className="border border-dashed border-emerald-300 bg-white/80">
+        <CardHeader>
+          <CardTitle>RAM Randevu PDF Yükle</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <label className="sm:flex-1">
+              <input
+                type="file"
+                accept="application/pdf"
+                ref={pdfInputRef}
+                onChange={(e) => handlePdfFileChange(e.target.files?.[0] || null)}
+                className="hidden"
+              />
+              <Button type="button" variant="outline" className="w-full" onClick={() => pdfInputRef.current?.click()}>
+                {pdfFile ? pdfFile.name : "Dosya Seç"}
+              </Button>
+            </label>
+            <Button onClick={uploadPdfFromFile} disabled={pdfUploading || !pdfFile}>
+              {pdfUploading ? "Yükleniyor..." : "PDF Ekle"}
+            </Button>
+          </div>
+          <p className="text-xs text-slate-600">
+            Dosyayı seçip “PDF Ekle” dediğinizde son randevu listesi herkesin ekranına güncellenir. Yanlış dosya yüklediyseniz tekrar PDF seçmeniz yeterli.
+          </p>
+          {pdfUploadError && <p className="text-sm text-red-600">{pdfUploadError}</p>}
+          {!pdfUploadError && pdfEntries.length > 0 && (
+            <p className="text-sm text-emerald-700">
+              Son yüklemede {pdfEntries.length} randevu bulundu
+              {pdfDate ? ` (${pdfDate})` : ""}. Bu liste tüm kullanıcılarla paylaşılır.
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="border border-emerald-200 bg-emerald-50/60">
+        <CardHeader className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+          <CardTitle>
+            Yüklenen PDF Randevuları
+            {pdfDate && <span className="ml-2 text-sm text-emerald-700 font-normal">({pdfDate})</span>}
+          </CardTitle>
+          {isAdmin ? (
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                data-silent="true"
+                onClick={() => clearPdfEntries()}
+                disabled={!pdfEntries.length || pdfLoading}
+              >
+                PDF'yi Temizle
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                data-silent="true"
+                onClick={() => setSelectedPdfEntryId(null)}
+                disabled={!selectedPdfEntryId}
+              >
+                Seçimi Temizle
+              </Button>
+            </div>
+          ) : (
+            <p className="text-xs text-slate-600">Bu liste bilgilendirme amaçlıdır.</p>
+          )}
+        </CardHeader>
+        <CardContent>
+          {pdfLoading ? (
+            <p className="text-sm text-slate-600">Randevular yükleniyor...</p>
+          ) : pdfEntries.length === 0 ? (
+            <p className="text-sm text-slate-600">Henüz PDF içe aktarılmadı. İlk sayfadaki panelden PDF yükleyebilirsiniz.</p>
+          ) : (
+            <div className="overflow-auto border rounded-md">
+              <table className="min-w-full text-xs md:text-sm">
+                <thead className="bg-emerald-100 text-emerald-900">
+                  <tr>
+                    <th className="p-2 text-left">Saat</th>
+                    <th className="p-2 text-left">Ad Soyad</th>
+                    <th className="p-2 text-left">Dosya No</th>
+                    <th className="p-2 text-left">Açıklama</th>
+                    {isAdmin && <th className="p-2 text-right">İşlem</th>}
+                  </tr>
+                </thead>
+                <tbody>
+                  {pdfEntries.map((entry) => (
+                    <tr
+                      key={entry.id}
+                      className={`border-b last:border-b-0 ${selectedPdfEntryId === entry.id ? "bg-emerald-50" : "bg-white"}`}
+                    >
+                      <td className="p-2 font-semibold">{entry.time}</td>
+                      <td className="p-2">{entry.name}</td>
+                      <td className="p-2">{entry.fileNo || "—"}</td>
+                      <td className="p-2 text-xs text-slate-600">{entry.extra || "—"}</td>
+                      {isAdmin && (
+                        <td className="p-2 flex flex-col gap-1 items-end">
+                          <Button size="sm" onClick={() => applyPdfEntry(entry)}>Forma Aktar</Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-red-600 hover:text-red-700"
+                            onClick={() => removePdfEntry(entry.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </td>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Admin alanı */}
       <div className={`flex flex-col gap-4 lg:flex-row ${isAdmin ? "" : "hidden"}`}>
         {/* Sol: Dosya ekle */}
@@ -1436,6 +1722,20 @@ function AssignedArchiveSingleDay() {
               }
             }}
           >
+            {activePdfEntry && (
+              <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900 flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <div className="font-semibold">{activePdfEntry.name} — {activePdfEntry.time}</div>
+                  <div className="text-xs text-emerald-800">
+                    Dosya: {activePdfEntry.fileNo || "—"}
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" onClick={() => applyPdfEntry(activePdfEntry!)}>Tekrar Aktar</Button>
+                  <Button size="sm" variant="ghost" onClick={() => setSelectedPdfEntryId(null)}>Seçimi Kaldır</Button>
+                </div>
+              </div>
+            )}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Öğrenci Adı</Label>
@@ -1472,7 +1772,7 @@ function AssignedArchiveSingleDay() {
               <div className="grid grid-cols-3 gap-2 text-sm">
                 <Button variant={type === "YONLENDIRME" ? "default" : "outline"} onClick={() => setType("YONLENDIRME")}>Yönlendirme (+{settings.scoreTypeY})</Button>
                 <Button variant={type === "DESTEK" ? "default" : "outline"} onClick={() => setType("DESTEK")}>Destek (+{settings.scoreTypeD})</Button>
-                <Button variant={type === "IKISI" ? "default" : "outline"} onClick={() => setType("IKISI")}>İkisi (+{settings.scoreTypeI})</Button>
+                <Button variant={type === "IKISI" ? "default" : "outline"} onClick={() => setType("IKISI")}>Yönlendirme+Destek (+{settings.scoreTypeI})</Button>
               </div>
             </div>
 
