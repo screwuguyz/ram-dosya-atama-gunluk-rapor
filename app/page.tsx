@@ -1050,19 +1050,22 @@ useEffect(() => {
   }
   // Dosya eklendiğinde E-Arşive de ekle
   useEffect(() => {
-    if (!cases.length) return;
+    // Bu kancanın sadece yeni bir dosya eklendiğinde çalışmasını sağlamak için
+    // ve mevcut dosyaların güncellenmesinden etkilenmemesi için `cases` dizisinin tamamı yerine
+    // sadece `cases.length` ve `cases[0]`'ın atanma durumunu dinliyoruz.
+    if (!cases.length || !cases[0]) return;
     const lastCase = cases[0]; // En son eklenen dosya
     // Eğer bu dosya zaten arşivde varsa, tekrar ekleme
     if (eArchive.some(entry => entry.id === lastCase.id)) return;
     // Sadece atanmış dosyaları arşive ekle
     if (lastCase.assignedTo) {
       const newArchiveEntry: EArchiveEntry = {
-        id: lastCase.id, student: lastCase.student, fileNo: lastCase.fileNo,
+        id: lastCase.id, student: lastCase.student, fileNo: lastCase.fileNo || undefined,
         assignedToName: teacherName(lastCase.assignedTo), createdAt: lastCase.createdAt,
       };
       setEArchive(prev => [newArchiveEntry, ...prev]);
     }
-  }, [cases]);
+  }, [cases.length, cases[0]?.assignedTo]);
 
   // ---- Öğretmen ekleme (yeni)
   function addTeacher() {
@@ -1264,6 +1267,14 @@ useEffect(() => {
     URL.revokeObjectURL(url);
   }
 
+  // ---- E-Arşiv sıfırlama
+  function clearEArchive() {
+    if (confirm("Tüm e-arşiv kayıtlarını kalıcı olarak silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.")) {
+      setEArchive([]);
+      toast("E-arşiv temizlendi.");
+    }
+  }
+
   // ---- E-Arşiv için CSV dışa aktarma
   function exportEArchiveCSV() {
     const headers = ['Öğrenci Adı', 'Dosya No', 'Atanan Öğretmen', 'Atama Tarihi'];
@@ -1289,7 +1300,10 @@ useEffect(() => {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>E-Arşiv (Tüm Atanmış Dosyalar)</CardTitle>
-          <Button onClick={exportEArchiveCSV}><FileSpreadsheet className="h-4 w-4 mr-2" /> CSV Olarak İndir</Button>
+          <div className="flex items-center gap-2">
+            <Button variant="destructive" onClick={clearEArchive}><Trash2 className="h-4 w-4 mr-2" /> Arşivi Temizle</Button>
+            <Button onClick={exportEArchiveCSV}><FileSpreadsheet className="h-4 w-4 mr-2" /> CSV Olarak İndir</Button>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="overflow-auto border rounded-md max-h-[70vh]">
