@@ -15,7 +15,7 @@ import MonthlyReport from "@/components/reports/MonthlyReport";
 import DailyReport from "@/components/reports/DailyReport";
 import AssignedArchiveView from "@/components/archive/AssignedArchive";
 import AssignedArchiveSingleDayView from "@/components/archive/AssignedArchiveSingleDay";
-import { Trash2, UserMinus, Plus, FileSpreadsheet, BarChart2, Volume2, VolumeX } from "lucide-react";
+import { Trash2, UserMinus, Plus, FileSpreadsheet, BarChart2, Volume2, VolumeX, X } from "lucide-react";
 
 
 
@@ -52,6 +52,15 @@ export type CaseFile = {
   isTest: boolean;
   assignReason?: string;
 }
+
+// E-Arşiv için tip
+export type EArchiveEntry = {
+  id: string; // case.id
+  student: string;
+  fileNo?: string;
+  assignedToName: string;
+  createdAt: string; // ISO
+};
 function caseDesc(c: CaseFile) {
   let s = `Tür: ${humanType(c.type)} • Yeni: ${c.isNew ? "Evet" : "Hayır"} • Tanı: ${c.diagCount ?? 0}`;
   if (c.isTest) s += " • Test";
@@ -91,6 +100,7 @@ const LS_SETTINGS = "dosya_atama_settings_v1";
 const LS_PDF_ENTRIES = "dosya_atama_pdf_entries_v1";
 const LS_PDF_DATE = "dosya_atama_pdf_date_v1";
 const LS_PDF_DATE_ISO = "dosya_atama_pdf_date_iso_v1";
+const LS_E_ARCHIVE = "dosya_atama_e_archive_v1"; // YENİ E-ARŞİV
 // ---- Tarih yardımcıları
 function daysInMonth(year: number, month: number) { // month: 1-12
   return new Date(year, month, 0).getDate();
@@ -144,8 +154,88 @@ const DEFAULT_SETTINGS: Settings = {
   scoreTypeI: 3,
 };
 
+// Günlük Randevular Kartı (Bileşen)
+function DailyAppointmentsCard({
+  pdfDate,
+  pdfLoading,
+  pdfEntries,
+  selectedPdfEntryId,
+  onShowDetails,
+  isAdmin,
+  onApplyEntry,
+  onRemoveEntry,
+}: {
+  pdfDate: string | null;
+  pdfLoading: boolean;
+  pdfEntries: PdfAppointment[];
+  selectedPdfEntryId: string | null;
+  onShowDetails: () => void;
+  isAdmin?: boolean;
+  onApplyEntry?: (entry: PdfAppointment) => void;
+  onRemoveEntry?: (id: string) => void;
+}) {
+  return (
+    <Card className="border border-emerald-200 bg-emerald-50/70">
+      <CardHeader className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+        <CardTitle>
+          Günlük RAM Randevuları
+          {pdfDate && <span className="ml-2 text-sm text-emerald-700 font-normal">({pdfDate})</span>}
+        </CardTitle>
+        <Button size="sm" variant="outline" onClick={onShowDetails}>
+          Detaylı Gör
+        </Button>
+      </CardHeader>
+      <CardContent>
+        {pdfLoading ? (
+          <p className="text-sm text-slate-600">Randevular yükleniyor...</p>
+        ) : pdfEntries.length === 0 ? (
+          <p className="text-sm text-slate-600">Henüz PDF içe aktarılmadı. Randevu listesi boş.</p>
+        ) : (
+          <div className="overflow-auto border rounded-md max-h-64">
+            <table className="min-w-full text-xs md:text-sm">
+              <thead className="bg-emerald-100 text-emerald-900">
+                <tr>
+                  <th className="p-2 text-left">Saat</th>
+                  <th className="p-2 text-left">Ad Soyad</th>
+                  <th className="p-2 text-left">Dosya No</th>
+                  <th className="p-2 text-left">Açıklama</th>
+                    {isAdmin && <th className="p-2 text-right">İşlem</th>}
+                </tr>
+              </thead>
+              <tbody>
+                {pdfEntries.map((entry) => (
+                  <tr
+                    key={entry.id}
+                    className={`border-b last:border-b-0 ${selectedPdfEntryId === entry.id ? "bg-emerald-50" : "bg-white"}`}
+                  >
+                    <td className="p-2 font-semibold">{entry.time}</td>
+                    <td className="p-2">{entry.name}</td>
+                    <td className="p-2">{entry.fileNo || "-"}</td>
+                    <td className="p-2 text-xs text-slate-600">{entry.extra || "-"}</td>
+                      {isAdmin && onApplyEntry && onRemoveEntry && (
+                        <td className="p-2 text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            <Button size="sm" variant="outline" onClick={() => onApplyEntry(entry)}>
+                              Forma Aktar
+                            </Button>
+                            <Button size="icon" variant="ghost" className="text-red-600 hover:text-red-700" onClick={() => onRemoveEntry(entry.id)}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </td>
+                      )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function DosyaAtamaApp() {
-  ;
 
   // ---- Öğretmenler
   const [teachers, setTeachers] = useState<Teacher[]>([])
@@ -156,6 +246,9 @@ export default function DosyaAtamaApp() {
   // ---- ARŞİV (günlük)
   const [history, setHistory] = useState<Record<string, CaseFile[]>>({});
   const [lastRollover, setLastRollover] = useState<string>("");
+  // ---- E-ARŞİV (sürekli)
+  const [eArchive, setEArchive] = useState<EArchiveEntry[]>([]);
+
   // --- Canlı yayın (Supabase)
   const clientId = React.useMemo(() => uid(), []);
   const channelRef = React.useRef<RealtimeChannel | null>(null);
@@ -498,21 +591,26 @@ const [hydrated, setHydrated] = useState(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
+  function clearActivePdfEntry() {
+    setSelectedPdfEntryId(null);
+    setStudent("");
+    setFileNo("");
+    toast("Form temizlendi");
+  }
+
   // ---- Rapor & filtre
-  const [reportMode, setReportMode] = useState<"none" | "monthly" | "daily" | "archive">("none");
+  const [reportMode, setReportMode] = useState<"none" | "monthly" | "daily" | "archive" | "e-archive">("none");
 
   const [filterYM, setFilterYM] = useState<string>(ymOf(nowISO()));
   // Admin oturum durumu
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
   const [centralLoaded, setCentralLoaded] = useState(false)
-  // Non-admin başlangıç görünümü: Atanan Dosyalar
-  useEffect(() => {
-    if (!isAdmin && reportMode === "none") setReportMode("archive");
-  }, [isAdmin, reportMode]);;
   const [loginOpen, setLoginOpen] = useState(false);
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [showLanding, setShowLanding] = useState(true);
+  const [showPdfPanel, setShowPdfPanel] = useState(false);
+  const [showRules, setShowRules] = useState(false);
 
   // ---- LS'den yükleme (migration alanları)
   useEffect(() => {
@@ -525,6 +623,7 @@ const [hydrated, setHydrated] = useState(false);
       const pRaw = localStorage.getItem(LS_PDF_ENTRIES);
       const pdRaw = localStorage.getItem(LS_PDF_DATE);
       const pdIsoRaw = localStorage.getItem(LS_PDF_DATE_ISO);
+      const eaRaw = localStorage.getItem(LS_E_ARCHIVE);
 
       if (tRaw) {
         const arr = JSON.parse(tRaw);
@@ -556,6 +655,7 @@ const [hydrated, setHydrated] = useState(false);
       }
       if (pdRaw) setPdfDate(pdRaw);
       if (pdIsoRaw) setPdfDateIso(pdIsoRaw);
+      if (eaRaw) setEArchive(JSON.parse(eaRaw));
     } catch {}
     // Hydration tamam
     setHydrated(true);
@@ -608,6 +708,11 @@ const [hydrated, setHydrated] = useState(false);
       try { localStorage.removeItem(LS_PDF_DATE_ISO); } catch {}
     }
   }, [pdfDateIso, hydrated]);
+  useEffect(() => {
+    if (!hydrated) return;
+    try { localStorage.setItem(LS_E_ARCHIVE, JSON.stringify(eArchive)); } catch {}
+  }, [eArchive, hydrated]);
+
 
 
   // ---- Merkezi durum: açılışta Supabase'den oku (LS olsa bile override et)
@@ -943,6 +1048,21 @@ useEffect(() => {
     setManualTeacherId("");
     setManualReason("");
   }
+  // Dosya eklendiğinde E-Arşive de ekle
+  useEffect(() => {
+    if (!cases.length) return;
+    const lastCase = cases[0]; // En son eklenen dosya
+    // Eğer bu dosya zaten arşivde varsa, tekrar ekleme
+    if (eArchive.some(entry => entry.id === lastCase.id)) return;
+    // Sadece atanmış dosyaları arşive ekle
+    if (lastCase.assignedTo) {
+      const newArchiveEntry: EArchiveEntry = {
+        id: lastCase.id, student: lastCase.student, fileNo: lastCase.fileNo,
+        assignedToName: teacherName(lastCase.assignedTo), createdAt: lastCase.createdAt,
+      };
+      setEArchive(prev => [newArchiveEntry, ...prev]);
+    }
+  }, [cases]);
 
   // ---- Öğretmen ekleme (yeni)
   function addTeacher() {
@@ -1135,8 +1255,7 @@ useEffect(() => {
       teacherName(c.assignedTo),
     ]);
     const csv = [headers, ...rows].map((r) => r.map(csvEscape).join(',')).join('\r\n');
-    const bom = '\ufeff';
-    const blob = new Blob([bom + csv], { type: 'text/csv;charset=utf-8;' });
+    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -1145,6 +1264,50 @@ useEffect(() => {
     URL.revokeObjectURL(url);
   }
 
+  // ---- E-Arşiv için CSV dışa aktarma
+  function exportEArchiveCSV() {
+    const headers = ['Öğrenci Adı', 'Dosya No', 'Atanan Öğretmen', 'Atama Tarihi'];
+    const rows = eArchive.map((entry) => [
+      entry.student,
+      entry.fileNo || '',
+      entry.assignedToName,
+      new Date(entry.createdAt).toLocaleString("tr-TR", { dateStyle: "short", timeStyle: "short" }),
+    ]);
+    const csv = [headers, ...rows].map((r) => r.map(csvEscape).join(',')).join('\r\n');
+    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `e-arsiv_${ymdLocal(new Date())}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  // E-Arşiv Görüntüleme Bileşeni
+  function EArchiveView() {
+    return (
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle>E-Arşiv (Tüm Atanmış Dosyalar)</CardTitle>
+          <Button onClick={exportEArchiveCSV}><FileSpreadsheet className="h-4 w-4 mr-2" /> CSV Olarak İndir</Button>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-auto border rounded-md max-h-[70vh]">
+            <table className="w-full text-sm">
+              <thead className="sticky top-0 bg-muted"><tr><th className="p-2 text-left">Öğrenci Adı</th><th className="p-2 text-left">Dosya No</th><th className="p-2 text-left">Atanan Öğretmen</th><th className="p-2 text-left">Atama Tarihi</th></tr></thead>
+              <tbody>
+                {eArchive.map(entry => (
+                  <tr key={entry.id} className="border-t">
+                    <td className="p-2 font-medium">{entry.student}</td><td className="p-2">{entry.fileNo || '—'}</td><td className="p-2">{entry.assignedToName}</td><td className="p-2">{new Date(entry.createdAt).toLocaleString("tr-TR", { dateStyle: "short", timeStyle: "short" })}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
   // ---- JSON yedek / içe aktar (arşiv dahil)
   function exportJSON() {
     const data = { teachers, cases, history, lastRollover };
@@ -1530,8 +1693,12 @@ function AssignedArchiveSingleDay() {
     );
   }
 
+  // Non-admin başlangıç görünümü: Atanan Dosyalar
+  if (!isAdmin && reportMode === "none") setReportMode("archive");
+
   // ---------- TEK RETURN: BİLEŞEN ÇIKIŞI ----------
   return (
+    <>
     <div className="container mx-auto p-4 space-y-6">
       {/* Üst araç çubuğu: rapor ve giriş */}
      {/* ÜST BAR (sticky + cam) */}
@@ -1560,6 +1727,9 @@ function AssignedArchiveSingleDay() {
       <Button variant={reportMode === "archive" ? "default" : "outline"} size="sm" className="min-h-9" aria-pressed={reportMode === "archive"} onClick={() => setReportMode("archive")}>
         <BarChart2 className="h-4 w-4 mr-2" /> Atanan Dosyalar
       </Button>
+      <Button variant={reportMode === "e-archive" ? "default" : "outline"} size="sm" className="min-h-9" aria-pressed={reportMode === "e-archive"} onClick={() => setReportMode("e-archive")}>
+        <FileSpreadsheet className="h-4 w-4 mr-2" /> E-Arşiv
+      </Button>
 
       <Button variant="outline" size="sm" className="min-h-9" onClick={exportCSV2}>
         <FileSpreadsheet className="h-4 w-4 mr-2" /> CSV
@@ -1576,6 +1746,8 @@ function AssignedArchiveSingleDay() {
 
     {/* Sağ: Canlı rozet + giriş/çıkış */}
     <div className="flex items-center gap-3">
+      <Button size="sm" variant="outline" className="min-h-9" onClick={() => setShowRules(true)}>Kurallar</Button>
+
       {/* CANLI ROZET (şık stil) */}
       <span
         className={
@@ -1621,26 +1793,31 @@ function AssignedArchiveSingleDay() {
 
   </div>
 </div>
-      {/* İzleyici/Normal kullanıcı için Kurallar Paneli */}
+      
+      {/* Admin olmayan kullanıcılar için randevu listesi ve duyurular */}
       {!isAdmin && (
-        <Card className="border-2 border-slate-300 bg-slate-50 animate-pulse">
-          <CardHeader>
-            <CardTitle className="tracking-wide">DOSYA ATAMA KURALLARI</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ol className="list-decimal marker:text-red-600 pl-5 space-y-2 text-sm md:text-base font-semibold text-slate-800">
-              <li>ÖNCE TEST DOSYALARI YALNIZCA TESTÖR ÖĞRETMENLERE ATANIR.</li>
-              <li>UYGUNLUK: AKTİF OLMALI, DEVAMSIZ OLMAMALI, BUGÜN TEST ALMAMIŞ OLMALI, GÜNLÜK SINIRI AŞMAMIŞ OLMALI.</li>
-              <li>SIRALAMA: ÖNCE YILLIK YÜK AZ → DAHA SONRA BUGÜN ALINAN DOSYA SAYISI AZ → RASTGELE.</li>
-              <li>ART ARDA AYNI ÖĞRETMENE ATAMA YAPILMAZ; MÜMKÜNSE ARAYA EN AZ 1 ÖĞRETMEN GİRER.</li>
-              <li>GÜNLÜK ÜST SINIR: ÖĞRETMEN BAŞINA GÜNDE EN FAZLA {settings.dailyLimit} DOSYA.</li>
-              <li>MANUEL ATAMA YAPILIRSA SİSTEMİN OTOMATİK ATAMASI GEÇERSİZ OLUR.</li>
-              <li>PUANLAMA: TEST = {settings.scoreTest}; YÖNLENDİRME = {settings.scoreTypeY}, DESTEK = {settings.scoreTypeD}, İKİSİ = {settings.scoreTypeI}; YENİ = +{settings.scoreNewBonus}; TANI = 0–6 (ÜST SINIR 6).</li>
-              <li>ATAMA SONRASI ÖĞRETMENE BİLDİRİM GÖNDERİLİR.</li>
-            </ol>
-          </CardContent>
-        </Card>
+        <>
+          {announcements.length > 0 && (
+            <div className="border rounded-md p-3 bg-amber-50 border-amber-300 animate-pulse">
+              <div className="font-medium text-amber-900">Duyuru</div>
+              <ul className="list-disc pl-5 mt-1 space-y-1">
+                {announcements.map((a) => (
+                  <li key={a.id} className="text-sm text-amber-900">{a.text}</li>
+                ))}
+              </ul>
+              <div className="text-xs text-amber-800 mt-1">Bu duyurular gün sonunda temizlenir.</div>
+            </div>
+          )}
+          <DailyAppointmentsCard
+            pdfDate={pdfDate}
+            pdfLoading={pdfLoading}
+            pdfEntries={pdfEntries}
+            selectedPdfEntryId={selectedPdfEntryId}
+            onShowDetails={() => setShowPdfPanel(true)}
+          />
+        </>
       )}
+
       {/* İzleyici/Normal kullanıcı için Duyuru Paneli */}
       {!isAdmin && announcements.length > 0 && (
         <div className="border rounded-md p-3 bg-amber-50 border-amber-300 animate-pulse">
@@ -1653,122 +1830,6 @@ function AssignedArchiveSingleDay() {
           <div className="text-xs text-amber-800 mt-1">Bu duyurular gün sonunda temizlenir.</div>
         </div>
       )}
-
-      {/* PDF yükleme alanı (herkese açık) */}
-      <Card className="border border-dashed border-emerald-300 bg-white/80">
-        <CardHeader>
-          <CardTitle>RAM Randevu PDF Yükle</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <label className="sm:flex-1">
-              <input
-                type="file"
-                accept="application/pdf"
-                ref={pdfInputRef}
-                onChange={(e) => handlePdfFileChange(e.target.files?.[0] || null)}
-                className="hidden"
-              />
-              <Button type="button" variant="outline" className="w-full" onClick={() => pdfInputRef.current?.click()}>
-                {pdfFile ? pdfFile.name : "Dosya Seç"}
-              </Button>
-            </label>
-            <Button onClick={uploadPdfFromFile} disabled={pdfUploading || !pdfFile}>
-              {pdfUploading ? "Yükleniyor..." : "PDF Ekle"}
-            </Button>
-          </div>
-          <p className="text-xs text-slate-600">
-            Dosyayı seçip “PDF Ekle” dediğinizde son randevu listesi herkesin ekranına güncellenir. Yanlış dosya yüklediyseniz tekrar PDF seçmeniz yeterli.
-          </p>
-          {pdfUploadError && <p className="text-sm text-red-600">{pdfUploadError}</p>}
-          {!pdfUploadError && pdfEntries.length > 0 && (
-            <p className="text-sm text-emerald-700">
-              Son yüklemede {pdfEntries.length} randevu bulundu
-              {pdfDate ? ` (${pdfDate})` : ""}. Bu liste tüm kullanıcılarla paylaşılır.
-            </p>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card className="border border-emerald-200 bg-emerald-50/60">
-        <CardHeader className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-          <CardTitle>
-            Yüklenen PDF Randevuları
-            {pdfDate && <span className="ml-2 text-sm text-emerald-700 font-normal">({pdfDate})</span>}
-          </CardTitle>
-          {isAdmin ? (
-            <div className="flex gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                data-silent="true"
-                onClick={() => clearPdfEntries()}
-                disabled={!pdfEntries.length || pdfLoading}
-              >
-                PDF'yi Temizle
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                data-silent="true"
-                onClick={() => setSelectedPdfEntryId(null)}
-                disabled={!selectedPdfEntryId}
-              >
-                Seçimi Temizle
-              </Button>
-            </div>
-          ) : (
-            <p className="text-xs text-slate-600">Bu liste bilgilendirme amaçlıdır.</p>
-          )}
-        </CardHeader>
-        <CardContent>
-          {pdfLoading ? (
-            <p className="text-sm text-slate-600">Randevular yükleniyor...</p>
-          ) : pdfEntries.length === 0 ? (
-            <p className="text-sm text-slate-600">Henüz PDF içe aktarılmadı. İlk sayfadaki panelden PDF yükleyebilirsiniz.</p>
-          ) : (
-            <div className="overflow-auto border rounded-md">
-              <table className="min-w-full text-xs md:text-sm">
-                <thead className="bg-emerald-100 text-emerald-900">
-                  <tr>
-                    <th className="p-2 text-left">Saat</th>
-                    <th className="p-2 text-left">Ad Soyad</th>
-                    <th className="p-2 text-left">Dosya No</th>
-                    <th className="p-2 text-left">Açıklama</th>
-                    {isAdmin && <th className="p-2 text-right">İşlem</th>}
-                  </tr>
-                </thead>
-                <tbody>
-                  {pdfEntries.map((entry) => (
-                    <tr
-                      key={entry.id}
-                      className={`border-b last:border-b-0 ${selectedPdfEntryId === entry.id ? "bg-emerald-50" : "bg-white"}`}
-                    >
-                      <td className="p-2 font-semibold">{entry.time}</td>
-                      <td className="p-2">{entry.name}</td>
-                      <td className="p-2">{entry.fileNo || "—"}</td>
-                      <td className="p-2 text-xs text-slate-600">{entry.extra || "—"}</td>
-                      {isAdmin && (
-                        <td className="p-2 flex flex-col gap-1 items-end">
-                          <Button size="sm" onClick={() => applyPdfEntry(entry)}>Forma Aktar</Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="text-red-600 hover:text-red-700"
-                            onClick={() => removePdfEntry(entry.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </td>
-                      )}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
 
       {/* Admin alanı */}
       <div className={`flex flex-col gap-4 lg:flex-row ${isAdmin ? "" : "hidden"}`}>
@@ -1785,6 +1846,16 @@ function AssignedArchiveSingleDay() {
               }
             }}
           >
+            <DailyAppointmentsCard
+              pdfDate={pdfDate}
+              pdfLoading={pdfLoading}
+              pdfEntries={pdfEntries}
+              selectedPdfEntryId={selectedPdfEntryId}
+            isAdmin={isAdmin}
+            onApplyEntry={applyPdfEntry}
+            onRemoveEntry={removePdfEntry}
+              onShowDetails={() => setShowPdfPanel(true)}
+            />
             {activePdfEntry && (
               <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900 flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
                 <div>
@@ -1795,7 +1866,7 @@ function AssignedArchiveSingleDay() {
                 </div>
                 <div className="flex gap-2">
                   <Button size="sm" variant="outline" onClick={() => applyPdfEntry(activePdfEntry!)}>Tekrar Aktar</Button>
-                  <Button size="sm" variant="ghost" onClick={() => setSelectedPdfEntryId(null)}>Seçimi Kaldır</Button>
+                  <Button size="sm" variant="ghost" onClick={clearActivePdfEntry}>Seçimi Kaldır</Button>
                 </div>
               </div>
             )}
@@ -1839,17 +1910,17 @@ function AssignedArchiveSingleDay() {
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <Checkbox id="isNew" checked={isNew} onCheckedChange={(v) => setIsNew(Boolean(v))} />
-              <Label htmlFor="isNew">Yeni başvuru (+{settings.scoreNewBonus})</Label>
+            <div className="flex items-center gap-3 pt-2">
+              <Checkbox id="isNew" checked={isNew} onCheckedChange={(v) => setIsNew(Boolean(v))} className="h-5 w-5" />
+              <Label htmlFor="isNew" className="text-base">Yeni başvuru (+{settings.scoreNewBonus})</Label>
             </div>
 
-            <div className="space-y-2">
-              <Label>Tanı sayısı (0-6) (+n)</Label>
-              <div className="flex items-center gap-2">
-                <Button type="button" variant="outline" size="icon" onClick={() => setDiagCount((n) => Math.max(0, n - 1))}><UserMinus className="h-4 w-4"/></Button>
+            <div className="space-y-2 pt-2">
+              <Label className="text-base">Tanı sayısı (0-6) (+n)</Label>
+              <div className="flex items-center gap-3">
+                <Button type="button" variant="outline" size="lg" className="px-3" onClick={() => setDiagCount((n) => Math.max(0, n - 1))}><UserMinus className="h-5 w-5"/></Button>
                 <Input
-                  className="w-20 text-center"
+                  className="w-24 h-12 text-center text-xl font-bold"
                   inputMode="numeric"
                   value={diagCount}
                   onChange={(e) => {
@@ -1857,7 +1928,7 @@ function AssignedArchiveSingleDay() {
                     setDiagCount(Math.max(0, Math.min(6, Number.isFinite(n) ? n : 0)));
                   }}
                 />
-                <Button type="button" variant="outline" size="icon" onClick={() => setDiagCount((n) => Math.min(6, n + 1))}><Plus className="h-4 w-4"/></Button>
+                <Button type="button" variant="outline" size="lg" className="px-3" onClick={() => setDiagCount((n) => Math.min(6, n + 1))}><Plus className="h-5 w-5"/></Button>
               </div>
             </div>
 
@@ -2284,6 +2355,7 @@ function AssignedArchiveSingleDay() {
           />
         )
       )}
+      {reportMode === "e-archive" && isAdmin && <EArchiveView />}
 
 
       
@@ -2411,12 +2483,153 @@ function AssignedArchiveSingleDay() {
         </div>
       )}
     </div>
+    {(showPdfPanel || showRules) && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+        <div className="relative w-full max-w-5xl max-h-[90vh] overflow-y-auto bg-white rounded-3xl shadow-2xl border border-emerald-100 p-6 space-y-5">
+            <button
+              className="absolute top-4 right-4 text-slate-600 hover:text-slate-900"
+              onClick={() => { setShowPdfPanel(false); setShowRules(false); }}
+              title="Kapat"
+            >
+              <X className="h-6 w-6" />
+            </button>
+            {showPdfPanel && (
+              <>
+                <Card className="border border-dashed border-emerald-300 bg-white/90">
+                  <CardHeader>
+                    <CardTitle>RAM Randevu PDF Yükle</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                      <label className="sm:flex-1">
+                        <input
+                          type="file"
+                          accept="application/pdf"
+                          ref={pdfInputRef}
+                          onChange={(e) => handlePdfFileChange(e.target.files?.[0] || null)}
+                          className="hidden"
+                        />
+                        <Button type="button" variant="outline" className="w-full" onClick={() => pdfInputRef.current?.click()}>
+                          {pdfFile ? pdfFile.name : "Dosya Seç"}
+                        </Button>
+                      </label>
+                      <Button onClick={uploadPdfFromFile} disabled={pdfUploading || !pdfFile}>
+                        {pdfUploading ? "Yükleniyor..." : "PDF Ekle"}
+                      </Button>
+                    </div>
+                    <p className="text-xs text-slate-600">
+                      Dosyayı seçip "PDF Ekle" dediğinizde son randevu listesi herkesin ekranına güncellenir. Yanlış dosya yüklediyseniz tekrar PDF seçmeniz yeterli.
+                    </p>
+                    {pdfUploadError && <p className="text-sm text-red-600">{pdfUploadError}</p>}
+                    {!pdfUploadError && pdfEntries.length > 0 && (
+                      <p className="text-sm text-emerald-700">
+                        Son yüklemede {pdfEntries.length} randevu bulundu
+                        {pdfDate ? ` (${pdfDate})` : ""}. Bu liste tüm kullanıcılarla paylaşılır.
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
+                <Card className="border border-emerald-200 bg-emerald-50/60">
+                  <CardHeader className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                    <CardTitle>
+                      Yüklenen PDF Randevuları
+                      {pdfDate && <span className="ml-2 text-sm text-emerald-700 font-normal">({pdfDate})</span>}
+                    </CardTitle>
+                    {isAdmin ? (
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          data-silent="true"
+                          onClick={() => clearPdfEntries()}
+                          disabled={!pdfEntries.length || pdfLoading}
+                        >
+                          PDF'yi Temizle
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          data-silent="true"
+                          onClick={() => setSelectedPdfEntryId(null)}
+                          disabled={!selectedPdfEntryId}
+                        >
+                          Seçimi Temizle
+                        </Button>
+                      </div>
+                    ) : null}
+                  </CardHeader>
+                  <CardContent>
+                    {pdfLoading ? (
+                      <p className="text-sm text-slate-600">Randevular yükleniyor...</p>
+                    ) : pdfEntries.length === 0 ? (
+                      <p className="text-sm text-slate-600">Henüz PDF içe aktarılmadı. İlk sayfadaki panelden PDF yükleyebilirsiniz.</p>
+                    ) : (
+                      <div className="overflow-auto border rounded-md">
+                        <table className="min-w-full text-xs md:text-sm">
+                          <thead className="bg-emerald-100 text-emerald-900">
+                            <tr>
+                              <th className="p-2 text-left">Saat</th>
+                              <th className="p-2 text-left">Ad Soyad</th>
+                              <th className="p-2 text-left">Dosya No</th>
+                              <th className="p-2 text-left">Açıklama</th>
+                              {isAdmin && <th className="p-2 text-right">İşlem</th>}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {pdfEntries.map((entry) => (
+                              <tr
+                                key={entry.id}
+                                className={`border-b last:border-b-0 ${selectedPdfEntryId === entry.id ? "bg-emerald-50" : "bg-white"}`}
+                              >
+                                <td className="p-2 font-semibold">{entry.time}</td>
+                                <td className="p-2">{entry.name}</td>
+                                <td className="p-2">{entry.fileNo || "-"}</td>
+                                <td className="p-2 text-xs text-slate-600">{entry.extra || "-"}</td>
+                                {isAdmin && (
+                                  <td className="p-2 flex flex-col gap-1 items-end">
+                                    <Button size="sm" onClick={() => applyPdfEntry(entry)}>Forma Aktar</Button>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="text-red-600 hover:text-red-700"
+                                      onClick={() => removePdfEntry(entry.id)}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </td>
+                                )}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </>
+            )}
+            {showRules && (
+              <Card className="border-2 border-slate-300 bg-slate-50 w-full max-w-3xl mx-auto">
+                <CardHeader>
+                  <CardTitle className="tracking-wide">DOSYA ATAMA KURALLARI</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ol className="list-decimal marker:text-red-600 pl-5 space-y-3 text-sm md:text-base font-semibold text-slate-800">
+                    <li>ÖNCE TEST DOSYALARI YALNIZCA TESTÖR ÖĞRETMENLERE ATANIR.</li>
+                    <li>UYGUNLUK: AKTİF OLMALI, DEVAMSIZ OLMAMALI, BUGÜN TEST ALMAMIŞ OLMALI, GÜNLÜK SINIRI AŞMAMIŞ OLMALI.</li>
+                    <li>SIRALAMA: ÖNCE YILLIK YÜK AZ → DAHA SONRA BUGÜN ALINAN DOSYA SAYISI AZ → RASTGELE.</li>
+                    <li>ART ARDA AYNI ÖĞRETMENE ATAMA YAPILMAZ; MÜMKÜNSE ARAYA EN AZ 1 ÖĞRETMEN GİRER.</li>
+                    <li>GÜNLÜK ÜST SINIR: ÖĞRETMEN BAŞINA GÜNDE EN FAZLA {settings.dailyLimit} DOSYA.</li>
+                    <li>MANUEL ATAMA YAPILIRSA SİSTEMİN OTOMATİK ATAMASI GEÇERSİZ OLUR.</li>
+                    <li className="text-xs md:text-sm">PUANLAMA: TEST = {settings.scoreTest}; YÖNLENDİRME = {settings.scoreTypeY}, DESTEK = {settings.scoreTypeD}, İKİSİ = {settings.scoreTypeI}; YENİ = +{settings.scoreNewBonus}; TANI = 0–6 (ÜST SINIR 6).</li>
+                    <li>ATAMA SONRASI ÖĞRETMENE BİLDİRİM GÖNDERİLİR.</li>
+                  </ol>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </div>
+      )}
+    </>
   );
 }
-
-
-
-
-
-
-
