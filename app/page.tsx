@@ -927,9 +927,8 @@ useEffect(() => {
       }
     }
     setCases(prev => [newCase, ...prev]);
-    if (selectedPdfEntryId) {
-      void removePdfEntry(selectedPdfEntryId, true);
-    }
+    // PDF kaydı formu doldururken seçili kalsa da listede kalsın; manuel silinecekse
+    // kullanıcı "Kaydı Sil" butonunu kullanır.
 
     // reset inputs
     setStudent("");
