@@ -117,7 +117,8 @@ function parsePdfText(text: string): { entries: PdfEntry[]; dateLabel: string | 
           nameParts.push(line.replace(/^\d{5,}\s+/, "").trim());
           continue;
         }
-        if (/^[A-ZÇĞİÖŞÜ\s]*\*{3}$/.test(line) || /^[A-ZÇĞİÖŞÜ]{0,2}\s?\d{3,6}$/.test(line)) {
+        // Dosya numarası: "***" veya 2-7 haneli numara (opsiyonel 1-2 harf prefix)
+        if (/^[A-ZÇĞİÖŞÜ\s]*\*{3}$/.test(line) || /^[A-ZÇĞİÖŞÜ]{0,2}\s?\d{2,7}$/.test(line)) {
           fileNo = line.replace(/\s+/g, " ").trim();
           continue;
         }
