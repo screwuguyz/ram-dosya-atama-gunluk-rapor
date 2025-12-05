@@ -34,6 +34,7 @@ type CaseFile = {
   isTest: boolean;
   assignReason?: string;
   absencePenalty?: boolean;
+  backupBonus?: boolean;
 };
 type Announcement = { id: string; text: string; createdAt: string };
 type Settings = {

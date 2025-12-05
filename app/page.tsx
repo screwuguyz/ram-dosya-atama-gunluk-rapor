@@ -56,6 +56,7 @@ export type CaseFile = {
   isTest: boolean;
   assignReason?: string;
   absencePenalty?: boolean;
+  backupBonus?: boolean;
 }
 
 // E-Arşiv için tip
@@ -1363,7 +1364,7 @@ useEffect(() => {
     if (!backups.length) return;
 
     const dayCases = casesRef.current.filter(
-      (c) => !c.absencePenalty && c.assignedTo && c.createdAt.slice(0, 10) === day
+      (c) => !c.absencePenalty && !c.backupBonus && c.assignedTo && c.createdAt.slice(0, 10) === day
     );
     const pointsByTeacher = new Map<string, number>();
     for (const c of dayCases) {
@@ -1373,23 +1374,65 @@ useEffect(() => {
     const maxScore = pointsByTeacher.size ? Math.max(...pointsByTeacher.values()) : 0;
     const bonus = maxScore + 3;
     const ym = day.slice(0, 7);
+    const reasonText = `Başkan yedek bonusu: en yüksek ${maxScore} + 3`;
 
+    // Bonus CaseFile'ları oluştur (günlük raporda görünsün)
+    const existingBonusCases = casesRef.current.filter(
+      (c) => c.backupBonus && c.createdAt.slice(0, 10) === day
+    );
+    const keepNonBonus = casesRef.current.filter(
+      (c) => !(c.backupBonus && c.createdAt.slice(0, 10) === day)
+    );
+
+    const newBonusCases: CaseFile[] = [];
+    const loadDelta = new Map<string, number>();
+
+    for (const t of backups) {
+      const existing = existingBonusCases.find((c) => c.assignedTo === t.id);
+      const prevScore = existing?.score ?? 0;
+      const score = bonus;
+      const createdAt = existing?.createdAt ?? `${day}T23:58:00.000Z`;
+      const id = existing?.id ?? uid();
+      newBonusCases.push({
+        id,
+        student: `${t.name} - Başkan Yedek`,
+        score,
+        createdAt,
+        assignedTo: t.id,
+        type: "DESTEK",
+        isNew: false,
+        diagCount: 0,
+        isTest: false,
+        assignReason: reasonText,
+        backupBonus: true,
+      });
+      const delta = score - prevScore;
+      if (delta) loadDelta.set(t.id, (loadDelta.get(t.id) || 0) + delta);
+    }
+
+    // Cases güncelle
+    const nextCases = [...newBonusCases, ...keepNonBonus];
+    setCases(nextCases);
+    casesRef.current = nextCases;
+
+    // Teachers güncelle
     setTeachers((prev) => {
       const next = prev.map((t) => {
         if (t.backupDay !== day) return t;
+        const delta = loadDelta.get(t.id) || 0;
         const nextMonthly = { ...(t.monthly || {}) };
-        nextMonthly[ym] = Math.max(0, (nextMonthly[ym] || 0) + bonus);
+        nextMonthly[ym] = Math.max(0, (nextMonthly[ym] || 0) + delta);
         return {
           ...t,
           backupDay: undefined,
-          yearlyLoad: Math.max(0, t.yearlyLoad + bonus),
+          yearlyLoad: Math.max(0, t.yearlyLoad + delta),
           monthly: nextMonthly,
         };
       });
       teachersRef.current = next;
       return next;
     });
-  }, [setTeachers]);
+  }, [setTeachers, setCases]);
 
   // ---- ROLLOVER: Gece 00:00 arşivle & sıfırla
   function doRollover() {

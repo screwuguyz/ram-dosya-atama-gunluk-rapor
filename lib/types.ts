@@ -23,4 +23,5 @@ export type CaseFile = {
   isTest: boolean;
   assignReason?: string;
   absencePenalty?: boolean;
+  backupBonus?: boolean;
 };
