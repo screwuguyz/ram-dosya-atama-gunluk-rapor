@@ -830,6 +830,29 @@ const pdfInputRef = React.useRef<HTMLInputElement | null>(null);
     fetchCentralState();
   }, [fetchCentralState]);
 
+  // ---- ⌨️ KLAVYE KISAYOLLARI
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      // Escape: Tüm modalları kapat
+      if (e.key === "Escape") {
+        if (loginOpen) setLoginOpen(false);
+        if (settingsOpen) setSettingsOpen(false);
+        if (feedbackOpen) setFeedbackOpen(false);
+        if (showPdfPanel) setShowPdfPanel(false);
+        if (showRules) setShowRules(false);
+      }
+      
+      // Ctrl+Enter veya Cmd+Enter: Dosya ekle (admin ise)
+      if ((e.ctrlKey || e.metaKey) && e.key === "Enter" && isAdmin && student.trim()) {
+        e.preventDefault();
+        addCase();
+      }
+    }
+    
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [loginOpen, settingsOpen, feedbackOpen, showPdfPanel, showRules, isAdmin, student]);
+
   useEffect(() => {
     if (process.env.NEXT_PUBLIC_DISABLE_REALTIME === "1") return;
     const channel = supabase
@@ -2440,7 +2463,10 @@ function AssignedArchiveSingleDay() {
                 />
               </div>
               <div className="flex items-center justify-between mt-3">
-                <div className="text-sm text-muted-foreground">Puan: <span className="font-semibold">{calcScore()}</span></div>
+                <div className="text-sm text-muted-foreground">
+                  Puan: <span className="font-semibold">{calcScore()}</span>
+                  <span className="hidden md:inline ml-3 text-xs opacity-60">⌨️ Ctrl+Enter ile hızlı ekle</span>
+                </div>
               </div>
             </div>
 

@@ -625,17 +625,97 @@ input:focus::placeholder {
 
 /* ===== RESPONSIVE DÜZENLEMELER ===== */
 @media (max-width: 768px) {
+  /* Kartlar */
   .card {
     @apply rounded-xl;
-    animation-duration: 0.4s;
+    animation-duration: 0.3s;
   }
   
+  .card-header {
+    @apply px-3 py-2;
+  }
+  
+  .card-content {
+    @apply p-3;
+  }
+  
+  /* Tablolar */
   .table th, .table td {
     @apply p-2 text-xs;
   }
   
+  /* Butonlar - hover efektleri mobilde kapalı */
   button:hover {
     transform: none;
+    box-shadow: none;
+  }
+  
+  /* Container padding */
+  .container {
+    @apply px-2;
+  }
+  
+  /* Sticky header mobil */
+  .sticky {
+    @apply px-2 py-2;
+  }
+}
+
+/* Küçük mobil (< 480px) */
+@media (max-width: 480px) {
+  /* Dashboard kartları tek sütun */
+  .grid-cols-2 {
+    grid-template-columns: 1fr !important;
+  }
+  
+  /* Kart içerikleri daha kompakt */
+  .card-content {
+    @apply p-2;
+  }
+  
+  /* Form elemanları tam genişlik */
+  input, select, textarea {
+    @apply w-full;
+  }
+  
+  /* Modal'lar tam genişlik */
+  [class*="w-[360px]"], [class*="w-[420px]"] {
+    width: calc(100vw - 2rem) !important;
+    max-width: 100%;
+  }
+  
+  /* Buton metinleri küçült */
+  button {
+    @apply text-xs px-2 py-1.5;
+  }
+  
+  /* Tablo yatay scroll */
+  .overflow-auto {
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Font boyutları */
+  h1 { @apply text-2xl; }
+  h2 { @apply text-xl; }
+  h3 { @apply text-lg; }
+}
+
+/* Touch cihazlar için */
+@media (hover: none) and (pointer: coarse) {
+  /* Daha büyük dokunma alanları */
+  button {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Hover efektleri kapalı */
+  button:hover, .card:hover, .table tbody tr:hover {
+    transform: none;
+  }
+  
+  /* Scrollbar gizle (touch) */
+  ::-webkit-scrollbar {
+    display: none;
   }
 }
 
