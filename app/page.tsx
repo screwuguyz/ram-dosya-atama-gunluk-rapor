@@ -322,6 +322,7 @@ export default function DosyaAtamaApp() {
   const teachersRef = React.useRef<Teacher[]>([]);
   const casesRef = React.useRef<CaseFile[]>([]);
   const lastAbsencePenaltyRef = React.useRef<string>("");
+  const supabaseTeacherCountRef = React.useRef<number>(0); // Koruma: Supabase'deki öğretmen sayısı
   const [live, setLive] = useState<"connecting" | "online" | "offline">("connecting");
   const studentRef = React.useRef<HTMLInputElement | null>(null);
   // ---- Öneri/Şikayet modal durumu
@@ -566,6 +567,12 @@ const pdfInputRef = React.useRef<HTMLInputElement | null>(null);
         console.error("[fetchCentralState] Supabase error:", s._error);
         toast(`Supabase bağlantı hatası: ${s._error}`);
       }
+      
+      // Supabase'den gelen öğretmen sayısını kaydet (koruma için)
+      const supabaseTeacherCount = s.teachers?.length || 0;
+      supabaseTeacherCountRef.current = supabaseTeacherCount;
+      console.log("[fetchCentralState] Supabase teacher count:", supabaseTeacherCount);
+      
       const incomingTs = Date.parse(String(s.updatedAt || 0));
       const currentTs = Date.parse(String(lastAppliedAtRef.current || 0));
       if (!isNaN(incomingTs) && incomingTs <= currentTs) return;
@@ -926,11 +933,20 @@ useEffect(() => {
     payload: { sender: clientId, teachers, cases, history, lastAbsencePenalty, updatedAt: (lastAppliedAtRef.current || new Date().toISOString()) },
   });
 }, [teachers, cases, history, lastAbsencePenalty, isAdmin, clientId, hydrated, centralLoaded]);
+
 // === Admin değiştirince merkezi state'e de yaz (kalıcılık)
 useEffect(() => {
   if (!isAdmin) return;
   if (!hydrated) return;
   if (!centralLoaded) return;
+  
+  // KORUMA: Eğer Supabase'de öğretmen varsa ama local'de yoksa, yazma!
+  // Bu, yeni tarayıcı/boş localStorage'ın Supabase verisini silmesini önler
+  if (supabaseTeacherCountRef.current > 0 && teachers.length === 0) {
+    console.warn("[state POST] BLOCKED: Supabase has", supabaseTeacherCountRef.current, "teachers but local has 0. Refusing to overwrite.");
+    return;
+  }
+  
   const ctrl = new AbortController();
   const nowTs = new Date().toISOString();
   lastAppliedAtRef.current = nowTs;
@@ -956,6 +972,8 @@ useEffect(() => {
           const json = await res.json().catch(() => ({}));
           console.error("[state POST] Error:", json);
           toast(`Supabase kayıt hatası: ${json?.error || res.status}`);
+        } else {
+          console.log("[state POST] Success, teachers:", teachers.length);
         }
       })
       .catch((err) => {
