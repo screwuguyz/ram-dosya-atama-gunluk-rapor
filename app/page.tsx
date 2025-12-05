@@ -215,7 +215,7 @@ function DailyAppointmentsCard({
     <Card className="border border-emerald-200 bg-emerald-50/70">
       <CardHeader className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
         <CardTitle>
-          Günlük RAM Randevuları
+          📆 Günlük RAM Randevuları
           {pdfDate && <span className="ml-2 text-sm text-emerald-700 font-normal">({pdfDate})</span>}
         </CardTitle>
         <Popover>
@@ -1641,7 +1641,7 @@ useEffect(() => {
     return (
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>E-Arşiv (Tüm Atanmış Dosyalar)</CardTitle>
+          <CardTitle>🗄️ E-Arşiv (Tüm Atanmış Dosyalar)</CardTitle>
           <div className="flex items-center gap-2">
             <Button variant="destructive" onClick={clearEArchive}><Trash2 className="h-4 w-4 mr-2" /> Arşivi Temizle</Button>
             <Button onClick={exportEArchiveCSV}><FileSpreadsheet className="h-4 w-4 mr-2" /> CSV Olarak İndir</Button>
@@ -1888,7 +1888,7 @@ function AssignedArchiveSingleDay() {
   return (
     <Card className="mt-4">
       <CardHeader className="flex items-center justify-between">
-        <CardTitle>Atanan Dosyalar (Tek Gün)</CardTitle>
+        <CardTitle>📋 Atanan Dosyalar (Tek Gün)</CardTitle>
         <div className="flex items-center gap-2">
           <Button size="sm" variant="outline" disabled={prevDisabled} onClick={() => !prevDisabled && setDay(days[idx - 1])}>
             Önceki
@@ -2042,11 +2042,11 @@ function AssignedArchiveSingleDay() {
             Özel Eğitim Bölümü Paneli
           </h1>
           <p className="text-lg md:text-2xl text-slate-600 leading-relaxed">
-            Hoş geldiniz. Panelde günlük randevu listelerini yükleyebilir, dosya atamalarını yönetebilir ve öğretmen
+            👋 Hoş geldiniz! Panelde günlük randevu listelerini yükleyebilir, dosya atamalarını yönetebilir ve öğretmen
             bildirimlerini takip edebilirsiniz.
           </p>
           <Button size="lg" className="px-12 py-6 text-xl" onClick={() => setShowLanding(false)}>
-            Panele Giriş Yap
+            🚀 Panele Giriş Yap
           </Button>
         </div>
       </main>
@@ -2079,34 +2079,34 @@ function AssignedArchiveSingleDay() {
       </Select>
 
       <Button variant={reportMode === "monthly" ? "default" : "outline"} size="sm" className="min-h-9" aria-pressed={reportMode === "monthly"} onClick={() => setReportMode("monthly")}>
-        <BarChart2 className="h-4 w-4 mr-2" /> Aylık Rapor
+        📊 Aylık Rapor
       </Button>
       <Button variant={reportMode === "daily" ? "default" : "outline"} size="sm" className="min-h-9" aria-pressed={reportMode === "daily"} onClick={() => setReportMode("daily")}>
-        <BarChart2 className="h-4 w-4 mr-2" /> Günlük Rapor
+        📅 Günlük Rapor
       </Button>
       <Button variant={reportMode === "archive" ? "default" : "outline"} size="sm" className="min-h-9" aria-pressed={reportMode === "archive"} onClick={() => setReportMode("archive")}>
-        <BarChart2 className="h-4 w-4 mr-2" /> Atanan Dosyalar
+        📋 Atanan Dosyalar
       </Button>
       <Button variant={reportMode === "e-archive" ? "default" : "outline"} size="sm" className="min-h-9" aria-pressed={reportMode === "e-archive"} onClick={() => setReportMode("e-archive")}>
-        <FileSpreadsheet className="h-4 w-4 mr-2" /> E-Arşiv
+        🗄️ E-Arşiv
       </Button>
 
       <Button variant="outline" size="sm" className="min-h-9" onClick={exportCSV2}>
-        <FileSpreadsheet className="h-4 w-4 mr-2" /> CSV
+        📥 CSV
       </Button>
       <Button variant="outline" size="sm" className="min-h-9" onClick={exportJSON}>
-        <FileSpreadsheet className="h-4 w-4 mr-2" /> JSON Yedek
+        💾 JSON Yedek
       </Button>
 
       <label className="cursor-pointer">
         <Input type="file" accept=".json" onChange={handleImportJSON} className="hidden" />
-        <Button variant="outline" size="sm" className="min-h-9">JSON İçe Aktar</Button>
+        <Button variant="outline" size="sm" className="min-h-9">📤 JSON İçe Aktar</Button>
       </label>
     </div>
 
     {/* Sağ: Canlı rozet + giriş/çıkış */}
     <div className="flex items-center gap-3">
-      <Button size="sm" variant="outline" className="min-h-9" onClick={() => setShowRules(true)}>Kurallar</Button>
+      <Button size="sm" variant="outline" className="min-h-9" onClick={() => setShowRules(true)}>📖 Kurallar</Button>
 
       {/* CANLI ROZET (şık stil) */}
       <span
@@ -2121,14 +2121,14 @@ function AssignedArchiveSingleDay() {
         title={live === "online" ? "Bağlı" : live === "connecting" ? "Bağlanıyor" : "Bağlı değil"}
       >
         <span className="inline-block size-1.5 rounded-full bg-current animate-pulse" />
-        Canlı: {live}
+        🔴 Canlı: {live}
       </span>
 
-      <Button size="sm" variant="outline" className="min-h-9" onClick={() => setFeedbackOpen(true)}>Öneri/Şikayet</Button>
+      <Button size="sm" variant="outline" className="min-h-9" onClick={() => setFeedbackOpen(true)}>💬 Öneri/Şikayet</Button>
 
       {isAdmin ? (
   <>
-    <span className="text-sm text-emerald-700 font-medium">Admin</span>
+    <span className="text-sm text-emerald-700 font-medium">👑 Admin</span>
 
     {/* Ses Aç/Kapat */}
     <Button
@@ -2165,11 +2165,11 @@ function AssignedArchiveSingleDay() {
     )}
 
     {/* Çıkış */}
-    <Button size="sm" variant="outline" className="min-h-9" onClick={() => setSettingsOpen(true)}>Ayarlar</Button>
-    <Button size="sm" variant="outline" className="min-h-9" onClick={doLogout}>Çıkış</Button>
+    <Button size="sm" variant="outline" className="min-h-9" onClick={() => setSettingsOpen(true)}>⚙️ Ayarlar</Button>
+    <Button size="sm" variant="outline" className="min-h-9" onClick={doLogout}>🚪 Çıkış</Button>
   </>
 ) : (
-  <Button size="sm" className="min-h-9" onClick={() => setLoginOpen(true)}>Giriş</Button>
+  <Button size="sm" className="min-h-9" onClick={() => setLoginOpen(true)}>🔐 Giriş</Button>
 )}
     </div>
 
@@ -2219,7 +2219,7 @@ function AssignedArchiveSingleDay() {
       <div className={`grid grid-cols-1 lg:grid-cols-2 gap-4 ${isAdmin ? "" : "hidden"}`}>
         {/* Sol: Dosya ekle */}
         <Card className="min-w-0">
-          <CardHeader><CardTitle>Yeni Dosya Ekle</CardTitle></CardHeader>
+          <CardHeader><CardTitle>📁 Yeni Dosya Ekle</CardTitle></CardHeader>
           <CardContent
             className="space-y-4"
             onKeyDown={(e) => {
@@ -2258,7 +2258,7 @@ function AssignedArchiveSingleDay() {
             )}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Öğrenci Adı</Label>
+                <Label>👤 Öğrenci Adı</Label>
                 <Input
                   value={student}
                   onChange={(e) => setStudent(e.target.value)}
@@ -2270,7 +2270,7 @@ function AssignedArchiveSingleDay() {
                 )}
               </div>
               <div className="space-y-2">
-                <Label>Dosya No</Label>
+                <Label>🔢 Dosya No</Label>
                 <Input value={fileNo} onChange={(e) => setFileNo(e.target.value)} placeholder="Örn. 2025-001" />
               </div>
             </div>
@@ -2288,7 +2288,7 @@ function AssignedArchiveSingleDay() {
         </div>
       )}
             <div className="space-y-2">
-              <Label>Dosya Türü</Label>
+              <Label>📑 Dosya Türü</Label>
               <div className="grid grid-cols-3 gap-2 text-sm">
                 <Button variant={type === "YONLENDIRME" ? "default" : "outline"} onClick={() => setType("YONLENDIRME")}>Yönlendirme (+{settings.scoreTypeY})</Button>
                 <Button variant={type === "DESTEK" ? "default" : "outline"} onClick={() => setType("DESTEK")}>Destek (+{settings.scoreTypeD})</Button>
@@ -2335,7 +2335,7 @@ function AssignedArchiveSingleDay() {
             {/* Manuel atama (opsiyonel) + Ekle butonu tek kapsayıcıda (click-away ref) */}
             <div ref={manualAssignRef}>
               <div className="space-y-2">
-                <Label>Öğretmeni Manuel Ata (opsiyonel)</Label>
+                <Label>👨‍🏫 Öğretmeni Manuel Ata (opsiyonel)</Label>
                 <Select value={manualTeacherId} onValueChange={(v) => setManualTeacherId(v)}>
                   <SelectTrigger className="w-full"><SelectValue placeholder="Öğretmen seçin" /></SelectTrigger>
                   <SelectContent>
@@ -2352,7 +2352,7 @@ function AssignedArchiveSingleDay() {
                 </div>
               </div>
               <div className="space-y-2 mt-3">
-                <Label>Açıklama (neden)</Label>
+                <Label>📝 Açıklama (neden)</Label>
                 <textarea
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                   rows={2}
@@ -2378,7 +2378,7 @@ function AssignedArchiveSingleDay() {
 
             {/* Duyuru Gönder (admin) */}
             <div className="mt-4">
-              <Label>Duyuru (gün içinde gösterilir)</Label>
+              <Label>📢 Duyuru (gün içinde gösterilir)</Label>
               <div className="mt-1 flex items-end gap-2">
                 <div className="flex-1">
                   <Input value={announcementText} onChange={(e) => setAnnouncementText(e.target.value)} placeholder="Kısa duyuru metni" />
@@ -2416,12 +2416,12 @@ function AssignedArchiveSingleDay() {
 
         {/* Sağ: Öğretmenler */}
         <Card className="min-w-0 overflow-hidden">
-          <CardHeader><CardTitle>Öğretmenler</CardTitle></CardHeader>
+          <CardHeader><CardTitle>👨‍🏫 Öğretmenler</CardTitle></CardHeader>
           <CardContent className="space-y-3 overflow-x-auto">
             {/* Öğretmen Ekle */}
             <div className="flex items-end gap-2">
               <div className="flex-1">
-                <Label>Öğretmen Ekle</Label>
+                <Label>➕ Öğretmen Ekle</Label>
                 <Input
                   value={newTeacherName}
                   onChange={(e) => setNewTeacherName(e.target.value)}
@@ -2570,7 +2570,7 @@ function AssignedArchiveSingleDay() {
 {/* Liste & filtre — BUGÜN */}
       <Card className={isAdmin ? "" : "hidden"}>
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Dosyalar (Bugün)</CardTitle>
+          <CardTitle>📂 Dosyalar (Bugün)</CardTitle>
           <div className="flex items-center gap-2">
             <Select value={filterYM} onValueChange={setFilterYM}>
               <SelectTrigger className="w-[160px]"><SelectValue placeholder="Ay seç" /></SelectTrigger>
@@ -2710,7 +2710,7 @@ function AssignedArchiveSingleDay() {
       {feedbackOpen && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50" onClick={() => setFeedbackOpen(false)}>
           <Card className="w-[420px]" onClick={(e) => e.stopPropagation()}>
-            <CardHeader><CardTitle>Öneri / Şikayet</CardTitle></CardHeader>
+            <CardHeader><CardTitle>💬 Öneri / Şikayet</CardTitle></CardHeader>
             <CardContent className="space-y-3">
               <div className="grid grid-cols-1 gap-3">
                 <div>
@@ -2758,7 +2758,7 @@ function AssignedArchiveSingleDay() {
       {settingsOpen && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50" onClick={() => setSettingsOpen(false)}>
           <Card className="w-[420px]" onClick={(e) => e.stopPropagation()}>
-            <CardHeader><CardTitle>Ayarlar</CardTitle></CardHeader>
+            <CardHeader><CardTitle>⚙️ Ayarlar</CardTitle></CardHeader>
             <CardContent className="space-y-3">
               <div>
                 <Label>Günlük Limit (öğretmen başına)</Label>
@@ -2798,7 +2798,7 @@ function AssignedArchiveSingleDay() {
       {loginOpen && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
           <Card className="w-[360px]">
-            <CardHeader><CardTitle>Admin Girişi</CardTitle></CardHeader>
+            <CardHeader><CardTitle>🔐 Admin Girişi</CardTitle></CardHeader>
             <CardContent className="space-y-3">
               <div className="space-y-1">
                 <Label>E-posta</Label>
