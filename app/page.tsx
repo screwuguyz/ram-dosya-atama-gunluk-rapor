@@ -570,12 +570,27 @@ const pdfInputRef = React.useRef<HTMLInputElement | null>(null);
       
       // Supabase'den gelen öğretmen sayısını kaydet (koruma için)
       const supabaseTeacherCount = s.teachers?.length || 0;
+      const localTeacherCount = teachersRef.current?.length || 0;
+      
+      // KORUMA: Supabase boş ama local'de veri varsa, Supabase verisini REDDET
+      if (supabaseTeacherCount === 0 && localTeacherCount > 0) {
+        console.warn("[fetchCentralState] BLOCKED: Supabase has 0 teachers but local has", localTeacherCount, ". Keeping local data.");
+        supabaseTeacherCountRef.current = localTeacherCount; // Local sayıyı koru
+        setCentralLoaded(true);
+        return;
+      }
+      
       supabaseTeacherCountRef.current = supabaseTeacherCount;
-      console.log("[fetchCentralState] Supabase teacher count:", supabaseTeacherCount);
+      console.log("[fetchCentralState] Supabase teacher count:", supabaseTeacherCount, "Local:", localTeacherCount);
       
       const incomingTs = Date.parse(String(s.updatedAt || 0));
       const currentTs = Date.parse(String(lastAppliedAtRef.current || 0));
-      if (!isNaN(incomingTs) && incomingTs <= currentTs) return;
+      if (!isNaN(incomingTs) && incomingTs <= currentTs) {
+        console.log("[fetchCentralState] Skipped: incoming timestamp older or equal");
+        setCentralLoaded(true);
+        return;
+      }
+      
       lastAppliedAtRef.current = s.updatedAt || new Date().toISOString();
       setTeachers(s.teachers ?? []);
       setCases(s.cases ?? []);
@@ -587,7 +602,7 @@ const pdfInputRef = React.useRef<HTMLInputElement | null>(null);
         setAnnouncements((s.announcements || []).filter((a: any) => (a.createdAt || "").slice(0, 10) === today));
       }
       if (s.settings) setSettings((prev) => ({ ...prev, ...s.settings }));
-      console.log("[fetchCentralState] Loaded, teachers:", s.teachers?.length || 0);
+      console.log("[fetchCentralState] Applied, teachers:", s.teachers?.length || 0);
     } catch (err) {
       console.error("[fetchCentralState] Network error:", err);
     } finally {
@@ -884,11 +899,21 @@ useEffect(() => {
     const inc = Date.parse(String(p.updatedAt || 0));
     const cur = Date.parse(String(lastAppliedAtRef.current || 0));
     if (!isNaN(inc) && inc <= cur) return;
+    
+    // KORUMA: Gelen veri boşsa ama bizde veri varsa, REDDET
+    const incomingTeacherCount = p.teachers?.length || 0;
+    const currentTeacherCount = teachersRef.current?.length || 0;
+    if (incomingTeacherCount === 0 && currentTeacherCount > 0) {
+      console.warn("[broadcast] BLOCKED: Incoming has 0 teachers but we have", currentTeacherCount, ". Refusing empty broadcast.");
+      return;
+    }
+    
     lastAppliedAtRef.current = p.updatedAt || new Date().toISOString();
     setTeachers(p.teachers ?? []);
     setCases(p.cases ?? []);
     if (p.history) setHistory(p.history);
     if (typeof p.lastAbsencePenalty === "string") setLastAbsencePenalty(p.lastAbsencePenalty);
+    console.log("[broadcast] Applied state from", p.sender, "teachers:", incomingTeacherCount);
   });
 
   // 2) İzleyici "hello" derse admin state göndersin
@@ -925,6 +950,13 @@ useEffect(() => {
   if (!isAdmin) return;
   if (!hydrated) return; // LS yüklenmeden yayınlama
   if (!centralLoaded) return; // Merkez yüklenmeden yayınlama
+  
+  // KORUMA: Boş öğretmen listesi yayınlama!
+  if (teachers.length === 0 && supabaseTeacherCountRef.current > 0) {
+    console.warn("[broadcast OUT] BLOCKED: Not broadcasting empty teachers list");
+    return;
+  }
+  
   const ch = channelRef.current;
   if (!ch) return;
   ch.send({
@@ -932,6 +964,7 @@ useEffect(() => {
     event: "state",
     payload: { sender: clientId, teachers, cases, history, lastAbsencePenalty, updatedAt: (lastAppliedAtRef.current || new Date().toISOString()) },
   });
+  console.log("[broadcast OUT] Sent state, teachers:", teachers.length);
 }, [teachers, cases, history, lastAbsencePenalty, isAdmin, clientId, hydrated, centralLoaded]);
 
 // === Admin değiştirince merkezi state'e de yaz (kalıcılık)
