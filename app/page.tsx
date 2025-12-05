@@ -1637,29 +1637,40 @@ useEffect(() => {
   }
 
   // E-Arşiv Görüntüleme Bileşeni
-  function EArchiveView() {
+  function EArchiveView({ showAdminButtons = false }: { showAdminButtons?: boolean }) {
     return (
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>🗄️ E-Arşiv (Tüm Atanmış Dosyalar)</CardTitle>
           <div className="flex items-center gap-2">
-            <Button variant="destructive" onClick={clearEArchive}><Trash2 className="h-4 w-4 mr-2" /> Arşivi Temizle</Button>
+            {/* Silme butonu sadece admin'e gösterilir */}
+            {showAdminButtons && (
+              <Button variant="destructive" onClick={clearEArchive}><Trash2 className="h-4 w-4 mr-2" /> Arşivi Temizle</Button>
+            )}
             <Button onClick={exportEArchiveCSV}><FileSpreadsheet className="h-4 w-4 mr-2" /> CSV Olarak İndir</Button>
           </div>
         </CardHeader>
         <CardContent>
-          <div className="overflow-auto border rounded-md max-h-[70vh]">
-            <table className="w-full text-sm">
-              <thead className="sticky top-0 bg-muted"><tr><th className="p-2 text-left">Öğrenci Adı</th><th className="p-2 text-left">Dosya No</th><th className="p-2 text-left">Atanan Öğretmen</th><th className="p-2 text-left">Atama Tarihi</th></tr></thead>
-              <tbody>
-                {eArchive.map(entry => (
-                  <tr key={entry.id} className="border-t">
-                    <td className="p-2 font-medium">{entry.student}</td><td className="p-2">{entry.fileNo || '—'}</td><td className="p-2">{entry.assignedToName}</td><td className="p-2">{new Date(entry.createdAt).toLocaleString("tr-TR", { dateStyle: "short", timeStyle: "short" })}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          {eArchive.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground">
+              <div className="text-4xl mb-3">📭</div>
+              <div className="font-medium">E-Arşiv boş</div>
+              <div className="text-sm">Henüz atanmış dosya bulunmuyor.</div>
+            </div>
+          ) : (
+            <div className="overflow-auto border rounded-md max-h-[70vh]">
+              <table className="w-full text-sm">
+                <thead className="sticky top-0 bg-muted"><tr><th className="p-2 text-left">Öğrenci Adı</th><th className="p-2 text-left">Dosya No</th><th className="p-2 text-left">Atanan Öğretmen</th><th className="p-2 text-left">Atama Tarihi</th></tr></thead>
+                <tbody>
+                  {eArchive.map(entry => (
+                    <tr key={entry.id} className="border-t">
+                      <td className="p-2 font-medium">{entry.student}</td><td className="p-2">{entry.fileNo || '—'}</td><td className="p-2">{entry.assignedToName}</td><td className="p-2">{new Date(entry.createdAt).toLocaleString("tr-TR", { dateStyle: "short", timeStyle: "short" })}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </CardContent>
       </Card>
     );
@@ -2759,7 +2770,7 @@ function AssignedArchiveSingleDay() {
           />
         )
       )}
-      {reportMode === "e-archive" && isAdmin && <EArchiveView />}
+      {reportMode === "e-archive" && <EArchiveView showAdminButtons={isAdmin} />}
 
 
       
