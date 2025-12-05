@@ -1072,26 +1072,36 @@ useEffect(() => {
   }
 
   // ---- Otomatik atama (test/normal ayrımı ve kilit)
+  // 🔄 ZORUNLU ROTASYON: Aynı kişiye art arda dosya VERİLMEZ (tek kişi kalmadıkça)
   function autoAssign(newCase: CaseFile): Teacher | null {
-    // Test dosyasıysa: sadece testörler ve bugün test almamış olanlar
     const todayYmd = getTodayYmd();
+    const lastTid = lastAssignedTeacherToday();
+    
+    // Test dosyasıysa: sadece testörler ve bugün test almamış olanlar
     if (newCase.isTest) {
-      const testers = teachers.filter(
+      let testers = teachers.filter(
         (t) => t.isTester && !t.isAbsent && t.active && t.backupDay !== todayYmd && !hasTestToday(t.id) && countCasesToday(t.id) < MAX_DAILY_CASES
       );
       if (!testers.length) return null; // uygun testör yoksa atama yok
 
-      // Önce yıllık yüke göre; eşitse bugün alınan dosya sayısı az olan öne; sonra rastgele
+      // 🔄 ZORUNLU ROTASYON: Son atanan kişiyi listeden ÇIKAR (birden fazla aday varsa)
+      if (testers.length > 1 && lastTid) {
+        testers = testers.filter(t => t.id !== lastTid);
+      }
+
+      // Sıralama: 1) Bugün en az dosya alan, 2) Yıllık yük en az, 3) İsim (deterministik)
       testers.sort((a, b) => {
-        const byLoad = a.yearlyLoad - b.yearlyLoad;
-        if (byLoad !== 0) return byLoad;
+        // Önce bugün alınan dosya sayısına bak (günlük adalet)
         const byCount = countCasesToday(a.id) - countCasesToday(b.id);
         if (byCount !== 0) return byCount;
-        return Math.random() - 0.5;
+        // Sonra yıllık yüke bak
+        const byLoad = a.yearlyLoad - b.yearlyLoad;
+        if (byLoad !== 0) return byLoad;
+        // Eşitlik durumunda isim sırasına göre (rastgele değil, deterministik)
+        return a.name.localeCompare(b.name, 'tr');
       });
-      const lastTid = lastAssignedTeacherToday();
-      const preferred = testers.find(t => t.id !== lastTid);
-      const chosen = preferred || testers[0];
+      
+      const chosen = testers[0];
 
       const ym = ymOf(newCase.createdAt);
       setTeachers((prev) =>
@@ -1107,28 +1117,34 @@ useEffect(() => {
       );
 
       newCase.assignedTo = chosen.id;
-      // Atama yapıldıktan sonra öğretmene bildir (tekrar etmeyen, normal bildirim)
       notifyAssigned(chosen, newCase);
       return chosen;
     }
 
-    // Normal dosyada: bugün test almış olsa da normal dosya verilebilir; sadece aktif/uygun, yedek olmayan ve sınır altında olsun
-    const available = teachers.filter(
+    // Normal dosyada: bugün test almış olsa da normal dosya verilebilir
+    let available = teachers.filter(
       (t) => !t.isAbsent && t.active && t.backupDay !== todayYmd && countCasesToday(t.id) < settings.dailyLimit
     );
     if (!available.length) return null;
 
-    // Önce yıllık yüke göre; eşitse bugün alınan dosya sayısı az olan öne; sonra rastgele
+    // 🔄 ZORUNLU ROTASYON: Son atanan kişiyi listeden ÇIKAR (birden fazla aday varsa)
+    if (available.length > 1 && lastTid) {
+      available = available.filter(t => t.id !== lastTid);
+    }
+
+    // Sıralama: 1) Bugün en az dosya alan, 2) Yıllık yük en az, 3) İsim (deterministik)
     available.sort((a, b) => {
-      const byLoad = a.yearlyLoad - b.yearlyLoad;
-      if (byLoad !== 0) return byLoad;
+      // Önce bugün alınan dosya sayısına bak (günlük adalet)
       const byCount = countCasesToday(a.id) - countCasesToday(b.id);
       if (byCount !== 0) return byCount;
-      return Math.random() - 0.5;
+      // Sonra yıllık yüke bak
+      const byLoad = a.yearlyLoad - b.yearlyLoad;
+      if (byLoad !== 0) return byLoad;
+      // Eşitlik durumunda isim sırasına göre (rastgele değil, deterministik)
+      return a.name.localeCompare(b.name, 'tr');
     });
-    const lastTid = lastAssignedTeacherToday();
-    const preferred = available.find(t => t.id !== lastTid);
-    const chosen = preferred || available[0];
+    
+    const chosen = available[0];
 
     const ym = ymOf(newCase.createdAt);
     setTeachers((prev) =>
@@ -1144,7 +1160,6 @@ useEffect(() => {
     );
 
     newCase.assignedTo = chosen.id;
-    // Atama yapıldıktan sonra öğretmene bildir (tekrar etmeyen, normal bildirim)
     notifyAssigned(chosen, newCase);
     return chosen;
   }
