@@ -30,7 +30,6 @@ type LiveScores = {
 };
 
 type Settings = {
-  backupBonusMode: 'plus_max' | 'minus_min';
   backupBonusAmount: number;
   absencePenaltyAmount: number;
 };
@@ -185,7 +184,7 @@ export default function DailyReportView({
                           (isToday && !showLiveScore ? "text-red-600 " : "")
                         }
                         title={showLiveScore ? (r.liveType === 'backup' 
-                          ? `👑 Yedek Başkan - Tahmini: ${r.liveScore} puan (${settings?.backupBonusMode === 'plus_max' ? `max+${settings?.backupBonusAmount}` : `min-${settings?.backupBonusAmount}`})`
+                          ? `👑 Yedek Başkan - Tahmini: ${r.liveScore} puan (max+${settings?.backupBonusAmount})`
                           : `🚫 Devamsız - Tahmini: ${r.liveScore} puan (min-${settings?.absencePenaltyAmount})`) : undefined}
                       >
                         {showLiveScore ? (
