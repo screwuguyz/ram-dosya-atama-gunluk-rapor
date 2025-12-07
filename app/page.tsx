@@ -3491,24 +3491,152 @@ function AssignedArchiveSingleDay() {
               </>
             )}
             {showRules && (
-              <Card className="border-2 border-slate-300 bg-slate-50 w-full max-w-3xl mx-auto">
-                <CardHeader>
-                  <CardTitle className="tracking-wide">DOSYA ATAMA KURALLARI</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <ol className="list-decimal marker:text-red-600 pl-5 space-y-3 text-sm md:text-base font-semibold text-slate-800">
-                    <li>TEST DOSYALARI: Sadece testör öğretmenlere gider; aynı gün ikinci test verilmez.</li>
-                    <li>NORMAL DOSYA UYGUNLUK: Aktif olmalı, devamsız olmamalı, yedek değilse ve günlük sınır (<span className="font-semibold">{settings.dailyLimit}</span>) aşılmamış olmalı. Testörler test almış olsa da normal dosya alabilir.</li>
-                    <li>SIRALAMA: Yıllık yük az → Bugün aldığı dosya az → Rastgele; mümkünse son atanan öğretmene arka arkaya verilmez.</li>
-                    <li>GÜNLÜK SINIR: Öğretmen başına günde en fazla <span className="font-semibold">{settings.dailyLimit}</span> dosya.</li>
-                    <li>MANUEL ATAMA: Admin manuel öğretmen seçerse otomatik seçim devre dışı kalır.</li>
-                    <li>DEVAMSIZ: Devamsız olan öğretmene dosya verilmez; gün sonunda devamsızlar için o gün en düşük puanın {settings.absencePenaltyAmount} eksiği "denge puanı" eklenir.</li>
-                    <li>BAŞKAN YEDEK: Yedek işaretli öğretmen o gün dosya almaz; gün sonunda diğerlerinin en yüksek günlük puanına +{settings.backupBonusAmount} eklenir.</li>
-                    <li className="text-xs md:text-sm">PUANLAMA: TEST = {settings.scoreTest}; YÖNLENDİRME = {settings.scoreTypeY}; DESTEK = {settings.scoreTypeD}; İKİSİ = {settings.scoreTypeI}; YENİ = +{settings.scoreNewBonus}; TANI = 0–6 (üst sınır 6).</li>
-                    <li>BİLDİRİM: Atama sonrası öğretmene bildirim gönderilir.</li>
-                  </ol>
-                </CardContent>
-              </Card>
+              <div className="w-full max-w-4xl mx-auto">
+                <div className="bg-gradient-to-br from-emerald-50 via-white to-blue-50 rounded-2xl shadow-xl border border-emerald-100/50 overflow-hidden">
+                  {/* Header */}
+                  <div className="bg-gradient-to-r from-emerald-600 to-emerald-700 px-6 py-5 border-b border-emerald-800/20">
+                    <h2 className="text-2xl font-bold text-white flex items-center gap-3">
+                      <span className="text-3xl">📋</span>
+                      <span>Dosya Atama Kuralları</span>
+                    </h2>
+                    <p className="text-emerald-100 text-sm mt-1">Sistemin otomatik dosya atama mantığı ve puanlama kuralları</p>
+                  </div>
+
+                  {/* Content */}
+                  <div className="p-6 md:p-8">
+                    <div className="grid gap-4 md:gap-5">
+                      {/* Rule 1 */}
+                      <div className="bg-white rounded-xl p-5 border-l-4 border-purple-500 shadow-sm hover:shadow-md transition-shadow">
+                        <div className="flex items-start gap-4">
+                          <div className="flex-shrink-0 w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center text-purple-700 font-bold text-sm">
+                            1
+                          </div>
+                          <div className="flex-1">
+                            <h3 className="font-bold text-slate-900 mb-1.5">Test Dosyaları</h3>
+                            <p className="text-slate-700 text-sm leading-relaxed">Sadece testör öğretmenlere gider; aynı gün ikinci test verilmez.</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Rule 2 */}
+                      <div className="bg-white rounded-xl p-5 border-l-4 border-blue-500 shadow-sm hover:shadow-md transition-shadow">
+                        <div className="flex items-start gap-4">
+                          <div className="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center text-blue-700 font-bold text-sm">
+                            2
+                          </div>
+                          <div className="flex-1">
+                            <h3 className="font-bold text-slate-900 mb-1.5">Normal Dosya Uygunluk</h3>
+                            <p className="text-slate-700 text-sm leading-relaxed">
+                              Aktif olmalı, devamsız olmamalı, yedek değilse ve günlük sınır (<span className="font-semibold text-blue-600">{settings.dailyLimit}</span>) aşılmamış olmalı. Testörler test almış olsa da normal dosya alabilir.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Rule 3 */}
+                      <div className="bg-white rounded-xl p-5 border-l-4 border-indigo-500 shadow-sm hover:shadow-md transition-shadow">
+                        <div className="flex items-start gap-4">
+                          <div className="flex-shrink-0 w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center text-indigo-700 font-bold text-sm">
+                            3
+                          </div>
+                          <div className="flex-1">
+                            <h3 className="font-bold text-slate-900 mb-1.5">Sıralama</h3>
+                            <p className="text-slate-700 text-sm leading-relaxed">
+                              Yıllık yük az → Bugün aldığı dosya az → Rastgele; mümkünse son atanan öğretmene arka arkaya verilmez.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Rule 4 */}
+                      <div className="bg-white rounded-xl p-5 border-l-4 border-cyan-500 shadow-sm hover:shadow-md transition-shadow">
+                        <div className="flex items-start gap-4">
+                          <div className="flex-shrink-0 w-8 h-8 bg-cyan-100 rounded-lg flex items-center justify-center text-cyan-700 font-bold text-sm">
+                            4
+                          </div>
+                          <div className="flex-1">
+                            <h3 className="font-bold text-slate-900 mb-1.5">Günlük Sınır</h3>
+                            <p className="text-slate-700 text-sm leading-relaxed">
+                              Öğretmen başına günde en fazla <span className="font-semibold text-cyan-600">{settings.dailyLimit}</span> dosya.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Rule 5 */}
+                      <div className="bg-white rounded-xl p-5 border-l-4 border-teal-500 shadow-sm hover:shadow-md transition-shadow">
+                        <div className="flex items-start gap-4">
+                          <div className="flex-shrink-0 w-8 h-8 bg-teal-100 rounded-lg flex items-center justify-center text-teal-700 font-bold text-sm">
+                            5
+                          </div>
+                          <div className="flex-1">
+                            <h3 className="font-bold text-slate-900 mb-1.5">Manuel Atama</h3>
+                            <p className="text-slate-700 text-sm leading-relaxed">Admin manuel öğretmen seçerse otomatik seçim devre dışı kalır.</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Rule 6 */}
+                      <div className="bg-white rounded-xl p-5 border-l-4 border-orange-500 shadow-sm hover:shadow-md transition-shadow">
+                        <div className="flex items-start gap-4">
+                          <div className="flex-shrink-0 w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center text-orange-700 font-bold text-sm">
+                            6
+                          </div>
+                          <div className="flex-1">
+                            <h3 className="font-bold text-slate-900 mb-1.5">Devamsız</h3>
+                            <p className="text-slate-700 text-sm leading-relaxed">
+                              Devamsız olan öğretmene dosya verilmez; gün sonunda devamsızlar için o gün en düşük puanın <span className="font-semibold text-orange-600">{settings.absencePenaltyAmount}</span> eksiği "denge puanı" eklenir.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Rule 7 */}
+                      <div className="bg-white rounded-xl p-5 border-l-4 border-amber-500 shadow-sm hover:shadow-md transition-shadow">
+                        <div className="flex items-start gap-4">
+                          <div className="flex-shrink-0 w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center text-amber-700 font-bold text-sm">
+                            7
+                          </div>
+                          <div className="flex-1">
+                            <h3 className="font-bold text-slate-900 mb-1.5">Başkan Yedek</h3>
+                            <p className="text-slate-700 text-sm leading-relaxed">
+                              Yedek işaretli öğretmen o gün dosya almaz; gün sonunda diğerlerinin en yüksek günlük puanına <span className="font-semibold text-amber-600">+{settings.backupBonusAmount}</span> eklenir.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Rule 8 */}
+                      <div className="bg-white rounded-xl p-5 border-l-4 border-emerald-500 shadow-sm hover:shadow-md transition-shadow">
+                        <div className="flex items-start gap-4">
+                          <div className="flex-shrink-0 w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center text-emerald-700 font-bold text-sm">
+                            8
+                          </div>
+                          <div className="flex-1">
+                            <h3 className="font-bold text-slate-900 mb-1.5">Puanlama</h3>
+                            <p className="text-slate-700 text-sm leading-relaxed">
+                              TEST = <span className="font-semibold text-emerald-600">{settings.scoreTest}</span>; YÖNLENDİRME = <span className="font-semibold text-emerald-600">{settings.scoreTypeY}</span>; DESTEK = <span className="font-semibold text-emerald-600">{settings.scoreTypeD}</span>; İKİSİ = <span className="font-semibold text-emerald-600">{settings.scoreTypeI}</span>; YENİ = <span className="font-semibold text-emerald-600">+{settings.scoreNewBonus}</span>; TANI = 0–6 (üst sınır 6).
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Rule 9 */}
+                      <div className="bg-white rounded-xl p-5 border-l-4 border-green-500 shadow-sm hover:shadow-md transition-shadow">
+                        <div className="flex items-start gap-4">
+                          <div className="flex-shrink-0 w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center text-green-700 font-bold text-sm">
+                            9
+                          </div>
+                          <div className="flex-1">
+                            <h3 className="font-bold text-slate-900 mb-1.5">Bildirim</h3>
+                            <p className="text-slate-700 text-sm leading-relaxed">Atama sonrası öğretmene bildirim gönderilir.</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             )}
           </div>
         </div>
