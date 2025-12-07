@@ -52,7 +52,7 @@ export default function MonthlyReport({ teachers }: { teachers: Teacher[] }) {
             </thead>
             <tbody>
               {rows.map((r) => (
-                <tr key={r.id} className="border-t">
+                <tr key={r.id} className="border-t hover:bg-slate-50 transition-colors duration-150">
                   <td className="p-2">{r.name}</td>
                   {r.byMonth.map((v, i) => (
                     <td key={i} className={"p-2 text-right " + (months[i] === currentMonth ? "text-red-600 font-semibold" : "")}>{v}</td>

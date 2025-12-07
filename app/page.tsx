@@ -18,7 +18,7 @@ import MonthlyReport from "@/components/reports/MonthlyReport";
 import DailyReport from "@/components/reports/DailyReport";
 import AssignedArchiveView from "@/components/archive/AssignedArchive";
 import AssignedArchiveSingleDayView from "@/components/archive/AssignedArchiveSingleDay";
-import { Calendar as CalendarIcon, Trash2, UserMinus, Plus, FileSpreadsheet, BarChart2, Volume2, VolumeX, X, Printer } from "lucide-react";
+import { Calendar as CalendarIcon, Trash2, UserMinus, Plus, FileSpreadsheet, BarChart2, Volume2, VolumeX, X, Printer, Loader2, Inbox, FileText } from "lucide-react";
 
 
 
@@ -274,9 +274,16 @@ function DailyAppointmentsCard({
       </CardHeader>
       <CardContent>
         {pdfLoading ? (
-          <p className="text-sm text-slate-600">Randevular yükleniyor...</p>
+          <div className="flex flex-col items-center justify-center py-8 text-slate-600">
+            <Loader2 className="h-8 w-8 animate-spin mb-3 text-emerald-600" />
+            <p className="text-sm">Randevular yükleniyor...</p>
+          </div>
         ) : pdfEntries.length === 0 ? (
-          <p className="text-sm text-slate-600">Henüz PDF içe aktarılmadı. Randevu listesi boş.</p>
+          <div className="flex flex-col items-center justify-center py-12 text-slate-500">
+            <Inbox className="h-12 w-12 mb-3 text-slate-400" />
+            <p className="text-sm font-medium">Henüz PDF içe aktarılmadı</p>
+            <p className="text-xs text-slate-400 mt-1">Randevu listesi boş</p>
+          </div>
         ) : (
           <div className="overflow-auto border rounded-md max-h-64">
             <table className="min-w-full text-xs md:text-sm">
@@ -2216,7 +2223,15 @@ function AssignedArchiveSingleDay() {
                 </React.Fragment>
               ))}
               {list.length === 0 && (
-                <tr><td className="p-4 text-center text-muted-foreground" colSpan={6}>Bu günde kayıt yok.</td></tr>
+                <tr>
+                  <td className="p-8 text-center" colSpan={6}>
+                    <div className="flex flex-col items-center justify-center text-muted-foreground">
+                      <Inbox className="h-10 w-10 mb-2 text-slate-400" />
+                      <p className="text-sm font-medium">Bu günde kayıt yok</p>
+                      <p className="text-xs text-slate-400 mt-1">Seçili tarihte dosya atanmamış</p>
+                    </div>
+                  </td>
+                </tr>
               )}
             </tbody>
           </table>
@@ -2393,19 +2408,19 @@ function AssignedArchiveSingleDay() {
 
       {/* 📊 DASHBOARD ÖZET KARTLARI */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <div className="bg-gradient-to-br from-teal-500 to-teal-600 rounded-xl p-4 text-white shadow-lg">
+        <div className="bg-gradient-to-br from-teal-500 to-teal-600 rounded-xl p-4 text-white shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200 cursor-default">
           <div className="text-3xl font-bold">{teachers.filter(t => t.active && !t.isAbsent).length}</div>
           <div className="text-sm opacity-90">👨‍🏫 Aktif Öğretmen</div>
         </div>
-        <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl p-4 text-white shadow-lg">
+        <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl p-4 text-white shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200 cursor-default">
           <div className="text-3xl font-bold">{cases.filter(c => !c.absencePenalty).length}</div>
           <div className="text-sm opacity-90">📁 Bugün Atanan</div>
         </div>
-        <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-4 text-white shadow-lg">
+        <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-4 text-white shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200 cursor-default">
           <div className="text-3xl font-bold">{pdfEntries.length}</div>
           <div className="text-sm opacity-90">📋 Bekleyen Randevu</div>
         </div>
-        <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl p-4 text-white shadow-lg">
+        <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl p-4 text-white shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200 cursor-default">
           <div className="text-3xl font-bold">{Object.keys(history).length}</div>
           <div className="text-sm opacity-90">📅 Arşivli Gün</div>
         </div>
@@ -2707,7 +2722,7 @@ function AssignedArchiveSingleDay() {
                           </thead>
                           <tbody>
                             {filteredCases.map((c) => (
-                              <tr key={c.id} className="border-t">
+                              <tr key={c.id} className="border-t hover:bg-slate-50 transition-colors duration-150">
                                 <td className="p-2">{c.student}</td>
                                 <td className="p-2 text-right">{c.score}</td>
                                 <td className="p-2">{new Date(c.createdAt).toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' })}</td>
@@ -2736,7 +2751,13 @@ function AssignedArchiveSingleDay() {
                             ))}
                             {filteredCases.length === 0 && (
                               <tr>
-                                <td className="p-6 text-center text-muted-foreground" colSpan={7}>Bugün için kayıt yok.</td>
+                                <td className="p-8 text-center" colSpan={7}>
+                                  <div className="flex flex-col items-center justify-center text-muted-foreground">
+                                    <FileText className="h-10 w-10 mb-2 text-slate-400" />
+                                    <p className="text-sm font-medium">Bugün için kayıt yok</p>
+                                    <p className="text-xs text-slate-400 mt-1">Henüz dosya atanmamış</p>
+                                  </div>
+                                </td>
                               </tr>
                             )}
                           </tbody>
@@ -2746,10 +2767,14 @@ function AssignedArchiveSingleDay() {
                       {/* Mobil: kart görünümü */}
                       <div className="md:hidden space-y-2">
                         {filteredCases.length === 0 && (
-                          <div className="text-center text-muted-foreground text-sm py-6 border rounded-md">Bugün için kayıt yok.</div>
+                          <div className="flex flex-col items-center justify-center py-12 text-muted-foreground border rounded-lg bg-slate-50">
+                            <FileText className="h-10 w-10 mb-2 text-slate-400" />
+                            <p className="text-sm font-medium">Bugün için kayıt yok</p>
+                            <p className="text-xs text-slate-400 mt-1">Henüz dosya atanmamış</p>
+                          </div>
                         )}
                         {filteredCases.map((c) => (
-                          <div key={c.id} className="border rounded-md p-3 bg-white">
+                          <div key={c.id} className="border rounded-lg p-3 bg-white shadow-sm hover:shadow-md transition-shadow duration-200">
                             <div className="flex items-center justify-between">
                               <div className="font-medium">{c.student}</div>
                               <div className="text-sm">Puan: <span className="font-semibold">{c.score}</span></div>
@@ -2813,7 +2838,7 @@ function AssignedArchiveSingleDay() {
             {teachers.map((t) => {
               const locked = hasTestToday(t.id);
               return (
-                <div key={t.id} className="flex flex-wrap items-start justify-between gap-3 rounded-lg border p-3">
+                <div key={t.id} className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:shadow-md hover:border-slate-300 transition-all duration-200">
                   <div className="space-y-1 min-w-0 flex-shrink">
                     <div className="font-medium">{t.name}</div>
                     <div className="text-xs text-muted-foreground">
@@ -3049,8 +3074,10 @@ function AssignedArchiveSingleDay() {
                     )}
 
                     {announcements.length === 0 && (
-                      <div className="text-center text-muted-foreground py-8 border rounded-md">
-                        Henüz bugün için duyuru yok.
+                      <div className="flex flex-col items-center justify-center py-12 text-muted-foreground border rounded-lg bg-slate-50">
+                        <Volume2 className="h-10 w-10 mb-2 text-slate-400" />
+                        <p className="text-sm font-medium">Henüz bugün için duyuru yok</p>
+                        <p className="text-xs text-slate-400 mt-1">Duyuru gönderildiğinde burada görünecek</p>
                       </div>
                     )}
                   </CardContent>
@@ -3100,9 +3127,14 @@ function AssignedArchiveSingleDay() {
       
       {/* Öneri/Şikayet Modal */}
       {feedbackOpen && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50" onClick={() => setFeedbackOpen(false)}>
-          <Card className="w-[420px]" onClick={(e) => e.stopPropagation()}>
-            <CardHeader><CardTitle>💬 Öneri / Şikayet</CardTitle></CardHeader>
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50" onClick={() => setFeedbackOpen(false)}>
+          <Card className="w-[420px] shadow-2xl border-0" onClick={(e) => e.stopPropagation()}>
+            <CardHeader className="bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-t-lg">
+              <CardTitle className="text-white flex items-center gap-2">
+                <span className="text-2xl">💬</span>
+                <span>Öneri / Şikayet</span>
+              </CardTitle>
+            </CardHeader>
             <CardContent className="space-y-3">
               <div className="grid grid-cols-1 gap-3">
                 <div>
@@ -3148,9 +3180,14 @@ function AssignedArchiveSingleDay() {
 
         {/* Settings Modal */}
       {settingsOpen && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50" onClick={() => setSettingsOpen(false)}>
-          <Card className="w-[420px]" onClick={(e) => e.stopPropagation()}>
-            <CardHeader><CardTitle>⚙️ Ayarlar</CardTitle></CardHeader>
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50" onClick={() => setSettingsOpen(false)}>
+          <Card className="w-[500px] max-h-[90vh] overflow-y-auto shadow-2xl border-0" onClick={(e) => e.stopPropagation()}>
+            <CardHeader className="bg-gradient-to-r from-emerald-600 to-emerald-700 text-white rounded-t-lg sticky top-0 z-10">
+              <CardTitle className="text-white flex items-center gap-2">
+                <span className="text-2xl">⚙️</span>
+                <span>Ayarlar</span>
+              </CardTitle>
+            </CardHeader>
             <CardContent className="space-y-3">
               <div>
                 <Label>Günlük Limit (öğretmen başına)</Label>
@@ -3179,26 +3216,36 @@ function AssignedArchiveSingleDay() {
                 </div>
               </div>
               {/* Yedek Başkan Bonus Ayarları */}
-              <div className="border-t pt-3 mt-2">
-                <Label className="text-sm font-semibold mb-2 block">👑 Yedek Başkan Bonus Ayarları</Label>
+              <div className="border-t border-slate-200 pt-4 mt-4">
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-3">
+                  <Label className="text-sm font-semibold mb-2 block text-amber-900 flex items-center gap-2">
+                    <span>👑</span>
+                    <span>Yedek Başkan Bonus Ayarları</span>
+                  </Label>
                 <div>
                   <Label className="text-xs">Bonus Miktarı (En Yüksek + X)</Label>
                   <Input type="number" min={0} value={settings.backupBonusAmount} onChange={e => setSettings({ ...settings, backupBonusAmount: Math.max(0, Number(e.target.value) || 0) })} />
                 </div>
-                <p className="text-[11px] text-muted-foreground mt-1">
-                  Yedek başkan: O günün en yüksek puanına +{settings.backupBonusAmount} eklenir.
-                </p>
+                  <p className="text-[11px] text-amber-700 mt-1">
+                    Yedek başkan: O günün en yüksek puanına +{settings.backupBonusAmount} eklenir.
+                  </p>
+                </div>
               </div>
               {/* Devamsızlık Cezası Ayarları */}
-              <div className="border-t pt-3 mt-2">
-                <Label className="text-sm font-semibold mb-2 block">🚫 Devamsızlık Cezası Ayarları</Label>
+              <div className="border-t border-slate-200 pt-4 mt-4">
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-3">
+                  <Label className="text-sm font-semibold mb-2 block text-red-900 flex items-center gap-2">
+                    <span>🚫</span>
+                    <span>Devamsızlık Cezası Ayarları</span>
+                  </Label>
                 <div>
                   <Label className="text-xs">Puan Farkı (En Düşük - X)</Label>
                   <Input type="number" min={0} value={settings.absencePenaltyAmount} onChange={e => setSettings({ ...settings, absencePenaltyAmount: Math.max(0, Number(e.target.value) || 0) })} />
                 </div>
-                <p className="text-[11px] text-muted-foreground mt-1">
-                  Devamsız öğretmen: O günün en düşük puanından -{settings.absencePenaltyAmount} çıkarılır.
-                </p>
+                  <p className="text-[11px] text-red-700 mt-1">
+                    Devamsız öğretmen: O günün en düşük puanından -{settings.absencePenaltyAmount} çıkarılır.
+                  </p>
+                </div>
               </div>
               <div className="flex justify-end gap-2 pt-1">
                 <Button variant="outline" onClick={() => setSettings(DEFAULT_SETTINGS)}>Varsayılanlara Dön</Button>
@@ -3210,9 +3257,14 @@ function AssignedArchiveSingleDay() {
       )}
   {/* Login Modal */}
       {loginOpen && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
-          <Card className="w-[360px]">
-            <CardHeader><CardTitle>🔐 Admin Girişi</CardTitle></CardHeader>
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
+          <Card className="w-[400px] shadow-2xl border-0">
+            <CardHeader className="bg-gradient-to-r from-slate-700 to-slate-800 text-white rounded-t-lg">
+              <CardTitle className="text-white flex items-center gap-2">
+                <span className="text-2xl">🔐</span>
+                <span>Admin Girişi</span>
+              </CardTitle>
+            </CardHeader>
             <CardContent className="space-y-3">
               <div className="space-y-1">
                 <Label>E-posta</Label>

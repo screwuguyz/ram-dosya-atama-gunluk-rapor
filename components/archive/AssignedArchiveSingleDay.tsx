@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { Inbox } from "lucide-react";
 import type { CaseFile, Teacher } from "@/lib/types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || ""; // e.g. https://ram-dosya-atama.vercel.app
@@ -134,7 +135,7 @@ export default function AssignedArchiveSingleDay({
             <tbody>
               {list.map((c) => (
                 <React.Fragment key={c.id}>
-                  <tr className="border-t odd:bg-muted/30">
+                  <tr className="border-t odd:bg-muted/30 hover:bg-slate-50 transition-colors duration-150">
                     <td className="p-2">{c.student}</td>
                     <td className="p-2 text-right">{c.score}</td>
                     <td className="p-2">
@@ -270,7 +271,15 @@ export default function AssignedArchiveSingleDay({
                 </React.Fragment>
               ))}
               {list.length === 0 && (
-                <tr><td className="p-4 text-center text-muted-foreground" colSpan={7}>Bu günde kayıt yok.</td></tr>
+                <tr>
+                  <td className="p-8 text-center" colSpan={7}>
+                    <div className="flex flex-col items-center justify-center text-muted-foreground">
+                      <Inbox className="h-10 w-10 mb-2 text-slate-400" />
+                      <p className="text-sm font-medium">Bu günde kayıt yok</p>
+                      <p className="text-xs text-slate-400 mt-1">Seçili tarihte dosya atanmamış</p>
+                    </div>
+                  </td>
+                </tr>
               )}
             </tbody>
           </table>

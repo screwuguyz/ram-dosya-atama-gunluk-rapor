@@ -3,7 +3,7 @@ import React, { useMemo, useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, ArrowRight } from "lucide-react";
+import { ArrowLeft, ArrowRight, Inbox } from "lucide-react";
 import type { CaseFile } from "@/lib/types";
 
 function ymdLocal(d: Date) {
@@ -68,8 +68,15 @@ export default function AssignedArchive({
 
   if (days.length === 0) {
     return (
-      <Card className="mt-4"><CardHeader><CardTitle>Atanan Dosyalar</CardTitle></CardHeader>
-        <CardContent>Henüz arşiv kaydı yok.</CardContent>
+      <Card className="mt-4">
+        <CardHeader><CardTitle>Atanan Dosyalar</CardTitle></CardHeader>
+        <CardContent>
+          <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+            <Inbox className="h-12 w-12 mb-3 text-slate-400" />
+            <p className="text-sm font-medium">Henüz arşiv kaydı yok</p>
+            <p className="text-xs text-slate-400 mt-1">Dosya atandığında burada görünecek</p>
+          </div>
+        </CardContent>
       </Card>
     );
   }
@@ -122,7 +129,7 @@ export default function AssignedArchive({
             </thead>
             <tbody>
               {list.map((c) => (
-                <tr key={c.id} className="border-t">
+                <tr key={c.id} className="border-t hover:bg-slate-50 transition-colors duration-150">
                   <td className="p-2">{c.fileNo ? `${c.fileNo} - ${c.student}` : c.student}</td>
                   <td className="p-2 text-right">{c.score}</td>
                   <td className="p-2">
@@ -136,7 +143,15 @@ export default function AssignedArchive({
                 </tr>
               ))}
               {list.length === 0 && (
-                <tr><td className="p-4 text-center text-muted-foreground" colSpan={6}>Bu günde kayıt yok.</td></tr>
+                <tr>
+                  <td className="p-8 text-center" colSpan={6}>
+                    <div className="flex flex-col items-center justify-center text-muted-foreground">
+                      <Inbox className="h-10 w-10 mb-2 text-slate-400" />
+                      <p className="text-sm font-medium">Bu günde kayıt yok</p>
+                      <p className="text-xs text-slate-400 mt-1">Seçili tarihte dosya atanmamış</p>
+                    </div>
+                  </td>
+                </tr>
               )}
             </tbody>
           </table>

@@ -163,7 +163,7 @@ export default function DailyReportView({
             </thead>
             <tbody>
               {rows.map((r) => (
-                <tr key={r.id} className="border-t">
+                <tr key={r.id} className="border-t hover:bg-slate-50 transition-colors duration-150">
                   <td className="p-2">
                     {r.name}
                     {r.isBackupToday && <span className="ml-1 text-amber-600" title="Yedek Başkan">👑</span>}
