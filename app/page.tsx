@@ -747,7 +747,7 @@ const pdfInputRef = React.useRef<HTMLInputElement | null>(null);
   // Versiyon bildirimi (admin olmayan kullanıcılar için)
   const [showVersionPopup, setShowVersionPopup] = useState(false);
   // Admin panel tab sistemi
-  const [adminTab, setAdminTab] = useState<"files" | "teachers" | "reports">("files");
+  const [adminTab, setAdminTab] = useState<"files" | "teachers" | "reports" | "announcements">("files");
 
   // ---- LS'den yükleme (migration alanları)
   useEffect(() => {
@@ -2381,6 +2381,29 @@ function AssignedArchiveSingleDay() {
             onPrint={handlePrintPdfList}
             onClearAll={() => clearPdfEntries(true, true)}
           />
+          
+          {/* Non-admin için Raporlar ve Atanan Dosyalar */}
+          <Card className="mt-4">
+            <CardHeader>
+              <CardTitle>📊 Raporlar ve Arşiv</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-wrap gap-2 mb-4">
+                <Button variant={reportMode === "monthly" ? "default" : "outline"} onClick={() => setReportMode("monthly")}>
+                  📊 Aylık Rapor
+                </Button>
+                <Button variant={reportMode === "daily" ? "default" : "outline"} onClick={() => setReportMode("daily")}>
+                  📅 Günlük Rapor
+                </Button>
+                <Button variant={reportMode === "archive" ? "default" : "outline"} onClick={() => setReportMode("archive")}>
+                  📋 Atanan Dosyalar
+                </Button>
+                <Button variant={reportMode === "e-archive" ? "default" : "outline"} onClick={() => setReportMode("e-archive")}>
+                  🗄️ E-Arşiv
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </>
       )}
 
@@ -2427,13 +2450,21 @@ function AssignedArchiveSingleDay() {
               >
                 📊 Raporlar
               </Button>
+              <Button
+                variant={adminTab === "announcements" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setAdminTab("announcements")}
+                className="min-h-9"
+              >
+                📢 Duyuru
+              </Button>
             </div>
           </div>
 
           {/* Tab Content */}
           <div className="p-4">
             {adminTab === "files" && (
-              <div className="space-y-4"
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4"
                 onKeyDown={(e) => {
                   // Enter: kaydet, Shift+Enter: boş (açıklamada newline)
                   if (e.key === "Enter" && !e.shiftKey) {
@@ -2442,6 +2473,8 @@ function AssignedArchiveSingleDay() {
                   }
                 }}
               >
+                {/* Sol: Dosya Atama Formu */}
+                <div className="space-y-4">
             <DailyAppointmentsCard
               pdfDate={pdfDate}
               pdfLoading={pdfLoading}
@@ -2591,40 +2624,119 @@ function AssignedArchiveSingleDay() {
               </div>
             </div>
 
-            {/* Duyuru Gönder (admin) */}
-            <div className="mt-4">
-              <Label>📢 Duyuru (gün içinde gösterilir)</Label>
-              <div className="mt-1 flex items-end gap-2">
-                <div className="flex-1">
-                  <Input value={announcementText} onChange={(e) => setAnnouncementText(e.target.value)} placeholder="Kısa duyuru metni" />
                 </div>
-                <Button data-silent="true" onClick={async () => { await sendAnnouncement(); playAnnouncementSound(); }}>
-                  <Volume2 className="h-4 w-4 mr-1" /> Duyuru Gönder
-                </Button>
-              </div>
-              <div className="text-xs text-muted-foreground mt-1">Gönderince tüm öğretmenlere bildirim gider. Gece sıfırlanır.</div>
-              {announcements.length > 0 && (
-                <div className="mt-3 space-y-2">
-                  <Label className="text-xs">Bugünkü duyurular</Label>
-                  <div className="space-y-2">
-                    {announcements.map((a) => (
-                      <div key={a.id} className="flex items-start justify-between gap-2 border rounded-md p-2">
-                        <div className="text-sm">{a.text}</div>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => { if (confirm("Duyuruyu silmek istiyor musunuz?")) removeAnnouncement(a.id); }}
-                          title="Duyuruyu sil"
-                        >
-                          Sil
-                        </Button>
+
+                {/* Sağ: Dosyalar (Bugün) ve Atanan Dosyalar */}
+                <div className="space-y-4">
+                  {/* Dosyalar (Bugün) */}
+                  <Card>
+                    <CardHeader className="flex flex-row items-center justify-between">
+                      <CardTitle>📂 Dosyalar (Bugün)</CardTitle>
+                      <div className="flex items-center gap-2">
+                        <Button variant="outline" size="sm" onClick={testSound}>Ses Test</Button>
                       </div>
-                    ))}
-                  </div>
+                    </CardHeader>
+                    <CardContent>
+                      {/* md+ masaüstü: tablo görünümü */}
+                      <div className="overflow-auto hidden md:block">
+                        <table className="w-full text-sm border border-border">
+                          <thead className="sticky top-0 z-10 bg-muted">
+                            <tr>
+                              <th className="p-2 text-left">Öğrenci</th>
+                              <th className="p-2 text-right">Puan</th>
+                              <th className="p-2 text-left">Tarih</th>
+                              <th className="p-2 text-left">Atanan</th>
+                              <th className="p-2 text-left">Test</th>
+                              <th className="p-2 text-left">Açıklama</th>
+                              <th className="p-2"></th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {filteredCases.map((c) => (
+                              <tr key={c.id} className="border-t">
+                                <td className="p-2">{c.student}</td>
+                                <td className="p-2 text-right">{c.score}</td>
+                                <td className="p-2">{new Date(c.createdAt).toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' })}</td>
+                                <td className="p-2">{teacherName(c.assignedTo)}
+                                  {c.assignedTo ? (
+                                    <Button
+                                      size="sm"
+                                      variant="destructive"
+                                      className="ml-2"
+                                      data-silent="true"
+                                      title="Acil çağrı: Tekrarlı bildirim gönder"
+                                      onClick={() => notifyEmergencyNow(c)}
+                                    >
+                                      Acil
+                                    </Button>
+                                  ) : null}
+                                </td>
+                                <td className="p-2">{c.isTest ? `Evet (+${settings.scoreTest})` : "Hayır"}</td>
+                                <td className="p-2 text-sm text-muted-foreground">{caseDesc(c)}</td>
+                                <td className="p-2 text-right">
+                                  <Button size="icon" variant="ghost" onClick={() => removeCase(c.id)} title="Sil">
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </td>
+                              </tr>
+                            ))}
+                            {filteredCases.length === 0 && (
+                              <tr>
+                                <td className="p-6 text-center text-muted-foreground" colSpan={7}>Bugün için kayıt yok.</td>
+                              </tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {/* Mobil: kart görünümü */}
+                      <div className="md:hidden space-y-2">
+                        {filteredCases.length === 0 && (
+                          <div className="text-center text-muted-foreground text-sm py-6 border rounded-md">Bugün için kayıt yok.</div>
+                        )}
+                        {filteredCases.map((c) => (
+                          <div key={c.id} className="border rounded-md p-3 bg-white">
+                            <div className="flex items-center justify-between">
+                              <div className="font-medium">{c.student}</div>
+                              <div className="text-sm">Puan: <span className="font-semibold">{c.score}</span></div>
+                            </div>
+                            <div className="text-xs text-muted-foreground mt-1">{new Date(c.createdAt).toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' })}</div>
+                            <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
+                              <div><span className="text-muted-foreground">Atanan:</span> {teacherName(c.assignedTo)}</div>
+                              <div><span className="text-muted-foreground">Test:</span> {c.isTest ? `Evet (+${settings.scoreTest})` : "Hayır"}</div>
+                            </div>
+                            <div className="text-xs text-muted-foreground mt-1">{caseDesc(c)}</div>
+                            <div className="flex items-center justify-end gap-2 mt-2">
+                              {c.assignedTo ? (
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  title="Acil çağrı: Tekrarlı bildirim gönder"
+                                  onClick={() => notifyEmergencyNow(c)}
+                                >
+                                  Acil
+                                </Button>
+                              ) : null}
+                              <Button size="icon" variant="ghost" onClick={() => removeCase(c.id)} title="Sil">
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Atanan Dosyalar (Tek Gün) */}
+                  <AssignedArchiveSingleDayView
+                    history={history}
+                    cases={cases}
+                    teacherName={teacherName}
+                    caseDesc={caseDesc}
+                    teachers={teachers}
+                    settings={settings}
+                  />
                 </div>
-              )}
-            </div>
               </div>
             )}
 
@@ -2793,9 +2905,6 @@ function AssignedArchiveSingleDay() {
                   <Button variant={reportMode === "daily" ? "default" : "outline"} onClick={() => setReportMode("daily")}>
                     📅 Günlük Rapor
                   </Button>
-                  <Button variant={reportMode === "archive" ? "default" : "outline"} onClick={() => setReportMode("archive")}>
-                    📋 Atanan Dosyalar
-                  </Button>
                   <Button variant={reportMode === "e-archive" ? "default" : "outline"} onClick={() => setReportMode("e-archive")}>
                     🗄️ E-Arşiv
                   </Button>
@@ -2818,108 +2927,85 @@ function AssignedArchiveSingleDay() {
                 </div>
               </div>
             )}
+
+            {adminTab === "announcements" && (
+              <div className="space-y-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>📢 Duyuru Yönetimi</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <Label>📢 Yeni Duyuru (gün içinde gösterilir)</Label>
+                      <div className="flex items-end gap-2">
+                        <div className="flex-1">
+                          <Input 
+                            value={announcementText} 
+                            onChange={(e) => setAnnouncementText(e.target.value)} 
+                            placeholder="Kısa duyuru metni"
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" && !e.shiftKey) {
+                                e.preventDefault();
+                                sendAnnouncement().then(() => playAnnouncementSound());
+                              }
+                            }}
+                          />
+                        </div>
+                        <Button 
+                          data-silent="true" 
+                          onClick={async () => { 
+                            await sendAnnouncement(); 
+                            playAnnouncementSound(); 
+                          }}
+                          disabled={!announcementText.trim()}
+                        >
+                          <Volume2 className="h-4 w-4 mr-1" /> Duyuru Gönder
+                        </Button>
+                      </div>
+                      <div className="text-xs text-muted-foreground">Gönderince tüm öğretmenlere bildirim gider. Gece sıfırlanır.</div>
+                    </div>
+
+                    {announcements.length > 0 && (
+                      <div className="space-y-3">
+                        <Label className="text-base font-semibold">Bugünkü Duyurular ({announcements.length})</Label>
+                        <div className="space-y-2">
+                          {announcements.map((a) => (
+                            <div key={a.id} className="flex items-start justify-between gap-2 border rounded-md p-3 bg-amber-50 border-amber-200">
+                              <div className="flex-1">
+                                <div className="text-sm font-medium text-amber-900">{a.text}</div>
+                                <div className="text-xs text-amber-700 mt-1">
+                                  {new Date(a.createdAt).toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' })}
+                                </div>
+                              </div>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => { 
+                                  if (confirm("Duyuruyu silmek istiyor musunuz?")) removeAnnouncement(a.id); 
+                                }}
+                                title="Duyuruyu sil"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {announcements.length === 0 && (
+                      <div className="text-center text-muted-foreground py-8 border rounded-md">
+                        Henüz bugün için duyuru yok.
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            )}
           </div>
         </Card>
       )}
-
-{/* Liste & filtre — BUGÜN */}
-      <Card className={isAdmin ? "" : "hidden"}>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>📂 Dosyalar (Bugün)</CardTitle>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={testSound}>Ses Test</Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {/* md+ masaüstü: tablo görünümü */}
-          <div className="overflow-auto hidden md:block">
-            <table className="w-full text-sm border border-border">
-              <thead className="sticky top-0 z-10 bg-muted">
-                <tr>
-                  <th className="p-2 text-left">Öğrenci</th>
-                  <th className="p-2 text-right">Puan</th>
-                  <th className="p-2 text-left">Tarih</th>
-                  <th className="p-2 text-left">Atanan</th>
-                  <th className="p-2 text-left">Test</th>
-                  <th className="p-2 text-left">Açıklama</th>
-                  <th className="p-2"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredCases.map((c) => (
-                  <tr key={c.id} className="border-t">
-                    <td className="p-2">{c.student}</td>
-                    <td className="p-2 text-right">{c.score}</td>
-                    <td className="p-2">{new Date(c.createdAt).toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' })}</td>
-                    <td className="p-2">{teacherName(c.assignedTo)}
-                      {c.assignedTo ? (
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          className="ml-2"
-                           data-silent="true"
-                          title="Acil çağrı: Tekrarlı bildirim gönder"
-                          onClick={() => notifyEmergencyNow(c)}
-                        >
-                          Acil
-                        </Button>
-                      ) : null}
-                    </td>
-                    <td className="p-2">{c.isTest ? "Evet (+5)" : "Hayır"}</td>
-                    <td className="p-2 text-sm text-muted-foreground">{caseDesc(c)}</td>
-                    <td className="p-2 text-right">
-                      <Button size="icon" variant="ghost" onClick={() => removeCase(c.id)} title="Sil">
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-                {filteredCases.length === 0 && (
-                  <tr>
-                    <td className="p-6 text-center text-muted-foreground" colSpan={7}>Bugün için kayıt yok.</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Mobil: kart görünümü */}
-          <div className="md:hidden space-y-2">
-            {filteredCases.length === 0 && (
-              <div className="text-center text-muted-foreground text-sm py-6 border rounded-md">Bugün için kayıt yok.</div>
-            )}
-            {filteredCases.map((c) => (
-              <div key={c.id} className="border rounded-md p-3 bg-white">
-                <div className="flex items-center justify-between">
-                  <div className="font-medium">{c.student}</div>
-                  <div className="text-sm">Puan: <span className="font-semibold">{c.score}</span></div>
-                </div>
-                <div className="text-xs text-muted-foreground mt-1">{new Date(c.createdAt).toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' })}</div>
-                <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
-                  <div><span className="text-muted-foreground">Atanan:</span> {teacherName(c.assignedTo)}</div>
-                  <div><span className="text-muted-foreground">Test:</span> {c.isTest ? "Evet (+5)" : "Hayır"}</div>
-                </div>
-                <div className="text-xs text-muted-foreground mt-1">{caseDesc(c)}</div>
-                <div className="flex items-center justify-end gap-2 mt-2">
-                  {c.assignedTo ? (
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      title="Acil çağrı: Tekrarlı bildirim gönder"
-                      onClick={() => notifyEmergencyNow(c)}
-                    >
-                      Acil
-                    </Button>
-                  ) : null}
-                  <Button size="icon" variant="ghost" onClick={() => removeCase(c.id)} title="Sil">
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
 
       {reportMode === "monthly" && <MonthlyReport teachers={teachers} />}
       {reportMode === "daily" && (
