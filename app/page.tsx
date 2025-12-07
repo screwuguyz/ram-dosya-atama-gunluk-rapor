@@ -746,6 +746,8 @@ const pdfInputRef = React.useRef<HTMLInputElement | null>(null);
   const [showRules, setShowRules] = useState(false);
   // Versiyon bildirimi (admin olmayan kullanıcılar için)
   const [showVersionPopup, setShowVersionPopup] = useState(false);
+  // Admin panel tab sistemi
+  const [adminTab, setAdminTab] = useState<"files" | "teachers" | "settings" | "reports">("files");
 
   // ---- LS'den yükleme (migration alanları)
   useEffect(() => {
@@ -2418,21 +2420,59 @@ function AssignedArchiveSingleDay() {
         </div>
       )}
 
-      {/* Admin alanı */}
-      <div className={`grid grid-cols-1 lg:grid-cols-2 gap-4 ${isAdmin ? "" : "hidden"}`}>
-        {/* Sol: Dosya ekle */}
-        <Card className="min-w-0">
-          <CardHeader><CardTitle>📁 Yeni Dosya Ekle</CardTitle></CardHeader>
-          <CardContent
-            className="space-y-4"
-            onKeyDown={(e) => {
-              // Enter: kaydet, Shift+Enter: boş (açıklamada newline)
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                addCase();
-              }
-            }}
-          >
+      {/* Admin alanı - Tab Sistemi */}
+      {isAdmin && (
+        <Card className="border-2">
+          {/* Tab Navigation */}
+          <div className="border-b">
+            <div className="flex flex-wrap gap-2 p-3 bg-slate-50">
+              <Button
+                variant={adminTab === "files" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setAdminTab("files")}
+                className="min-h-9"
+              >
+                📁 Dosya Atama
+              </Button>
+              <Button
+                variant={adminTab === "teachers" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setAdminTab("teachers")}
+                className="min-h-9"
+              >
+                👨‍🏫 Öğretmenler
+              </Button>
+              <Button
+                variant={adminTab === "settings" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setAdminTab("settings")}
+                className="min-h-9"
+              >
+                ⚙️ Ayarlar
+              </Button>
+              <Button
+                variant={adminTab === "reports" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setAdminTab("reports")}
+                className="min-h-9"
+              >
+                📊 Raporlar
+              </Button>
+            </div>
+          </div>
+
+          {/* Tab Content */}
+          <div className="p-4">
+            {adminTab === "files" && (
+              <div className="space-y-4"
+                onKeyDown={(e) => {
+                  // Enter: kaydet, Shift+Enter: boş (açıklamada newline)
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    addCase();
+                  }
+                }}
+              >
             <DailyAppointmentsCard
               pdfDate={pdfDate}
               pdfLoading={pdfLoading}
@@ -2616,16 +2656,13 @@ function AssignedArchiveSingleDay() {
                 </div>
               )}
             </div>
+              </div>
+            )}
 
-          </CardContent>
-        </Card>
-
-        {/* Sağ: Öğretmenler */}
-        <Card className="min-w-0 overflow-hidden">
-          <CardHeader><CardTitle>👨‍🏫 Öğretmenler</CardTitle></CardHeader>
-          <CardContent className="space-y-3 overflow-x-auto">
-            {/* Öğretmen Ekle */}
-            <div className="flex items-end gap-2">
+            {adminTab === "teachers" && (
+              <div className="space-y-4">
+                {/* Öğretmen Ekle */}
+                <div className="flex items-end gap-2">
               <div className="flex-1">
                 <Label>➕ Öğretmen Ekle</Label>
                 <Input
@@ -2775,9 +2812,43 @@ function AssignedArchiveSingleDay() {
                 </div>
               );
             })}
-          </CardContent>
+              </div>
+            )}
+
+            {adminTab === "settings" && (
+              <div className="space-y-4">
+                <div className="text-center text-muted-foreground py-8">
+                  <p className="text-lg font-medium mb-2">⚙️ Ayarlar</p>
+                  <p className="text-sm">Ayarlar panelini açmak için üst menüden "⚙️ Ayarlar" butonuna tıklayın.</p>
+                  <Button className="mt-4" onClick={() => setSettingsOpen(true)}>Ayarları Aç</Button>
+                </div>
+              </div>
+            )}
+
+            {adminTab === "reports" && (
+              <div className="space-y-4">
+                <div className="flex flex-wrap gap-2 mb-4">
+                  <Button variant={reportMode === "monthly" ? "default" : "outline"} onClick={() => setReportMode("monthly")}>
+                    📊 Aylık Rapor
+                  </Button>
+                  <Button variant={reportMode === "daily" ? "default" : "outline"} onClick={() => setReportMode("daily")}>
+                    📅 Günlük Rapor
+                  </Button>
+                  <Button variant={reportMode === "archive" ? "default" : "outline"} onClick={() => setReportMode("archive")}>
+                    📋 Atanan Dosyalar
+                  </Button>
+                  <Button variant={reportMode === "e-archive" ? "default" : "outline"} onClick={() => setReportMode("e-archive")}>
+                    🗄️ E-Arşiv
+                  </Button>
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  Raporlar üst menüden de erişilebilir.
+                </div>
+              </div>
+            )}
+          </div>
         </Card>
-      </div>
+      )}
 
 {/* Liste & filtre — BUGÜN */}
       <Card className={isAdmin ? "" : "hidden"}>
