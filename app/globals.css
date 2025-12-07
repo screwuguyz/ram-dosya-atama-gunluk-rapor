@@ -576,6 +576,39 @@ input:focus::placeholder {
   animation: notificationPop 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
 }
 
+/* Dosya atama bildirimi animasyonu */
+@keyframes assignmentPopup {
+  0% {
+    opacity: 0;
+    transform: scale(0.5) translateY(50px);
+  }
+  15% {
+    opacity: 1;
+    transform: scale(1.1) translateY(-10px);
+  }
+  30% {
+    transform: scale(0.95) translateY(0);
+  }
+  45% {
+    transform: scale(1.02) translateY(-5px);
+  }
+  60% {
+    transform: scale(1) translateY(0);
+  }
+  80% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.9) translateY(-30px);
+  }
+}
+
+.animate-assignment-popup {
+  animation: assignmentPopup 3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
 /* ===== ÖZEL BİLEŞEN STİLLERİ ===== */
 
 /* Sticky header cam efekti */

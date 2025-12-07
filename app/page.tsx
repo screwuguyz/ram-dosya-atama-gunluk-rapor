@@ -392,6 +392,15 @@ const pdfInputRef = React.useRef<HTMLInputElement | null>(null);
       setToasts((prev) => prev.filter((t) => t.id !== id));
     }, 2500);
   }
+  
+  // Dosya atama bildirimi (büyük animasyonlu popup)
+  const [assignmentPopup, setAssignmentPopup] = useState<{ teacherName: string; studentName: string; score: number } | null>(null);
+  function showAssignmentPopup(teacherName: string, studentName: string, score: number) {
+    setAssignmentPopup({ teacherName, studentName, score });
+    window.setTimeout(() => {
+      setAssignmentPopup(null);
+    }, 3000);
+  }
   const [soundOn, setSoundOn] = useState<boolean>(() => {
     try { return localStorage.getItem("sound_on") !== "0"; } catch { return true; }
   });
@@ -1204,11 +1213,16 @@ useEffect(() => {
         )
       );
       const chosen = teachers.find((t) => t.id === manualTeacherId);
-      if (chosen) { notifyAssigned(chosen, newCase); playAssignSound(); }
+      if (chosen) { 
+        notifyAssigned(chosen, newCase); 
+        playAssignSound(); 
+        showAssignmentPopup(chosen.name, newCase.student, newCase.score);
+      }
     } else {
       const chosenAuto = autoAssign(newCase);
       if (chosenAuto) {
         playAssignSound();
+        showAssignmentPopup(chosenAuto.name, newCase.student, newCase.score);
       }
     }
     setCases(prev => [newCase, ...prev]);
@@ -3017,6 +3031,24 @@ function AssignedArchiveSingleDay() {
               </div>
             </CardContent>
           </Card>
+        </div>
+      )}
+      {/* Dosya Atama Bildirimi - Büyük Animasyonlu Popup */}
+      {assignmentPopup && (
+        <div className="fixed inset-0 flex items-center justify-center z-[200] pointer-events-none">
+          <div className="animate-assignment-popup bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-600 text-white rounded-3xl shadow-2xl p-8 max-w-md mx-4 text-center transform">
+            <div className="text-6xl mb-4 animate-bounce">📁</div>
+            <div className="text-lg font-medium opacity-90 mb-2">Dosya Atandı!</div>
+            <div className="text-3xl font-bold mb-3">{assignmentPopup.teacherName}</div>
+            <div className="bg-white/20 rounded-xl px-4 py-2 mb-3">
+              <div className="text-sm opacity-80">Öğrenci</div>
+              <div className="font-semibold truncate">{assignmentPopup.studentName}</div>
+            </div>
+            <div className="inline-flex items-center gap-2 bg-white/20 rounded-full px-4 py-1">
+              <span className="text-sm">Puan:</span>
+              <span className="text-xl font-bold">+{assignmentPopup.score}</span>
+            </div>
+          </div>
         </div>
       )}
       {/* Toast Container - Renkli */}
