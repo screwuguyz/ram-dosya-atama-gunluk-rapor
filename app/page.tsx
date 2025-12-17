@@ -60,6 +60,7 @@ export type CaseFile = {
   assignReason?: string;
   absencePenalty?: boolean;
   backupBonus?: boolean;
+  sourcePdfEntry?: PdfAppointment; // Randevu listesinden geldiyse, geri yükleme için
 }
 
 // E-Arşiv için tip
@@ -1331,9 +1332,18 @@ useEffect(() => {
         showAssignmentPopup(chosenAuto.name, newCase.student, newCase.score);
       }
     }
+    // Eğer PDF randevusundan geldiyse, kaynak bilgisini ekle
+    if (selectedPdfEntryId && activePdfEntry) {
+      newCase.sourcePdfEntry = activePdfEntry;
+    }
+    
     setCases(prev => [newCase, ...prev]);
-    // PDF kaydı formu doldururken seçili kalsa da listede kalsın; manuel silinecekse
-    // kullanıcı "Kaydı Sil" butonunu kullanır.
+    
+    // Atama başarılı olduysa ve PDF randevusundan geldiyse, randevu listesinden sil
+    if (selectedPdfEntryId && activePdfEntry) {
+      setPdfEntries(prev => prev.filter(e => e.id !== selectedPdfEntryId));
+      setSelectedPdfEntryId(null);
+    }
 
     // reset inputs
     setStudent("");
@@ -1378,13 +1388,28 @@ useEffect(() => {
   }
 
   // ---- Dosya silme (yükleri geri al)
-  function removeCase(id: string) {
+  function removeCase(id: string, skipConfirm = false) {
     const targetNow = cases.find(c => c.id === id);
-    if (targetNow) {
-      const who = `${targetNow.student}${targetNow.fileNo ? ` (${targetNow.fileNo})` : ""}`;
-      if (!confirm(`Bu dosyayı silmek istiyor musunuz?\n${who}`)) return;
+    if (!targetNow) return;
+    
+    const who = `${targetNow.student}${targetNow.fileNo ? ` (${targetNow.fileNo})` : ""}`;
+    const hasSourcePdf = !!targetNow.sourcePdfEntry;
+    
+    if (!skipConfirm) {
+      const msg = hasSourcePdf 
+        ? `Bu dosyayı geri almak istiyor musunuz?\n${who}\n\nRandevu listesine geri dönecek.`
+        : `Bu dosyayı silmek istiyor musunuz?\n${who}`;
+      if (!confirm(msg)) return;
     }
-    toast("Dosya silindi");
+    
+    // Eğer PDF randevusundan geldiyse, randevu listesine geri ekle
+    if (hasSourcePdf && targetNow.sourcePdfEntry) {
+      setPdfEntries(prev => [targetNow.sourcePdfEntry!, ...prev]);
+      toast("Dosya geri alındı, randevu listesine eklendi");
+    } else {
+      toast("Dosya silindi");
+    }
+    
     setCases(prev => {
       const target = prev.find(c => c.id === id);
       if (!target) return prev;
@@ -1403,6 +1428,9 @@ useEffect(() => {
       }
       return prev.filter(c => c.id !== id);
     });
+    
+    // E-Arşiv'den de sil
+    setEArchive(prev => prev.filter(e => e.id !== id));
   }
 
   // ---- Öğretmen devamsızlık/aktiflik/silme/testör
@@ -2786,9 +2814,15 @@ function AssignedArchiveSingleDay() {
                                 <td className="p-2">{c.isTest ? `Evet (+${settings.scoreTest})` : "Hayır"}</td>
                                 <td className="p-2 text-sm text-muted-foreground">{caseDesc(c)}</td>
                                 <td className="p-2 text-right">
-                                  <Button size="icon" variant="ghost" onClick={() => removeCase(c.id)} title="Sil">
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
+                                  {c.sourcePdfEntry ? (
+                                    <Button size="sm" variant="outline" onClick={() => removeCase(c.id)} title="Randevu listesine geri al" className="text-amber-600 hover:text-amber-700">
+                                      ↩️ Geri Al
+                                    </Button>
+                                  ) : (
+                                    <Button size="icon" variant="ghost" onClick={() => removeCase(c.id)} title="Sil">
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  )}
                                 </td>
                               </tr>
                             ))}
@@ -2839,9 +2873,15 @@ function AssignedArchiveSingleDay() {
                                   Acil
                                 </Button>
                               ) : null}
-                              <Button size="icon" variant="ghost" onClick={() => removeCase(c.id)} title="Sil">
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
+                              {c.sourcePdfEntry ? (
+                                <Button size="sm" variant="outline" onClick={() => removeCase(c.id)} title="Randevu listesine geri al" className="text-amber-600 hover:text-amber-700">
+                                  ↩️ Geri Al
+                                </Button>
+                              ) : (
+                                <Button size="icon" variant="ghost" onClick={() => removeCase(c.id)} title="Sil">
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              )}
                             </div>
                           </div>
                         ))}

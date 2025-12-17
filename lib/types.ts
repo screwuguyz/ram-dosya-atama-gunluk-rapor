@@ -11,6 +11,14 @@ export type Teacher = {
   backupDay?: string;
 };
 
+export type PdfAppointment = {
+  id: string;
+  time: string;
+  name: string;
+  fileNo: string;
+  extra?: string;
+};
+
 export type CaseFile = {
   id: string;
   student: string;
@@ -25,4 +33,5 @@ export type CaseFile = {
   assignReason?: string;
   absencePenalty?: boolean;
   backupBonus?: boolean;
+  sourcePdfEntry?: PdfAppointment; // Randevu listesinden geldiyse, geri yükleme için
 };
