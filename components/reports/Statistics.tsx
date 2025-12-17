@@ -246,23 +246,47 @@ export default function Statistics({ teachers, cases, history }: Props) {
           </CardContent>
         </Card>
 
-        {/* Saat Dağılımı */}
+        {/* Saat Dağılımı - Yatay Bar */}
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">🕐 Saatlik Dağılım</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex items-end justify-between gap-1 h-32">
-              {Object.entries(hourDistribution).map(([hour, count]) => (
-                <div key={hour} className="flex-1 flex flex-col items-center">
-                  <div className="text-[10px] text-slate-600 mb-1">{count || ""}</div>
-                  <div 
-                    className="w-full bg-amber-500 rounded-t transition-all duration-300"
-                    style={{ height: `${(count / maxHour) * 100}%`, minHeight: count > 0 ? "4px" : "2px" }}
-                  />
-                  <div className="text-[10px] mt-1 text-slate-500">{hour}</div>
-                </div>
-              ))}
+            <div className="space-y-2">
+              {Object.entries(hourDistribution).map(([hour, count]) => {
+                const percentage = (count / maxHour) * 100;
+                const isTopHour = count === maxHour && count > 0;
+                return (
+                  <div key={hour} className="flex items-center gap-3">
+                    <div className={`w-14 text-sm font-medium ${isTopHour ? "text-amber-600" : "text-slate-600"}`}>
+                      {hour}:00
+                    </div>
+                    <div className="flex-1 h-6 bg-slate-100 rounded-full overflow-hidden relative">
+                      <div 
+                        className={`h-full rounded-full transition-all duration-500 ${
+                          isTopHour 
+                            ? "bg-gradient-to-r from-amber-400 to-amber-500" 
+                            : "bg-gradient-to-r from-blue-400 to-blue-500"
+                        }`}
+                        style={{ width: `${percentage}%`, minWidth: count > 0 ? "8px" : "0" }}
+                      />
+                      {count > 0 && (
+                        <span className={`absolute right-2 top-1/2 -translate-y-1/2 text-xs font-bold ${
+                          percentage > 60 ? "text-white" : "text-slate-600"
+                        }`}>
+                          {count} dosya
+                        </span>
+                      )}
+                    </div>
+                    {isTopHour && <span className="text-amber-500">🔥</span>}
+                  </div>
+                );
+              })}
+            </div>
+            <div className="mt-3 text-xs text-slate-500 text-center">
+              En yoğun saat: <span className="font-bold text-amber-600">
+                {Object.entries(hourDistribution).sort((a, b) => b[1] - a[1])[0]?.[0]}:00
+              </span>
             </div>
           </CardContent>
         </Card>
