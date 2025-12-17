@@ -1339,9 +1339,9 @@ useEffect(() => {
     
     setCases(prev => [newCase, ...prev]);
     
-    // Atama başarılı olduysa ve PDF randevusundan geldiyse, randevu listesinden sil (hem local hem Supabase'den)
+    // Atama başarılı olduysa ve PDF randevusundan geldiyse, randevu listesinden sil (sadece local state'ten)
     if (selectedPdfEntryId) {
-      removePdfEntry(selectedPdfEntryId, true); // silent: true ile toast gösterme
+      setPdfEntries(prev => prev.filter(e => e.id !== selectedPdfEntryId));
       setSelectedPdfEntryId(null);
     }
 
