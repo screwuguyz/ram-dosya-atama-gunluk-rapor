@@ -293,6 +293,16 @@ export default function Statistics({ teachers, cases, history }: Props) {
               </div>
             ))}
           </div>
+          
+          {/* Uyarı notu */}
+          <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm">
+            <div className="font-medium text-amber-800 mb-1">ℹ️ Bu hesaplamada:</div>
+            <ul className="text-amber-700 text-xs space-y-0.5 ml-4 list-disc">
+              <li>❌ Devamsızlık puanları dahil edilmiyor</li>
+              <li>❌ Yedek başkan bonusları dahil edilmiyor</li>
+              <li>✅ Sadece gerçek dosya atamaları sayılıyor</li>
+            </ul>
+          </div>
         </CardContent>
       </Card>
     </div>
