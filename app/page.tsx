@@ -13,7 +13,7 @@ import { z } from "zod";
 import { supabase } from "@/lib/supabase";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { format } from "date-fns";
-import tr from "date-fns/locale/tr";
+import { tr } from "date-fns/locale/tr";
 import { Calendar } from "@/components/ui/calendar";
 import MonthlyReport from "@/components/reports/MonthlyReport";
 import DailyReport from "@/components/reports/DailyReport";
