@@ -13,6 +13,7 @@ import { z } from "zod";
 import { supabase } from "@/lib/supabase";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { format } from "date-fns";
+import tr from "date-fns/locale/tr";
 import { Calendar } from "@/components/ui/calendar";
 import MonthlyReport from "@/components/reports/MonthlyReport";
 import DailyReport from "@/components/reports/DailyReport";
@@ -814,7 +815,9 @@ const pdfInputRef = React.useRef<HTMLInputElement | null>(null);
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [loginRemember, setLoginRemember] = useState(true); // Beni hatırla
-  const [showLanding, setShowLanding] = useState(true);
+  const [viewMode, setViewMode] = useState<"landing" | "main" | "teacher-tracking" | "archive">("landing");
+  const [archivePassword, setArchivePassword] = useState("");
+  const [archiveAuthenticated, setArchiveAuthenticated] = useState(false);
   const [showPdfPanel, setShowPdfPanel] = useState<boolean | Date>(false);
   const [showRules, setShowRules] = useState(false);
   // Versiyon bildirimi (admin olmayan kullanıcılar için)
@@ -2449,7 +2452,7 @@ function AssignedArchiveSingleDay() {
   );
 }
 
-  if (showLanding) {
+  if (viewMode === "landing") {
     return (
       <main className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-teal-50 via-white to-orange-50 relative text-slate-800 overflow-hidden">
         {/* Animasyonlu arka plan deseni */}
@@ -2479,30 +2482,31 @@ function AssignedArchiveSingleDay() {
             👋 Hoş geldiniz! Günlük randevu listelerini yükleyin, dosya atamalarını yönetin ve öğretmen bildirimlerini takip edin.
           </p>
           
-          {/* Özellik kartları - Staggered animasyon ve hover efekti */}
+          {/* Özellik kartları - Buton olarak çalışır */}
           <div className="grid grid-cols-3 gap-4 py-4">
-            <div className="group p-4 rounded-xl bg-teal-50 border border-teal-100 cursor-pointer transition-all duration-300 hover:scale-110 hover:shadow-lg hover:shadow-teal-200 hover:bg-teal-100 animate-card-pop" style={{animationDelay: '0.5s'}}>
-              <div className="text-2xl mb-1 transition-transform duration-300 group-hover:scale-125 group-hover:animate-bounce">📁</div>
-              <div className="text-xs text-teal-700 font-medium">Dosya Atama</div>
-            </div>
-            <div className="group p-4 rounded-xl bg-orange-50 border border-orange-100 cursor-pointer transition-all duration-300 hover:scale-110 hover:shadow-lg hover:shadow-orange-200 hover:bg-orange-100 animate-card-pop" style={{animationDelay: '0.6s'}}>
-              <div className="text-2xl mb-1 transition-transform duration-300 group-hover:scale-125 group-hover:animate-bounce">👨‍🏫</div>
-              <div className="text-xs text-orange-700 font-medium">Öğretmen Takibi</div>
-            </div>
-            <div className="group p-4 rounded-xl bg-purple-50 border border-purple-100 cursor-pointer transition-all duration-300 hover:scale-110 hover:shadow-lg hover:shadow-purple-200 hover:bg-purple-100 animate-card-pop" style={{animationDelay: '0.7s'}}>
-              <div className="text-2xl mb-1 transition-transform duration-300 group-hover:scale-125 group-hover:animate-bounce">📊</div>
-              <div className="text-xs text-purple-700 font-medium">Raporlama</div>
-            </div>
-          </div>
-          
-          {/* Giriş butonu - Glow animasyonu */}
-          <div className="animate-fade-in-up" style={{animationDelay: '0.8s'}}>
-            <Button 
-              size="lg" 
-              className="px-12 py-6 text-xl bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all animate-button-glow" 
-              onClick={() => setShowLanding(false)}
+            <Button
+              onClick={() => setViewMode("main")}
+              className="group p-6 rounded-xl bg-teal-50 border-2 border-teal-200 hover:border-teal-400 hover:bg-teal-100 transition-all duration-300 hover:scale-110 hover:shadow-lg hover:shadow-teal-200 animate-card-pop h-auto flex flex-col items-center justify-center"
+              style={{animationDelay: '0.5s'}}
             >
-              🚀 Panele Giriş Yap
+              <div className="text-3xl mb-2 transition-transform duration-300 group-hover:scale-125 group-hover:animate-bounce">📁</div>
+              <div className="text-sm text-teal-700 font-semibold">Dosya Atama</div>
+            </Button>
+            <Button
+              onClick={() => setViewMode("teacher-tracking")}
+              className="group p-6 rounded-xl bg-orange-50 border-2 border-orange-200 hover:border-orange-400 hover:bg-orange-100 transition-all duration-300 hover:scale-110 hover:shadow-lg hover:shadow-orange-200 animate-card-pop h-auto flex flex-col items-center justify-center"
+              style={{animationDelay: '0.6s'}}
+            >
+              <div className="text-3xl mb-2 transition-transform duration-300 group-hover:scale-125 group-hover:animate-bounce">👨‍🏫</div>
+              <div className="text-sm text-orange-700 font-semibold">Öğretmen Takibi</div>
+            </Button>
+            <Button
+              onClick={() => setViewMode("archive")}
+              className="group p-6 rounded-xl bg-purple-50 border-2 border-purple-200 hover:border-purple-400 hover:bg-purple-100 transition-all duration-300 hover:scale-110 hover:shadow-lg hover:shadow-purple-200 animate-card-pop h-auto flex flex-col items-center justify-center"
+              style={{animationDelay: '0.7s'}}
+            >
+              <div className="text-3xl mb-2 transition-transform duration-300 group-hover:scale-125 group-hover:animate-bounce">🗄️</div>
+              <div className="text-sm text-purple-700 font-semibold">Arşiv</div>
             </Button>
           </div>
           
@@ -2517,6 +2521,304 @@ function AssignedArchiveSingleDay() {
   // Non-admin başlangıç görünümü: Atanan Dosyalar
   if (!isAdmin && reportMode === "none") setReportMode("archive");
 
+  // Öğretmen Takibi sayfası
+  if (viewMode === "teacher-tracking") {
+    const absentTeachers = teachers.filter(t => t.absentDay);
+    const absentByDay: Record<string, Teacher[]> = {};
+    absentTeachers.forEach(t => {
+      if (t.absentDay) {
+        if (!absentByDay[t.absentDay]) absentByDay[t.absentDay] = [];
+        absentByDay[t.absentDay].push(t);
+      }
+    });
+    const sortedDays = Object.keys(absentByDay).sort((a, b) => b.localeCompare(a));
+    
+    // Haftalık gruplama
+    const weeklyGroups: Record<string, { week: string; teachers: Teacher[]; days: string[] }> = {};
+    sortedDays.forEach(day => {
+      const date = new Date(day);
+      const weekStart = new Date(date);
+      weekStart.setDate(date.getDate() - date.getDay()); // Pazar günü
+      const weekKey = format(weekStart, 'yyyy-MM-dd');
+      if (!weeklyGroups[weekKey]) {
+        weeklyGroups[weekKey] = { week: weekKey, teachers: [], days: [] };
+      }
+      absentByDay[day].forEach(t => {
+        if (!weeklyGroups[weekKey].teachers.find(tt => tt.id === t.id)) {
+          weeklyGroups[weekKey].teachers.push(t);
+        }
+      });
+      weeklyGroups[weekKey].days.push(day);
+    });
+    
+    // Aylık gruplama
+    const monthlyGroups: Record<string, { month: string; teachers: Teacher[]; days: string[] }> = {};
+    sortedDays.forEach(day => {
+      const monthKey = day.substring(0, 7); // YYYY-MM
+      if (!monthlyGroups[monthKey]) {
+        monthlyGroups[monthKey] = { month: monthKey, teachers: [], days: [] };
+      }
+      absentByDay[day].forEach(t => {
+        if (!monthlyGroups[monthKey].teachers.find(tt => tt.id === t.id)) {
+          monthlyGroups[monthKey].teachers.push(t);
+        }
+      });
+      monthlyGroups[monthKey].days.push(day);
+    });
+
+    return (
+      <div className="container mx-auto p-4 space-y-6">
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-3xl font-bold text-teal-700">👨‍🏫 Öğretmen Takibi</h1>
+          <Button onClick={() => setViewMode("landing")} variant="outline">← Ana Sayfa</Button>
+        </div>
+
+        <div className="space-y-6">
+          {/* Günlük Liste */}
+          <Card>
+            <CardHeader>
+              <CardTitle>📅 Günlük Devamsızlık Listesi</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {sortedDays.length === 0 ? (
+                <p className="text-slate-500">Henüz devamsızlık kaydı yok.</p>
+              ) : (
+                <div className="space-y-4">
+                  {sortedDays.map(day => (
+                    <div key={day} className="border rounded-lg p-4">
+                      <div className="font-semibold text-lg mb-2 text-teal-700">
+                        {format(new Date(day), 'dd MMMM yyyy EEEE', { locale: tr })}
+                      </div>
+                      <div className="space-y-1">
+                        {absentByDay[day].map(t => (
+                          <div key={t.id} className="flex items-center gap-2 text-slate-700">
+                            <span className="w-2 h-2 bg-orange-500 rounded-full"></span>
+                            <span>{t.name}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Haftalık Liste */}
+          <Card>
+            <CardHeader>
+              <CardTitle>📆 Haftalık Devamsızlık Özeti</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {Object.keys(weeklyGroups).length === 0 ? (
+                <p className="text-slate-500">Henüz haftalık devamsızlık kaydı yok.</p>
+              ) : (
+                <div className="space-y-4">
+                  {Object.values(weeklyGroups)
+                    .sort((a, b) => b.week.localeCompare(a.week))
+                    .map(group => (
+                      <div key={group.week} className="border rounded-lg p-4">
+                        <div className="font-semibold text-lg mb-2 text-orange-700">
+                          Hafta: {format(new Date(group.week), 'dd MMMM yyyy', { locale: tr })} - {format(new Date(new Date(group.week).getTime() + 6*24*60*60*1000), 'dd MMMM yyyy', { locale: tr })}
+                        </div>
+                        <div className="text-sm text-slate-600 mb-2">
+                          {group.days.length} gün devamsızlık kaydı
+                        </div>
+                        <div className="space-y-1">
+                          {group.teachers.map(t => (
+                            <div key={t.id} className="flex items-center gap-2 text-slate-700">
+                              <span className="w-2 h-2 bg-orange-500 rounded-full"></span>
+                              <span>{t.name}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Aylık Liste */}
+          <Card>
+            <CardHeader>
+              <CardTitle>📊 Aylık Devamsızlık Özeti</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {Object.keys(monthlyGroups).length === 0 ? (
+                <p className="text-slate-500">Henüz aylık devamsızlık kaydı yok.</p>
+              ) : (
+                <div className="space-y-4">
+                  {Object.values(monthlyGroups)
+                    .sort((a, b) => b.month.localeCompare(a.month))
+                    .map(group => (
+                      <div key={group.month} className="border rounded-lg p-4">
+                        <div className="font-semibold text-lg mb-2 text-purple-700">
+                          {format(new Date(group.month + '-01'), 'MMMM yyyy', { locale: tr })}
+                        </div>
+                        <div className="text-sm text-slate-600 mb-2">
+                          {group.days.length} gün devamsızlık kaydı, {group.teachers.length} öğretmen
+                        </div>
+                        <div className="space-y-1">
+                          {group.teachers.map(t => (
+                            <div key={t.id} className="flex items-center gap-2 text-slate-700">
+                              <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
+                              <span>{t.name}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  // Arşiv sayfası - Şifre korumalı
+  if (viewMode === "archive") {
+    const ARCHIVE_PASSWORD = "ram2025"; // Şifreyi buradan değiştirebilirsiniz
+    
+    if (!archiveAuthenticated) {
+      return (
+        <div className="container mx-auto p-4">
+          <div className="max-w-md mx-auto mt-20">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-center">🗄️ Arşiv Girişi</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <Label>Parola</Label>
+                  <Input
+                    type="password"
+                    value={archivePassword}
+                    onChange={(e) => setArchivePassword(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && archivePassword === ARCHIVE_PASSWORD) {
+                        setArchiveAuthenticated(true);
+                      }
+                    }}
+                    placeholder="Parolayı girin"
+                  />
+                </div>
+                <Button
+                  className="w-full"
+                  onClick={() => {
+                    if (archivePassword === ARCHIVE_PASSWORD) {
+                      setArchiveAuthenticated(true);
+                    } else {
+                      alert("Yanlış parola!");
+                      setArchivePassword("");
+                    }
+                  }}
+                >
+                  Giriş Yap
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => setViewMode("landing")}
+                >
+                  ← Ana Sayfa
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      );
+    }
+
+    // Arşiv içeriği - 1-10000 arası dosyalar
+    const archiveFiles = Array.from({ length: 10000 }, (_, i) => i + 1).map(num => ({
+      id: `archive-${num}`,
+      fileNo: num.toString(),
+      student: `Dosya ${num}`,
+      assignedToName: "Bilinmiyor",
+      createdAt: "",
+    }));
+
+    // E-Archive'den mevcut dosyaları al
+    const existingFiles = new Map<string, EArchiveEntry>();
+    eArchive.forEach(entry => {
+      if (entry.fileNo) {
+        existingFiles.set(entry.fileNo, entry);
+      }
+    });
+
+    // Mevcut dosyaları güncelle
+    archiveFiles.forEach(file => {
+      const existing = existingFiles.get(file.fileNo);
+      if (existing) {
+        file.student = existing.student;
+        file.assignedToName = existing.assignedToName;
+        file.createdAt = existing.createdAt;
+      }
+    });
+
+    return (
+      <div className="container mx-auto p-4 space-y-6">
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-3xl font-bold text-purple-700">🗄️ RAM Arşivi (1-10.000)</h1>
+          <div className="flex gap-2">
+            <Button onClick={() => { setArchiveAuthenticated(false); setArchivePassword(""); }} variant="outline">
+              Çıkış
+            </Button>
+            <Button onClick={() => setViewMode("landing")} variant="outline">← Ana Sayfa</Button>
+          </div>
+        </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Dosya Listesi</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2 max-h-[600px] overflow-y-auto">
+              {archiveFiles.map(file => (
+                <div
+                  key={file.id}
+                  className={`p-3 border rounded-lg ${
+                    existingFiles.has(file.fileNo) ? 'bg-teal-50 border-teal-200' : 'bg-slate-50 border-slate-200'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="font-semibold">Dosya No: {file.fileNo}</span>
+                      {existingFiles.has(file.fileNo) && (
+                        <>
+                          <span className="ml-4 text-slate-600">Öğrenci: {file.student}</span>
+                          <span className="ml-4 text-slate-600">Atanan: {file.assignedToName}</span>
+                          {file.createdAt && (
+                            <span className="ml-4 text-slate-500 text-sm">
+                              {format(new Date(file.createdAt), 'dd.MM.yyyy')}
+                            </span>
+                          )}
+                        </>
+                      )}
+                    </div>
+                    {existingFiles.has(file.fileNo) && (
+                      <span className="px-2 py-1 bg-teal-100 text-teal-700 rounded text-xs font-medium">
+                        Atanmış
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Ana sayfa (Dosya Atama) - sadece viewMode === "main" olduğunda
+  if (viewMode !== "main") {
+    return null; // Diğer modlar zaten yukarıda handle edildi
+  }
+
   // ---------- TEK RETURN: BİLEŞEN ÇIKIŞI ----------
   return (
     <>
@@ -2526,9 +2828,12 @@ function AssignedArchiveSingleDay() {
 <div className="sticky top-0 z-40 backdrop-blur bg-white/70 border-b border-slate-200/60">
   <div className="container mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-2 md:gap-3">
 
-    {/* Sol: Ay seçici (sadece admin için) */}
-    {isAdmin && (
-      <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
+    {/* Sol: Ana sayfa butonu + Ay seçici (sadece admin için) */}
+    <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
+      <Button size="sm" variant="outline" onClick={() => setViewMode("landing")}>
+        🏠 Ana Sayfa
+      </Button>
+      {isAdmin && (
         <Select value={filterYM} onValueChange={setFilterYM}>
           <SelectTrigger className="w-[160px]">
             <SelectValue placeholder="Ay seç" />
@@ -2539,8 +2844,8 @@ function AssignedArchiveSingleDay() {
             ))}
           </SelectContent>
         </Select>
-      </div>
-    )}
+      )}
+    </div>
 
     {/* Sağ: Canlı rozet + giriş/çıkış */}
     <div className="flex items-center gap-3">
