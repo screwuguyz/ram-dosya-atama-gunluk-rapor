@@ -2523,6 +2523,7 @@ function AssignedArchiveSingleDay() {
 
   // Öğretmen Takibi sayfası
   if (viewMode === "teacher-tracking") {
+    // Mevcut devamsızlıklar (absentDay'den)
     const absentTeachers = teachers.filter(t => t.absentDay);
     const absentByDay: Record<string, Teacher[]> = {};
     absentTeachers.forEach(t => {
@@ -2531,6 +2532,23 @@ function AssignedArchiveSingleDay() {
         absentByDay[t.absentDay].push(t);
       }
     });
+    
+    // Geçmiş devamsızlıklar (history'den absencePenalty kayıtları)
+    Object.keys(history).forEach(day => {
+      history[day].forEach(entry => {
+        if (entry.absencePenalty && entry.assignedTo) {
+          const teacher = teachers.find(t => t.id === entry.assignedTo);
+          if (teacher) {
+            if (!absentByDay[day]) absentByDay[day] = [];
+            // Aynı öğretmen aynı gün için zaten eklenmemişse ekle
+            if (!absentByDay[day].find(t => t.id === teacher.id)) {
+              absentByDay[day].push(teacher);
+            }
+          }
+        }
+      });
+    });
+    
     const sortedDays = Object.keys(absentByDay).sort((a, b) => b.localeCompare(a));
     
     // Haftalık gruplama
