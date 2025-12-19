@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Inbox } from "lucide-react";
+import { Inbox, X } from "lucide-react";
 import type { CaseFile, Teacher } from "@/lib/types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || ""; // e.g. https://ram-dosya-atama.vercel.app
@@ -166,7 +166,21 @@ export default function AssignedArchiveSingleDay({
                     <tr className="border-t bg-white">
                       <td className="p-3" colSpan={7}>
                         <div className="border rounded-md p-3 space-y-3">
-                          <div className="font-medium">Yapay Zeka Açıklaması — Atanan: {teacherName(c.assignedTo) || "—"}</div>
+                          <div className="flex items-center justify-between">
+                            <div className="font-medium">Yapay Zeka Açıklaması — Atanan: {teacherName(c.assignedTo) || "—"}</div>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-6 w-6"
+                              onClick={() => {
+                                setAiOpenId(null);
+                                setAiMessages([]);
+                                setAiInput("");
+                              }}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
                           <div className="space-y-2 max-h-64 overflow-auto">
                             {aiMessages.map((m, idx) => {
                               // Markdown bold formatını render et (**metin**)
