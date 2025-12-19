@@ -21,7 +21,7 @@ import Statistics from "@/components/reports/Statistics";
 import BackupManager from "@/components/BackupManager";
 import AssignedArchiveView from "@/components/archive/AssignedArchive";
 import AssignedArchiveSingleDayView from "@/components/archive/AssignedArchiveSingleDay";
-import { Calendar as CalendarIcon, Trash2, UserMinus, Plus, FileSpreadsheet, BarChart2, Volume2, VolumeX, X, Printer, Loader2, Inbox, FileText } from "lucide-react";
+import { Calendar as CalendarIcon, Trash2, UserMinus, Plus, FileSpreadsheet, BarChart2, Volume2, VolumeX, X, Printer, Loader2, Inbox, FileText, ChevronLeft, ChevronRight } from "lucide-react";
 
 
 
@@ -824,6 +824,7 @@ const pdfInputRef = React.useRef<HTMLInputElement | null>(null);
   const [viewMode, setViewMode] = useState<"landing" | "main" | "teacher-tracking" | "archive">("landing");
   const [archivePassword, setArchivePassword] = useState("");
   const [archiveAuthenticated, setArchiveAuthenticated] = useState(false);
+  const [selectedAbsenceDate, setSelectedAbsenceDate] = useState<string | null>(null);
   const [showPdfPanel, setShowPdfPanel] = useState<boolean | Date>(false);
   const [showRules, setShowRules] = useState(false);
   // Versiyon bildirimi (admin olmayan kullanıcılar için)
@@ -2573,6 +2574,18 @@ function AssignedArchiveSingleDay() {
     
     const sortedDays = Object.keys(absentByDay).sort((a, b) => b.localeCompare(a));
     
+    // Seçili tarih yoksa veya listede yoksa en son tarihi seç
+    let currentSelectedDate = selectedAbsenceDate;
+    if (!currentSelectedDate || !sortedDays.includes(currentSelectedDate)) {
+      currentSelectedDate = sortedDays.length > 0 ? sortedDays[0] : null;
+      if (currentSelectedDate && currentSelectedDate !== selectedAbsenceDate) {
+        // State'i güncelle (ama render sırasında setState yapamayız, bu yüzden sadece kullanacağız)
+      }
+    }
+    const currentIndex = currentSelectedDate ? sortedDays.indexOf(currentSelectedDate) : -1;
+    const prevDate = currentIndex > 0 ? sortedDays[currentIndex - 1] : null;
+    const nextDate = currentIndex < sortedDays.length - 1 ? sortedDays[currentIndex + 1] : null;
+    
     // Haftalık gruplama
     const weeklyGroups: Record<string, { week: string; teachers: Teacher[]; days: string[] }> = {};
     sortedDays.forEach(day => {
@@ -2622,24 +2635,51 @@ function AssignedArchiveSingleDay() {
             <CardContent>
               {sortedDays.length === 0 ? (
                 <p className="text-slate-500">Henüz devamsızlık kaydı yok.</p>
-              ) : (
+              ) : currentSelectedDate ? (
                 <div className="space-y-4">
-                  {sortedDays.map(day => (
-                    <div key={day} className="border rounded-lg p-4">
-                      <div className="font-semibold text-lg mb-2 text-teal-700">
-                        {format(new Date(day), 'dd MMMM yyyy EEEE', { locale: tr })}
-                      </div>
-                      <div className="space-y-1">
-                        {absentByDay[day].map(t => (
-                          <div key={t.id} className="flex items-center gap-2 text-slate-700">
-                            <span className="w-2 h-2 bg-orange-500 rounded-full"></span>
-                            <span>{t.name}</span>
-                          </div>
-                        ))}
-                      </div>
+                  {/* Tarih navigasyonu */}
+                  <div className="flex items-center justify-between mb-4">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => prevDate && setSelectedAbsenceDate(prevDate)}
+                      disabled={!prevDate}
+                      className="flex items-center gap-2"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                      Önceki
+                    </Button>
+                    <div className="font-semibold text-lg text-teal-700 text-center flex-1">
+                      {format(new Date(currentSelectedDate), 'dd MMMM yyyy EEEE', { locale: tr })}
                     </div>
-                  ))}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => nextDate && setSelectedAbsenceDate(nextDate)}
+                      disabled={!nextDate}
+                      className="flex items-center gap-2"
+                    >
+                      Sonraki
+                      <ChevronRight className="w-4 h-4" />
+                    </Button>
+                  </div>
+                  {/* Seçili tarihin devamsızlıkları */}
+                  <div className="border rounded-lg p-4">
+                    <div className="space-y-1">
+                      {absentByDay[currentSelectedDate]?.map(t => (
+                        <div key={t.id} className="flex items-center gap-2 text-slate-700">
+                          <span className="w-2 h-2 bg-orange-500 rounded-full"></span>
+                          <span>{t.name}</span>
+                        </div>
+                      ))}
+                      {(!absentByDay[currentSelectedDate] || absentByDay[currentSelectedDate].length === 0) && (
+                        <p className="text-slate-500 text-sm">Bu tarihte devamsızlık kaydı yok.</p>
+                      )}
+                    </div>
+                  </div>
                 </div>
+              ) : (
+                <p className="text-slate-500">Henüz devamsızlık kaydı yok.</p>
               )}
             </CardContent>
           </Card>
