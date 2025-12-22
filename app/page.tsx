@@ -437,23 +437,41 @@ const pdfInputRef = React.useRef<HTMLInputElement | null>(null);
   const activePdfEntry = useMemo(() => pdfEntries.find(e => e.id === selectedPdfEntryId) || null, [pdfEntries, selectedPdfEntryId]);
   // Atanmamış randevuları say (kırmızı çizilmemiş olanlar)
   const pendingAppointmentsCount = useMemo(() => {
-    const assignedPdfIds = new Set<string>();
-    // cases içindeki atanan randevuları topla
-    cases.forEach((c: CaseFile) => {
-      if (c.sourcePdfEntry?.id) {
-        assignedPdfIds.add(c.sourcePdfEntry.id);
-      }
-    });
-    // history içindeki atanan randevuları topla
-    Object.values(history).forEach((dayCases: CaseFile[]) => {
-      dayCases.forEach((c: CaseFile) => {
-        if (c.sourcePdfEntry?.id) {
-          assignedPdfIds.add(c.sourcePdfEntry.id);
-        }
+    // Eşleştirme fonksiyonu: ID veya saat+isim+dosyaNo kombinasyonu
+    const isEntryAssigned = (entry: PdfAppointment) => {
+      // cases içinde kontrol et
+      const inCases = cases.some((c: CaseFile) => {
+        const source = c.sourcePdfEntry;
+        if (!source) return false;
+        // Önce ID'ye göre kontrol et
+        if (source.id === entry.id) return true;
+        // ID eşleşmezse, saat + isim + dosya numarasına göre kontrol et
+        return (
+          source.time === entry.time &&
+          source.name === entry.name &&
+          (source.fileNo || "") === (entry.fileNo || "")
+        );
       });
-    });
+      
+      // history içinde kontrol et
+      const inHistory = Object.values(history).some((dayCases: CaseFile[]) => 
+        dayCases.some((c: CaseFile) => {
+          const source = c.sourcePdfEntry;
+          if (!source) return false;
+          if (source.id === entry.id) return true;
+          return (
+            source.time === entry.time &&
+            source.name === entry.name &&
+            (source.fileNo || "") === (entry.fileNo || "")
+          );
+        })
+      );
+      
+      return inCases || inHistory;
+    };
+    
     // Toplam randevu sayısından atananları çıkar
-    return pdfEntries.filter(entry => !assignedPdfIds.has(entry.id)).length;
+    return pdfEntries.filter(entry => !isEntryAssigned(entry)).length;
   }, [cases, history, pdfEntries]);
   const [isDragging, setIsDragging] = useState(false); // Sürükle-bırak durumu
   // Persist hydration guard: LS'den ilk yükleme bitene kadar yazma yapma
