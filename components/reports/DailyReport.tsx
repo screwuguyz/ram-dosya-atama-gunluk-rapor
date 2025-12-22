@@ -38,33 +38,73 @@ function getFixedHolidays(year: number): string[] {
   return holidays;
 }
 
-// Dini bayramlar (her yıl değişir - basit yaklaşım için 2024-2025 tahmini tarihler)
+// Dini bayramlar (Diyanet İşleri Başkanlığı resmi takvimine göre)
 function getReligiousHolidays(year: number): string[] {
   const holidays: string[] = [];
   
-  // Kurban Bayramı ve Ramazan Bayramı tarihleri (her yıl değişir)
   // 2024
   if (year === 2024) {
-    holidays.push("2024-06-16"); // Ramazan Bayramı 1. gün
-    holidays.push("2024-06-17"); // Ramazan Bayramı 2. gün
-    holidays.push("2024-06-18"); // Ramazan Bayramı 3. gün
-    holidays.push("2024-06-19"); // Ramazan Bayramı 4. gün
-    holidays.push("2024-10-15"); // Kurban Bayramı 1. gün
-    holidays.push("2024-10-16"); // Kurban Bayramı 2. gün
-    holidays.push("2024-10-17"); // Kurban Bayramı 3. gün
-    holidays.push("2024-10-18"); // Kurban Bayramı 4. gün
+    // Ramazan Bayramı (10-12 Nisan)
+    holidays.push("2024-04-10");
+    holidays.push("2024-04-11");
+    holidays.push("2024-04-12");
+    // Kurban Bayramı (17-20 Haziran)
+    holidays.push("2024-06-17");
+    holidays.push("2024-06-18");
+    holidays.push("2024-06-19");
+    holidays.push("2024-06-20");
   }
   
   // 2025
   if (year === 2025) {
-    holidays.push("2025-03-30"); // Ramazan Bayramı 1. gün
-    holidays.push("2025-03-31"); // Ramazan Bayramı 2. gün
-    holidays.push("2025-04-01"); // Ramazan Bayramı 3. gün
-    holidays.push("2025-04-02"); // Ramazan Bayramı 4. gün
-    holidays.push("2025-06-05"); // Kurban Bayramı 1. gün
-    holidays.push("2025-06-06"); // Kurban Bayramı 2. gün
-    holidays.push("2025-06-07"); // Kurban Bayramı 3. gün
-    holidays.push("2025-06-08"); // Kurban Bayramı 4. gün
+    // Ramazan Bayramı (30 Mart - 1 Nisan)
+    holidays.push("2025-03-30");
+    holidays.push("2025-03-31");
+    holidays.push("2025-04-01");
+    // Kurban Bayramı (6-9 Haziran)
+    holidays.push("2025-06-06");
+    holidays.push("2025-06-07");
+    holidays.push("2025-06-08");
+    holidays.push("2025-06-09");
+  }
+  
+  // 2026
+  if (year === 2026) {
+    // Ramazan Bayramı (20-22 Mart)
+    holidays.push("2026-03-20");
+    holidays.push("2026-03-21");
+    holidays.push("2026-03-22");
+    // Kurban Bayramı (27-30 Mayıs)
+    holidays.push("2026-05-27");
+    holidays.push("2026-05-28");
+    holidays.push("2026-05-29");
+    holidays.push("2026-05-30");
+  }
+  
+  // 2027 (tahmini - Hicri takvime göre hesaplanmış)
+  if (year === 2027) {
+    // Ramazan Bayramı (9-11 Mart)
+    holidays.push("2027-03-09");
+    holidays.push("2027-03-10");
+    holidays.push("2027-03-11");
+    // Kurban Bayramı (16-19 Mayıs)
+    holidays.push("2027-05-16");
+    holidays.push("2027-05-17");
+    holidays.push("2027-05-18");
+    holidays.push("2027-05-19");
+  }
+  
+  // 2028 (tahmini)
+  if (year === 2028) {
+    // Ramazan Bayramı (26-28 Şubat)
+    holidays.push("2028-02-26");
+    holidays.push("2028-02-27");
+    holidays.push("2028-02-28");
+    // Kurban Bayramı (4-7 Mayıs)
+    holidays.push("2028-05-04");
+    holidays.push("2028-05-05");
+    holidays.push("2028-05-06");
+    holidays.push("2028-05-07");
   }
   
   return holidays;
