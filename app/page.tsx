@@ -310,11 +310,25 @@ function DailyAppointmentsCard({
                   // Bu randevunun atanıp atanmadığını kontrol et
                   let isAssigned = false;
                   if (cases || history) {
+                    // Eşleştirme fonksiyonu: ID veya saat+isim+dosyaNo kombinasyonu
+                    const matchesEntry = (sourceEntry: PdfAppointment | undefined) => {
+                      if (!sourceEntry) return false;
+                      // Önce ID'ye göre kontrol et (hızlı)
+                      if (sourceEntry.id === entry.id) return true;
+                      // ID eşleşmezse, saat + isim + dosya numarasına göre kontrol et
+                      // (PDF geri yüklendiğinde ID'ler değişebilir ama bu alanlar aynı kalır)
+                      return (
+                        sourceEntry.time === entry.time &&
+                        sourceEntry.name === entry.name &&
+                        (sourceEntry.fileNo || "") === (entry.fileNo || "")
+                      );
+                    };
+                    
                     // cases içinde kontrol et
-                    const inCases = cases?.some(c => c.sourcePdfEntry?.id === entry.id) || false;
+                    const inCases = cases?.some(c => matchesEntry(c.sourcePdfEntry)) || false;
                     // history içinde kontrol et
                     const inHistory = history ? Object.values(history).some(dayCases => 
-                      dayCases.some(c => c.sourcePdfEntry?.id === entry.id)
+                      dayCases.some(c => matchesEntry(c.sourcePdfEntry))
                     ) : false;
                     isAssigned = inCases || inHistory;
                   }
