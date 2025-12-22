@@ -18,6 +18,10 @@ import { Calendar } from "@/components/ui/calendar";
 import MonthlyReport from "@/components/reports/MonthlyReport";
 import DailyReport from "@/components/reports/DailyReport";
 import Statistics from "@/components/reports/Statistics";
+import WeeklyReport from "@/components/reports/WeeklyReport";
+import YearlyReport from "@/components/reports/YearlyReport";
+import TeacherPerformanceReport from "@/components/reports/TeacherPerformanceReport";
+import FileTypeAnalysis from "@/components/reports/FileTypeAnalysis";
 import BackupManager from "@/components/BackupManager";
 import AssignedArchiveView from "@/components/archive/AssignedArchive";
 import AssignedArchiveSingleDayView from "@/components/archive/AssignedArchiveSingleDay";
@@ -886,7 +890,7 @@ const pdfInputRef = React.useRef<HTMLInputElement | null>(null);
   }
 
   // ---- Rapor & filtre
-  const [reportMode, setReportMode] = useState<"none" | "monthly" | "daily" | "archive" | "e-archive" | "statistics">("none");
+  const [reportMode, setReportMode] = useState<"none" | "monthly" | "daily" | "archive" | "e-archive" | "statistics" | "weekly" | "yearly" | "teacher-performance" | "file-type-analysis">("none");
 
   const [filterYM, setFilterYM] = useState<string>(ymOf(nowISO()));
   // Admin oturum durumu
@@ -2845,13 +2849,13 @@ function AssignedArchiveSingleDay() {
                         }).join(', ');
                         
                         return (
-                          <div key={t.id} className="flex items-center gap-2 text-slate-700">
-                            <span className="w-2 h-2 bg-orange-500 rounded-full"></span>
+                        <div key={t.id} className="flex items-center gap-2 text-slate-700">
+                          <span className="w-2 h-2 bg-orange-500 rounded-full"></span>
                             <span className="font-medium">{t.name}</span>
                             {formattedDays && (
                               <span className="text-xs text-slate-500 ml-2">({formattedDays})</span>
                             )}
-                          </div>
+                        </div>
                         );
                       })}
                       {currentWeek.teachers.length === 0 && (
@@ -2921,13 +2925,13 @@ function AssignedArchiveSingleDay() {
                         }).join(', ');
                         
                         return (
-                          <div key={t.id} className="flex items-center gap-2 text-slate-700">
-                            <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
+                        <div key={t.id} className="flex items-center gap-2 text-slate-700">
+                          <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
                             <span className="font-medium">{t.name}</span>
                             {formattedDays && (
                               <span className="text-xs text-slate-500 ml-2">({formattedDays})</span>
                             )}
-                          </div>
+                        </div>
                         );
                       })}
                       {currentMonth.teachers.length === 0 && (
@@ -3244,11 +3248,23 @@ function AssignedArchiveSingleDay() {
                 <Button variant={reportMode === "statistics" ? "default" : "outline"} onClick={() => setReportMode("statistics")}>
                   📈 İstatistikler
                 </Button>
+                <Button variant={reportMode === "daily" ? "default" : "outline"} onClick={() => setReportMode("daily")}>
+                  📅 Günlük Rapor
+                </Button>
+                <Button variant={reportMode === "weekly" ? "default" : "outline"} onClick={() => setReportMode("weekly")}>
+                  📆 Haftalık Rapor
+                </Button>
                 <Button variant={reportMode === "monthly" ? "default" : "outline"} onClick={() => setReportMode("monthly")}>
                   📊 Aylık Rapor
                 </Button>
-                <Button variant={reportMode === "daily" ? "default" : "outline"} onClick={() => setReportMode("daily")}>
-                  📅 Günlük Rapor
+                <Button variant={reportMode === "yearly" ? "default" : "outline"} onClick={() => setReportMode("yearly")}>
+                  📆 Yıllık Rapor
+                </Button>
+                <Button variant={reportMode === "teacher-performance" ? "default" : "outline"} onClick={() => setReportMode("teacher-performance")}>
+                  👨‍🏫 Öğretmen Performansı
+                </Button>
+                <Button variant={reportMode === "file-type-analysis" ? "default" : "outline"} onClick={() => setReportMode("file-type-analysis")}>
+                  📊 Dosya Türü Analizi
                 </Button>
                 <Button variant={reportMode === "archive" ? "default" : "outline"} onClick={() => setReportMode("archive")}>
                   📋 Atanan Dosyalar
@@ -3789,11 +3805,23 @@ function AssignedArchiveSingleDay() {
                   <Button variant={reportMode === "statistics" ? "default" : "outline"} onClick={() => setReportMode("statistics")}>
                     📈 İstatistikler
                   </Button>
+                  <Button variant={reportMode === "daily" ? "default" : "outline"} onClick={() => setReportMode("daily")}>
+                    📅 Günlük Rapor
+                  </Button>
+                  <Button variant={reportMode === "weekly" ? "default" : "outline"} onClick={() => setReportMode("weekly")}>
+                    📆 Haftalık Rapor
+                  </Button>
                   <Button variant={reportMode === "monthly" ? "default" : "outline"} onClick={() => setReportMode("monthly")}>
                     📊 Aylık Rapor
                   </Button>
-                  <Button variant={reportMode === "daily" ? "default" : "outline"} onClick={() => setReportMode("daily")}>
-                    📅 Günlük Rapor
+                  <Button variant={reportMode === "yearly" ? "default" : "outline"} onClick={() => setReportMode("yearly")}>
+                    📆 Yıllık Rapor
+                  </Button>
+                  <Button variant={reportMode === "teacher-performance" ? "default" : "outline"} onClick={() => setReportMode("teacher-performance")}>
+                    👨‍🏫 Öğretmen Performansı
+                  </Button>
+                  <Button variant={reportMode === "file-type-analysis" ? "default" : "outline"} onClick={() => setReportMode("file-type-analysis")}>
+                    📊 Dosya Türü Analizi
                   </Button>
                   <Button variant={reportMode === "e-archive" ? "default" : "outline"} onClick={() => setReportMode("e-archive")}>
                     🗄️ E-Arşiv
@@ -3923,7 +3951,6 @@ function AssignedArchiveSingleDay() {
       )}
 
       {reportMode === "statistics" && <Statistics teachers={teachers} cases={cases} history={history} />}
-      {reportMode === "monthly" && <MonthlyReport teachers={teachers} />}
       {reportMode === "daily" && (
         <DailyReport 
           teachers={teachers} 
@@ -3936,6 +3963,11 @@ function AssignedArchiveSingleDay() {
           }}
         />
       )}
+      {reportMode === "weekly" && <WeeklyReport teachers={teachers} cases={cases} history={history} />}
+      {reportMode === "monthly" && <MonthlyReport teachers={teachers} />}
+      {reportMode === "yearly" && <YearlyReport teachers={teachers} cases={cases} history={history} />}
+      {reportMode === "teacher-performance" && <TeacherPerformanceReport teachers={teachers} cases={cases} history={history} />}
+      {reportMode === "file-type-analysis" && <FileTypeAnalysis teachers={teachers} cases={cases} history={history} />}
       {reportMode === "archive" && (
         isAdmin ? (
           <AssignedArchiveView

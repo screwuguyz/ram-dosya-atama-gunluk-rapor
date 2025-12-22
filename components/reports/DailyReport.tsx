@@ -282,8 +282,8 @@ export default function DailyReportView({
                   
                   return (
                     <th key={d} className={className} title={isHoliday ? "Resmi Tatil" : isWeekendDay ? "Hafta Sonu" : ""}>
-                      {String(i + 1).padStart(2, "0")}
-                    </th>
+                    {String(i + 1).padStart(2, "0")}
+                  </th>
                   );
                 })}
                 <th className="p-2 text-right">Aylık Puan</th>
@@ -364,8 +364,8 @@ export default function DailyReportView({
                   
                   return (
                     <td key={i} className={className}>
-                      {c.points}{c.count ? ` (${c.count})` : ""}
-                    </td>
+                    {c.points}{c.count ? ` (${c.count})` : ""}
+                  </td>
                   );
                 })}
                 <td className="p-2 text-right">{grandPoints}</td>
