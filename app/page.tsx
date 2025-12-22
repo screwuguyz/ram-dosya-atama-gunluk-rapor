@@ -2800,12 +2800,28 @@ function AssignedArchiveSingleDay() {
                       {currentWeek.days.length} gün devamsızlık kaydı
                     </div>
                     <div className="space-y-1">
-                      {currentWeek.teachers.map(t => (
-                        <div key={t.id} className="flex items-center gap-2 text-slate-700">
-                          <span className="w-2 h-2 bg-orange-500 rounded-full"></span>
-                          <span>{t.name}</span>
-                        </div>
-                      ))}
+                      {currentWeek.teachers.map(t => {
+                        // Bu öğretmenin bu hafta içinde hangi günler devamsız olduğunu bul
+                        const teacherAbsentDays = currentWeek.days.filter(day => 
+                          absentByDay[day]?.some(teacher => teacher.id === t.id)
+                        ).sort();
+                        
+                        // Günleri formatla (örn: "14, 16, 19 Aralık")
+                        const formattedDays = teacherAbsentDays.map(day => {
+                          const date = new Date(day);
+                          return format(date, 'd MMMM', { locale: tr });
+                        }).join(', ');
+                        
+                        return (
+                          <div key={t.id} className="flex items-center gap-2 text-slate-700">
+                            <span className="w-2 h-2 bg-orange-500 rounded-full"></span>
+                            <span className="font-medium">{t.name}</span>
+                            {formattedDays && (
+                              <span className="text-xs text-slate-500 ml-2">({formattedDays})</span>
+                            )}
+                          </div>
+                        );
+                      })}
                       {currentWeek.teachers.length === 0 && (
                         <p className="text-slate-500 text-sm">Bu hafta devamsızlık kaydı yok.</p>
                       )}
@@ -2860,12 +2876,28 @@ function AssignedArchiveSingleDay() {
                       {currentMonth.days.length} gün devamsızlık kaydı, {currentMonth.teachers.length} öğretmen
                     </div>
                     <div className="space-y-1">
-                      {currentMonth.teachers.map(t => (
-                        <div key={t.id} className="flex items-center gap-2 text-slate-700">
-                          <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
-                          <span>{t.name}</span>
-                        </div>
-                      ))}
+                      {currentMonth.teachers.map(t => {
+                        // Bu öğretmenin bu ay içinde hangi günler devamsız olduğunu bul
+                        const teacherAbsentDays = currentMonth.days.filter(day => 
+                          absentByDay[day]?.some(teacher => teacher.id === t.id)
+                        ).sort();
+                        
+                        // Günleri formatla (örn: "14, 16, 19 Aralık")
+                        const formattedDays = teacherAbsentDays.map(day => {
+                          const date = new Date(day);
+                          return format(date, 'd MMMM', { locale: tr });
+                        }).join(', ');
+                        
+                        return (
+                          <div key={t.id} className="flex items-center gap-2 text-slate-700">
+                            <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
+                            <span className="font-medium">{t.name}</span>
+                            {formattedDays && (
+                              <span className="text-xs text-slate-500 ml-2">({formattedDays})</span>
+                            )}
+                          </div>
+                        );
+                      })}
                       {currentMonth.teachers.length === 0 && (
                         <p className="text-slate-500 text-sm">Bu ay devamsızlık kaydı yok.</p>
                       )}
