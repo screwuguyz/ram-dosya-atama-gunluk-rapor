@@ -408,10 +408,10 @@ export default function DosyaAtamaApp() {
   // ---- DEVAMSIZLIK KAYITLARI (Supabase'de saklanır)
   const [absenceRecords, setAbsenceRecords] = useState<Array<{ teacherId: string; date: string }>>([]);
 
-  // --- Canlı yayın (Supabase)
-  const clientId = React.useMemo(() => uid(), []);
-  const channelRef = React.useRef<RealtimeChannel | null>(null);
-  const lastAppliedAtRef = React.useRef<string>("")
+  // --- Canlı yayın (Supabase) - Broadcast kaldırıldı, sadece postgres_changes kullanılıyor
+  // const clientId = React.useMemo(() => uid(), []); // Broadcast kaldırıldı, artık gerekli değil
+  // const channelRef = React.useRef<RealtimeChannel | null>(null); // Broadcast kaldırıldı
+  const lastAppliedAtRef = React.useRef<string>("") // fetchCentralState'te kullanılıyor
   const teachersRef = React.useRef<Teacher[]>([]);
   const casesRef = React.useRef<CaseFile[]>([]);
   const lastAbsencePenaltyRef = React.useRef<string>("");
@@ -1155,119 +1155,21 @@ export default function DosyaAtamaApp() {
       }
     } catch { }
   }, [isAdmin, hydrated]);
-  // === Realtime abonelik: canlı güncelleme + ilk açılışta snapshot ===
+  // === Realtime abonelik: postgres_changes kullan (broadcast yerine) ===
+  // Not: Broadcast kaldırıldı, sadece postgres_changes kullanılıyor
+  // useSupabaseSync hook'u zaten postgres_changes ile app_state tablosunu dinliyor
   useEffect(() => {
-    if (process.env.NEXT_PUBLIC_DISABLE_REALTIME === '1') { setLive('offline'); return; }
-    const ch = supabase.channel("dosya-atama");
-    channelRef.current = ch;
-
-    // 1) Tam state yayınını dinle
-    ch.on("broadcast", { event: "state" }, (e) => {
-      const p = e.payload as any;
-      if (!p || p.sender === clientId) return; // kendi yayınımı alma
-      const inc = Date.parse(String(p.updatedAt || 0));
-      const cur = Date.parse(String(lastAppliedAtRef.current || 0));
-      if (!isNaN(inc) && inc <= cur) return;
-      lastAppliedAtRef.current = p.updatedAt || new Date().toISOString();
-      setTeachers(p.teachers ?? []);
-      setCases(p.cases ?? []);
-      if (p.history) setHistory(p.history);
-      if (typeof p.lastAbsencePenalty === "string") setLastAbsencePenalty(p.lastAbsencePenalty);
-      // Tema ayarlarını güncelle
-      if (p.themeSettings) {
-        loadThemeFromSupabase(p.themeSettings);
-      }
-    });
-
-    // 2) İzleyici "hello" derse admin state göndersin
-    ch.on("broadcast", { event: "hello" }, (e) => {
-      if (!isAdmin) return;                 // sadece admin cevaplar
-      if (!hydrated) return;                // LS yüklenmeden varsayılan state'i yayınlama
-      const p = e.payload as any;
-      if (!p || p.sender === clientId) return;
-      const themeMode = getThemeMode();
-      const colorSchemeName = typeof window !== "undefined" ? (localStorage.getItem("site_color_scheme") || "default") : "default";
-      const customColors = typeof window !== "undefined" ? (() => {
-        try {
-          const custom = localStorage.getItem("site_custom_colors");
-          return custom ? JSON.parse(custom) : undefined;
-        } catch {
-          return undefined;
-        }
-      })() : undefined;
-
-      ch.send({
-        type: "broadcast",
-        event: "state",
-        payload: {
-          sender: clientId,
-          teachers,
-          cases,
-          history,
-          lastAbsencePenalty,
-          absenceRecords,
-          themeSettings: {
-            themeMode,
-            colorScheme: colorSchemeName,
-            customColors: colorSchemeName === "custom" ? customColors : undefined,
-          },
-          updatedAt: (lastAppliedAtRef.current || new Date().toISOString())
-        },
-      });
-    });
-
-    // 3) Bağlanınca herkes "hello" göndersin → snapshot iste
-    ch.subscribe((status) => {
-      setLive(status === "SUBSCRIBED" ? "online" : "connecting");
-      if (status === "SUBSCRIBED") {
-        ch.send({ type: "broadcast", event: "hello", payload: { sender: clientId } });
-      }
-    });
-
-    // 4) Temizlik
+    if (process.env.NEXT_PUBLIC_DISABLE_REALTIME === '1') { 
+      setLive('offline'); 
+      return; 
+    }
+    // Realtime connection status için basit bir kontrol
+    // Asıl sync useSupabaseSync hook'unda yapılıyor
+    setLive('online');
     return () => {
-      setLive("offline");
-      if (channelRef.current) supabase.removeChannel(channelRef.current);
-      channelRef.current = null;
+      setLive('offline');
     };
-  }, [clientId, isAdmin, teachers, cases, history, hydrated, centralLoaded]);
-
-  // === Admin değiştirince herkese yayınla ===
-  useEffect(() => {
-    if (!isAdmin) return;
-    if (!hydrated) return; // LS yüklenmeden yayınlama
-    if (!centralLoaded) return; // Merkez yüklenmeden yayınlama
-    const ch = channelRef.current;
-    if (!ch) return;
-    const themeMode = getThemeMode();
-    const colorSchemeName = typeof window !== "undefined" ? (localStorage.getItem("site_color_scheme") || "default") : "default";
-    const customColors = typeof window !== "undefined" ? (() => {
-      try {
-        const custom = localStorage.getItem("site_custom_colors");
-        return custom ? JSON.parse(custom) : undefined;
-      } catch {
-        return undefined;
-      }
-    })() : undefined;
-
-    ch.send({
-      type: "broadcast",
-      event: "state",
-      payload: {
-        sender: clientId,
-        teachers,
-        cases,
-        history,
-        lastAbsencePenalty,
-        themeSettings: {
-          themeMode,
-          colorScheme: colorSchemeName,
-          customColors: colorSchemeName === "custom" ? customColors : undefined,
-        },
-        updatedAt: (lastAppliedAtRef.current || new Date().toISOString())
-      },
-    });
-  }, [teachers, cases, history, lastAbsencePenalty, isAdmin, clientId, hydrated, centralLoaded]);
+  }, []);
 
   // === Admin değiştirince merkezi state'e de yaz (kalıcılık)
   useEffect(() => {
