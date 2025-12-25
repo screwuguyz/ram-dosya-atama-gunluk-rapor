@@ -3,7 +3,8 @@
 import { useAppStore } from "@/stores/useAppStore";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Play, Check, RefreshCw, Trash2, Megaphone } from "lucide-react";
+import { Play, Check, RefreshCw, Trash2, Megaphone, Printer } from "lucide-react";
+import Link from "next/link";
 import { format } from "date-fns";
 import { formatTime } from "@/lib/date";
 
@@ -14,9 +15,6 @@ export default function QueueWidget() {
     const resetQueue = useAppStore(s => s.resetQueue);
 
     // Aktif Bilet (En son çağrılan ve henüz tamamlanmayan)
-    // Aslında 'called' statusündekilerin hepsi aktif sayılabilir ama TV en sonuncuyu gösteriyor.
-    // Biz de en sonuncuyu 'Aktif' olarak gösterelim.
-
     const calledTickets = queue
         .filter(t => t.status === 'called')
         .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
@@ -29,13 +27,12 @@ export default function QueueWidget() {
 
     // Bilet çağırma
     const handleCall = (id: string) => {
-        callQueueTicket(id, "admin"); // Şimdilik hardcoded admin ID
+        callQueueTicket(id, "admin");
     };
 
     // Tekrar anons
     const handleRecall = () => {
         if (activeTicket) {
-            // Tekrar call fonksiyonunu çağırırsak updatedAt güncellenir ve TV tetiklenir
             callQueueTicket(activeTicket.id, activeTicket.calledBy);
         }
     };
@@ -53,6 +50,11 @@ export default function QueueWidget() {
                     Dijital Sıramatik
                 </CardTitle>
                 <div className="flex gap-1">
+                    <Link href="/admin/qrcode" target="_blank" title="Karekod Posteri Yazdır">
+                        <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-400 hover:text-blue-500">
+                            <Printer className="w-4 h-4" />
+                        </Button>
+                    </Link>
                     <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-400 hover:text-red-500" onClick={resetQueue} title="Sırayı Sıfırla">
                         <Trash2 className="w-4 h-4" />
                     </Button>
