@@ -4,7 +4,7 @@
 
 "use client";
 
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useMemo } from "react";
 import { supabase } from "@/lib/supabase";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { useAppStore } from "@/stores/useAppStore";
@@ -231,22 +231,32 @@ export function useSupabaseSync(): SupabaseSyncHook {
         queue,
     ]);
 
-    // Setup realtime subscription
+    // Store fetchCentralState in ref to avoid reconnection issues
+    const fetchRef = useRef(fetchCentralState);
+    useEffect(() => {
+        fetchRef.current = fetchCentralState;
+    }, [fetchCentralState]);
+
+    // Setup realtime subscription - use postgres_changes instead of broadcast
     useEffect(() => {
         if (!supabase) {
             setLiveStatus("offline");
             return;
         }
 
+        // Use postgres_changes for app_state table updates
         const channel = supabase
-            .channel(REALTIME_CHANNEL)
-            .on("broadcast", { event: "state-update" }, (payload) => {
-                // Skip updates from self
-                if (payload.payload?.clientId === clientId.current) return;
-
-                console.log("[Realtime] Received state update");
-                fetchCentralState();
-            })
+            .channel("realtime:app_state")
+            .on(
+                "postgres_changes",
+                { event: "*", schema: "public", table: "app_state" },
+                (payload: any) => {
+                    const targetId = payload?.new?.id ?? payload?.old?.id;
+                    if (targetId && targetId !== "global") return;
+                    console.log("[Realtime] app_state changed, fetching...");
+                    fetchRef.current(); // Use ref instead of direct call
+                }
+            )
             .subscribe((status) => {
                 if (status === "SUBSCRIBED") {
                     setLiveStatus("online");
@@ -265,12 +275,14 @@ export function useSupabaseSync(): SupabaseSyncHook {
                 channelRef.current = null;
             }
         };
-    }, [fetchCentralState, setLiveStatus]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []); // Empty deps - only setup once, use ref for fetchCentralState
 
-    // Initial fetch
+    // Initial fetch - only once on mount
     useEffect(() => {
         fetchCentralState();
-    }, [fetchCentralState]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []); // Only run once on mount
 
     return {
         fetchCentralState,

@@ -20,20 +20,18 @@ export default function TvDisplayPage() {
     const [isFullscreen, setIsFullscreen] = useState(false);
     const hasInteractedRef = useRef(false);
 
-    // İlk yükleme
+    // Periyodik olarak queue'yu güncelle (backup for realtime) - daha uzun interval
     useEffect(() => {
-        console.log("[TV] Initial load - fetching central state");
+        // İlk yükleme
         fetchCentralState();
-    }, [fetchCentralState]);
-
-    // Periyodik olarak queue'yu güncelle (backup for realtime)
-    useEffect(() => {
+        
+        // Periyodik güncelleme - 5 saniyede bir (realtime backup)
         const interval = setInterval(() => {
-            console.log("[TV] Periodic update - fetching central state");
             fetchCentralState();
-        }, 2000); // Her 2 saniyede bir güncelle
+        }, 5000); // Her 5 saniyede bir güncelle
         return () => clearInterval(interval);
-    }, [fetchCentralState]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []); // Only run once on mount
 
     // Son çağrılan bileti bul
     useEffect(() => {
