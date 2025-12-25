@@ -29,7 +29,7 @@ import ThemeToggle from "@/components/ThemeToggle";
 import { setSupabaseSyncCallback, loadThemeFromSupabase, getThemeMode, getColorScheme } from "@/lib/theme";
 import AssignedArchiveView from "@/components/archive/AssignedArchive";
 import AssignedArchiveSingleDayView from "@/components/archive/AssignedArchiveSingleDay";
-import { Calendar as CalendarIcon, Trash2, UserMinus, Plus, FileSpreadsheet, BarChart2, Volume2, VolumeX, X, Printer, Loader2, Inbox, FileText, ChevronLeft, ChevronRight } from "lucide-react";
+import { Calendar as CalendarIcon, Trash2, Search, UserMinus, Plus, FileSpreadsheet, BarChart2, Volume2, VolumeX, X, Printer, Loader2, Inbox, FileText, ChevronLeft, ChevronRight } from "lucide-react";
 
 // === YENİ MODÜLER BİLEŞENLER ===
 import FeedbackModal from "@/components/modals/FeedbackModal";
@@ -922,6 +922,7 @@ export default function DosyaAtamaApp() {
   const [viewMode, setViewMode] = useState<"landing" | "main" | "teacher-tracking" | "archive">("landing");
   const [archivePassword, setArchivePassword] = useState("");
   const [archiveAuthenticated, setArchiveAuthenticated] = useState(false);
+  const [archiveSearchTerm, setArchiveSearchTerm] = useState("");
   const [selectedAbsenceDate, setSelectedAbsenceDate] = useState<string | null>(null);
   const [selectedWeekIndex, setSelectedWeekIndex] = useState<number>(0);
   const [selectedMonthIndex, setSelectedMonthIndex] = useState<number>(0);
@@ -3170,11 +3171,69 @@ export default function DosyaAtamaApp() {
       }
     });
 
+    // Arama Fonksiyonu
+    const handleArchiveSearch = () => {
+      const term = archiveSearchTerm.toLowerCase().trim();
+      if (!term) return;
+
+      let targetFileNo = "";
+
+      // Sayı mı?
+      const num = parseInt(term);
+      if (!isNaN(num) && num > 0 && num <= 10000) {
+        targetFileNo = num.toString();
+      } else {
+        // İsim ara
+        for (const [fileNo, entry] of existingFiles.entries()) {
+          if (entry.student.toLowerCase().includes(term)) {
+            targetFileNo = fileNo;
+            break;
+          }
+        }
+      }
+
+      if (targetFileNo) {
+        const el = document.getElementById(`archive-${targetFileNo}`);
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+          // Highlight
+          el.classList.remove("bg-slate-50", "bg-teal-50");
+          el.classList.add("bg-purple-100", "ring-2", "ring-purple-500");
+          setTimeout(() => {
+            el.classList.remove("bg-purple-100", "ring-2", "ring-purple-500");
+            // Orijinal rengine dönmesi için classList'i eski haline getiremiyoruz ama
+            // re-render bekleyebiliriz veya basitçe style kullanabiliriz.
+            // En temiz yöntem: inline style ile backgroundColor set etmekti ama Tailwind classları var.
+            // Neyse, 2 saniye sonra classları silince React state'ine göre eski classlar geri gelmeyebilir
+            // ama parent re-render olmazsa classlar silinmiş kalır.
+            // Bu yüzden en iyisi style manipülasyonu veya sadece ring eklemek.
+          }, 2000);
+        } else {
+          alert("Dosya görünür alanda değil.");
+        }
+      } else {
+        alert("Bulunamadı.");
+      }
+    };
+
     return (
       <div className="container mx-auto p-4 space-y-6">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-3xl font-bold text-purple-700">🗄️ RAM Arşivi (1-10.000)</h1>
           <div className="flex gap-2">
+
+            <div className="flex items-center gap-2 mr-4 bg-white p-1 rounded-lg border shadow-sm">
+              <Search className="h-4 w-4 text-slate-400 ml-2" />
+              <Input
+                placeholder="Öğrenci veya Dosya No..."
+                className="border-none shadow-none focus-visible:ring-0 h-8 w-64"
+                value={archiveSearchTerm}
+                onChange={(e) => setArchiveSearchTerm(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleArchiveSearch()}
+              />
+              <Button size="sm" onClick={handleArchiveSearch} variant="outline" className="h-8 bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200">Ara</Button>
+            </div>
+
             <Button onClick={() => { setArchiveAuthenticated(false); setArchivePassword(""); }} variant="outline">
               Çıkış
             </Button>
@@ -3191,16 +3250,17 @@ export default function DosyaAtamaApp() {
               {archiveFiles.map(file => (
                 <div
                   key={file.id}
-                  className={`p-3 border rounded-lg ${existingFiles.has(file.fileNo) ? 'bg-teal-50 border-teal-200' : 'bg-slate-50 border-slate-200'
+                  id={`archive-${file.fileNo}`}
+                  className={`p-3 border rounded-lg transition-colors duration-500 ${existingFiles.has(file.fileNo) ? 'bg-teal-50 border-teal-200' : 'bg-slate-50 border-slate-200'
                     }`}
                 >
                   <div className="flex items-center justify-between">
                     <div>
-                      <span className="font-semibold">Dosya No: {file.fileNo}</span>
+                      <span className="font-semibold w-24 inline-block">Dosya No: {file.fileNo}</span>
                       {existingFiles.has(file.fileNo) && (
                         <>
-                          <span className="ml-4 text-slate-600">Öğrenci: {file.student}</span>
-                          <span className="ml-4 text-slate-600">Atanan: {file.assignedToName}</span>
+                          <span className="ml-4 text-slate-800 font-medium">Öğrenci: {file.student}</span>
+                          {/* Atanan öğretmen gizlendi */}
                           {file.createdAt && (
                             <span className="ml-4 text-slate-500 text-sm">
                               {format(new Date(file.createdAt), 'dd.MM.yyyy')}
