@@ -15,6 +15,7 @@ import type {
     Toast,
     AssignmentPopup,
     LiveStatus,
+    QueueTicket,
 } from "@/types";
 import { DEFAULT_SETTINGS, LS_KEYS } from "@/lib/constants";
 
@@ -95,6 +96,13 @@ interface AppState {
     showAssignmentPopup: (popup: AssignmentPopup) => void;
     hideAssignmentPopup: () => void;
 
+    // === Queue System ===
+    queue: QueueTicket[];
+    addQueueTicket: (name?: string) => void;
+    callQueueTicket: (id: string, teacherId?: string) => void;
+    updateQueueTicketStatus: (id: string, status: 'waiting' | 'called' | 'done') => void;
+    resetQueue: () => void;
+
     // === Reset ===
     resetState: () => void;
 }
@@ -125,6 +133,7 @@ const initialState = {
     hydrated: false,
     toasts: [],
     assignmentPopup: null,
+    queue: [],
 };
 
 // ---- Create Store
@@ -235,6 +244,29 @@ export const useAppStore = create<AppState>()(
             },
             hideAssignmentPopup: () => set({ assignmentPopup: null }),
 
+            // === Queue System ===
+            addQueueTicket: (name) => set((state) => {
+                const maxNo = state.queue.length > 0 ? Math.max(...state.queue.map(t => t.no)) : 0;
+                // Eğer gün dönümü olduysa 0'dan başla (Veya manuel resetQueue ile yapılır)
+                // Şimdilik sadece max+1.
+                const newTicket: QueueTicket = {
+                    id: uid(),
+                    no: maxNo + 1,
+                    name,
+                    status: 'waiting',
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString(),
+                };
+                return { queue: [...state.queue, newTicket] };
+            }),
+            callQueueTicket: (id, teacherId) => set((state) => ({
+                queue: state.queue.map(t => t.id === id ? { ...t, status: 'called', calledBy: teacherId, updatedAt: new Date().toISOString() } : t)
+            })),
+            updateQueueTicketStatus: (id, status) => set((state) => ({
+                queue: state.queue.map(t => t.id === id ? { ...t, status, updatedAt: new Date().toISOString() } : t)
+            })),
+            resetQueue: () => set({ queue: [] }),
+
             // === Reset ===
             resetState: () => set(initialState),
         }),
@@ -251,6 +283,7 @@ export const useAppStore = create<AppState>()(
                 lastRollover: state.lastRollover,
                 lastAbsencePenalty: state.lastAbsencePenalty,
                 soundOn: state.soundOn,
+                queue: state.queue,
             }),
             onRehydrateStorage: () => (state) => {
                 if (state) {

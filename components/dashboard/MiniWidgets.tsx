@@ -9,6 +9,7 @@ import { Users, FileText, Calendar, TrendingUp, AlertCircle, Clock } from "lucid
 import { CaseFile, Teacher, PdfAppointment } from "@/types";
 import { findBestTeacher } from "@/lib/scoring";
 import { useAppStore } from "@/stores/useAppStore";
+import QueueWidget from "./QueueWidget";
 
 interface MiniWidgetsProps {
     teachers: Teacher[];
@@ -274,6 +275,11 @@ export default function MiniWidgets({ teachers, cases, pdfEntries, history }: Mi
                         Geçen ay: {performanceStats.lastMonthCount}
                     </div>
                 </div>
+            </div>
+
+            {/* 5. Sıramatik Widget */}
+            <div className="lg:col-span-1">
+                <QueueWidget />
             </div>
 
         </div>

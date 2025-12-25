@@ -13,6 +13,7 @@ interface AudioFeedbackHook {
     playEmergencySound: () => void;
     playClickSound: () => void;
     playAnnouncementSound: () => void;
+    playDingDong: () => void;
     testSound: () => void;
     resumeAudioIfNeeded: () => void;
 }
@@ -169,6 +170,18 @@ export function useAudioFeedback(): AudioFeedbackHook {
         );
     }, [playTone, resumeAudioIfNeeded]);
 
+    // Ding Dong Sound (Queue Call)
+    const playDingDong = useCallback(() => {
+        resumeAudioIfNeeded();
+        // Ding (G5)
+        playTone(784, 0.6, 0.3, "sine", 0.05, 0.4, 0.6, 0.2);
+        // Dong (E5) - biraz gecikmeli
+        setTimeout(
+            () => playTone(659, 0.8, 0.25, "sine", 0.05, 0.6, 0.5, 0.3),
+            500
+        );
+    }, [playTone, resumeAudioIfNeeded]);
+
     // Test sound
     const testSound = useCallback(() => {
         resumeAudioIfNeeded();
@@ -188,6 +201,7 @@ export function useAudioFeedback(): AudioFeedbackHook {
         playEmergencySound,
         playClickSound,
         playAnnouncementSound,
+        playDingDong,
         testSound,
         resumeAudioIfNeeded,
     };

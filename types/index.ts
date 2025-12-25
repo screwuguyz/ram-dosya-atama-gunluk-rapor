@@ -145,3 +145,16 @@ export interface ColorScheme {
   danger: string;
   info: string;
 }
+
+/**
+ * Sıramatik bileti
+ */
+export interface QueueTicket {
+  id: string;
+  no: number;
+  name?: string;
+  status: 'waiting' | 'called' | 'done';
+  calledBy?: string; // Teacher ID
+  createdAt: string;
+  updatedAt: string;
+}
