@@ -7,6 +7,8 @@
 import React, { useMemo } from "react";
 import { Users, FileText, Calendar, TrendingUp, AlertCircle, Clock } from "lucide-react";
 import { CaseFile, Teacher, PdfAppointment } from "@/types";
+import { findBestTeacher } from "@/lib/scoring";
+import { useAppStore } from "@/stores/useAppStore";
 
 interface MiniWidgetsProps {
     teachers: Teacher[];
@@ -16,6 +18,8 @@ interface MiniWidgetsProps {
 }
 
 export default function MiniWidgets({ teachers, cases, pdfEntries, history }: MiniWidgetsProps) {
+    const settings = useAppStore((state) => state.settings);
+
     // 1. Bugünün Durumu
     const todayStats = useMemo(() => {
         const todayCases = cases.filter(c => !c.absencePenalty);
@@ -47,9 +51,6 @@ export default function MiniWidgets({ teachers, cases, pdfEntries, history }: Mi
         const active = teachers.filter(t => t.active && !t.isAbsent);
         const absent = teachers.filter(t => t.isAbsent);
 
-        // Yük durumu (kabaca bugün aldığı dosya sayısına göre)
-        // Bu basit bir mantık, daha karmaşık skorlama lib/scoring.ts'de var ama burası hızlı özet
-
         return {
             activeCount: active.length,
             absentCount: absent.length,
@@ -62,36 +63,27 @@ export default function MiniWidgets({ teachers, cases, pdfEntries, history }: Mi
         if (!pdfEntries || pdfEntries.length === 0) return null;
 
         const now = new Date();
-        // 30 dakika tolerans (ms cinsinden)
         const tolerance = 30 * 60 * 1000;
 
-        // Bugün atanmış öğrencilerin listesi
         const todayAssignedNames = new Set(
             cases
                 .filter(c => !c.absencePenalty)
                 .map(c => c.student.toLowerCase().trim())
         );
 
-        // Henüz atanmamış ve süresi geçmemiş (veya tolerans içinde) randevuyu bul
         const pending = pdfEntries.filter(e => {
             const studentName = e.name.toLowerCase().trim();
-
-            // Eğer atanmışsa listeden çıkar
             if (todayAssignedNames.has(studentName)) return false;
 
-            // Zaman kontrolü
             const [hours, minutes] = e.time.split(":").map(Number);
             const appointmentDate = new Date();
             appointmentDate.setHours(hours, minutes, 0, 0);
 
-            // Eğer randevu saati + 30 dk, şu andan küçükse (yani 30 dk tolerans bittiyse) gösterme
             const isExpired = (appointmentDate.getTime() + tolerance) < now.getTime();
-
             return !isExpired;
         });
 
         if (pending.length === 0) return null;
-
         return pending[0];
     }, [pdfEntries, cases]);
 
@@ -103,12 +95,20 @@ export default function MiniWidgets({ teachers, cases, pdfEntries, history }: Mi
             .join(", ");
     }, [teachers]);
 
+    // Tahmini Atama
+    const prediction = useMemo(() => {
+        if (!nextAppointment || !settings) return null;
+
+        const bestForSupport = findBestTeacher(teachers, cases, settings, { forTestCase: false });
+        const bestForTest = findBestTeacher(teachers, cases, settings, { forTestCase: true });
+
+        return { bestForSupport, bestForTest };
+    }, [nextAppointment, teachers, cases, settings]);
+
     // 4. Aylık Performans
     const performanceStats = useMemo(() => {
         const today = new Date();
-        const currentMonth = today.toISOString().slice(0, 7); // YYYY-MM
-
-        // Geçen ay
+        const currentMonth = today.toISOString().slice(0, 7);
         const lastMonthDate = new Date(today);
         lastMonthDate.setMonth(today.getMonth() - 1);
         const lastMonth = lastMonthDate.toISOString().slice(0, 7);
@@ -116,7 +116,6 @@ export default function MiniWidgets({ teachers, cases, pdfEntries, history }: Mi
         let currentMonthCount = 0;
         let lastMonthCount = 0;
 
-        // Arşivden say (bugün dahil değil çünkü history'de yok henüz)
         Object.entries(history).forEach(([date, dayCases]) => {
             if (date.startsWith(currentMonth)) {
                 currentMonthCount += dayCases.filter(c => !c.absencePenalty).length;
@@ -125,7 +124,6 @@ export default function MiniWidgets({ teachers, cases, pdfEntries, history }: Mi
             }
         });
 
-        // Bugünü de ekle
         currentMonthCount += cases.filter(c => !c.absencePenalty).length;
 
         const diff = currentMonthCount - lastMonthCount;
@@ -151,7 +149,6 @@ export default function MiniWidgets({ teachers, cases, pdfEntries, history }: Mi
                         <div className="text-2xl font-bold text-slate-800 dark:text-white mb-2">
                             {todayStats.count} <span className="text-sm font-normal text-slate-400">/ 15</span>
                         </div>
-                        {/* Progress Bar */}
                         <div className="w-full bg-slate-100 dark:bg-slate-700 rounded-full h-2 mb-2">
                             <div
                                 className="bg-teal-500 h-2 rounded-full transition-all duration-500"
@@ -203,7 +200,7 @@ export default function MiniWidgets({ teachers, cases, pdfEntries, history }: Mi
                 </div>
             </div>
 
-            {/* 3. Sıradaki Randevu */}
+            {/* 3. Sıradaki Randevu (ve Tahmini Atama) */}
             <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 relative overflow-hidden group hover:border-purple-500 transition-colors">
                 <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
                     <Clock className="w-12 h-12 text-purple-600 dark:text-purple-400" />
@@ -228,8 +225,29 @@ export default function MiniWidgets({ teachers, cases, pdfEntries, history }: Mi
                     </div>
 
                     {nextAppointment && (
-                        <div className="mt-2 text-xs bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 px-2 py-1 rounded inline-block w-fit">
-                            {nextAppointment.fileNo ? `#${nextAppointment.fileNo}` : "Dosya No Yok"} {nextAppointment.extra && `- ${nextAppointment.extra}`}
+                        <div className="space-y-2 mt-2">
+                            <div className="text-xs bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 px-2 py-1 rounded inline-block w-fit">
+                                {nextAppointment.fileNo ? `#${nextAppointment.fileNo}` : "Dosya No Yok"} {nextAppointment.extra && `- ${nextAppointment.extra}`}
+                            </div>
+
+                            {/* Tahmini Atama */}
+                            <div className="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-2 text-xs text-slate-600 dark:text-slate-300 border border-slate-100 dark:border-slate-700">
+                                <div className="font-semibold mb-1 text-slate-500 dark:text-slate-400">Tahmini Atama:</div>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div>
+                                        <span className="block text-[10px] text-slate-400">Destek / İkisi</span>
+                                        <span className="font-medium text-purple-600 dark:text-purple-400 truncate block" title={prediction?.bestForSupport?.name || "-"}>
+                                            {prediction?.bestForSupport?.name || "-"}
+                                        </span>
+                                    </div>
+                                    <div className="border-l pl-2 border-slate-200 dark:border-slate-600">
+                                        <span className="block text-[10px] text-slate-400">Test Varsa</span>
+                                        <span className="font-medium text-rose-500 dark:text-rose-400 truncate block" title={prediction?.bestForTest?.name || "-"}>
+                                            {prediction?.bestForTest?.name || "-"}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     )}
                 </div>
