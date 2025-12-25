@@ -55,7 +55,11 @@ export async function POST(req: NextRequest) {
         const { error: updateError } = await adminMs
             .from("app_state")
             .update({
-                state: { ...state, queue: newQueue },
+                state: {
+                    ...state,
+                    queue: newQueue,
+                    updatedAt: new Date().toISOString()
+                },
                 updated_at: new Date().toISOString()
             })
             .eq("id", "global");
