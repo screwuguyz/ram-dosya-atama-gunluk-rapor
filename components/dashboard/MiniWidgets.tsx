@@ -61,24 +61,47 @@ export default function MiniWidgets({ teachers, cases, pdfEntries, history }: Mi
     const nextAppointment = useMemo(() => {
         if (!pdfEntries || pdfEntries.length === 0) return null;
 
-        // Bugün atanmış öğrencilerin listesi (isimleri normalleştirerek)
+        const now = new Date();
+        // 30 dakika tolerans (ms cinsinden)
+        const tolerance = 30 * 60 * 1000;
+
+        // Bugün atanmış öğrencilerin listesi
         const todayAssignedNames = new Set(
             cases
                 .filter(c => !c.absencePenalty)
                 .map(c => c.student.toLowerCase().trim())
         );
 
-        // Henüz atanmamış ilk randevuyu bul
-        // pdfEntries zaten saat sırasına göre gelmeli, değilse burada sıralanabilir
+        // Henüz atanmamış ve süresi geçmemiş (veya tolerans içinde) randevuyu bul
         const pending = pdfEntries.filter(e => {
             const studentName = e.name.toLowerCase().trim();
-            return !todayAssignedNames.has(studentName);
+
+            // Eğer atanmışsa listeden çıkar
+            if (todayAssignedNames.has(studentName)) return false;
+
+            // Zaman kontrolü
+            const [hours, minutes] = e.time.split(":").map(Number);
+            const appointmentDate = new Date();
+            appointmentDate.setHours(hours, minutes, 0, 0);
+
+            // Eğer randevu saati + 30 dk, şu andan küçükse (yani 30 dk tolerans bittiyse) gösterme
+            const isExpired = (appointmentDate.getTime() + tolerance) < now.getTime();
+
+            return !isExpired;
         });
 
         if (pending.length === 0) return null;
 
         return pending[0];
     }, [pdfEntries, cases]);
+
+    // İzinli öğretmenlerin isimleri
+    const absentNames = useMemo(() => {
+        return teachers
+            .filter(t => t.active && t.isAbsent)
+            .map(t => t.name)
+            .join(", ");
+    }, [teachers]);
 
     // 4. Aylık Performans
     const performanceStats = useMemo(() => {
@@ -170,8 +193,12 @@ export default function MiniWidgets({ teachers, cases, pdfEntries, history }: Mi
                             )}
                         </div>
                     </div>
-                    <div className="text-xs text-rose-500 mt-2 font-medium">
-                        {teacherStats.absentCount > 0 ? `${teacherStats.absentCount} kişi izinli` : "Tam kadro"}
+                    <div className="text-xs text-rose-500 mt-2 font-medium truncate" title={absentNames}>
+                        {teacherStats.absentCount > 0 ? (
+                            <>
+                                <span className="font-bold">{teacherStats.absentCount}</span> kişi izinli: {absentNames}
+                            </>
+                        ) : "Tam kadro"}
                     </div>
                 </div>
             </div>
