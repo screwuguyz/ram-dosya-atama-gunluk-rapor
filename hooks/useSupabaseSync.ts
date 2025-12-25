@@ -153,14 +153,19 @@ export function useSupabaseSync(): SupabaseSyncHook {
 
             // Load Queue
             if (Array.isArray(s.queue)) {
+                console.log("[fetchCentralState] Loading queue:", s.queue.length, "tickets");
                 setQueue(s.queue);
+            } else {
+                console.log("[fetchCentralState] No queue in state or not an array");
             }
 
             console.log(
                 "[fetchCentralState] Loaded teachers:",
                 s.teachers?.length || 0,
                 "eArchive:",
-                s.eArchive?.length || 0
+                s.eArchive?.length || 0,
+                "queue:",
+                s.queue?.length || 0
             );
 
             setHydrated(true);

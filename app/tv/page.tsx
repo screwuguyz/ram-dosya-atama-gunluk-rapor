@@ -20,9 +20,16 @@ export default function TvDisplayPage() {
     const [isFullscreen, setIsFullscreen] = useState(false);
     const hasInteractedRef = useRef(false);
 
+    // İlk yükleme
+    useEffect(() => {
+        console.log("[TV] Initial load - fetching central state");
+        fetchCentralState();
+    }, [fetchCentralState]);
+
     // Periyodik olarak queue'yu güncelle (backup for realtime)
     useEffect(() => {
         const interval = setInterval(() => {
+            console.log("[TV] Periodic update - fetching central state");
             fetchCentralState();
         }, 2000); // Her 2 saniyede bir güncelle
         return () => clearInterval(interval);
@@ -30,6 +37,9 @@ export default function TvDisplayPage() {
 
     // Son çağrılan bileti bul
     useEffect(() => {
+        console.log("[TV] Queue state changed, total tickets:", queue.length);
+        console.log("[TV] Full queue:", JSON.stringify(queue, null, 2));
+        
         // En son update edilen ve called olanı bul
         const calledTickets = queue
             .filter(t => t.status === 'called')
@@ -37,19 +47,32 @@ export default function TvDisplayPage() {
 
         const latest = calledTickets[0];
 
-        console.log("[TV] Queue updated:", {
+        console.log("[TV] Queue analysis:", {
             totalQueue: queue.length,
             calledTickets: calledTickets.length,
-            latestTicket: latest ? { no: latest.no, name: latest.name, id: latest.id } : null,
-            lastAnnouncedId
+            waitingTickets: queue.filter(t => t.status === 'waiting').length,
+            doneTickets: queue.filter(t => t.status === 'done').length,
+            latestTicket: latest ? { 
+                no: latest.no, 
+                name: latest.name, 
+                id: latest.id, 
+                status: latest.status,
+                updatedAt: latest.updatedAt 
+            } : null,
+            lastAnnouncedId,
+            allCalledTickets: calledTickets.map(t => ({ no: t.no, name: t.name, id: t.id }))
         });
 
         setCurrentTicket(latest || null);
 
         if (latest && latest.id !== lastAnnouncedId) {
-            console.log("[TV] New ticket called:", latest.no, latest.name);
+            console.log("[TV] 🎉 NEW TICKET CALLED:", latest.no, latest.name);
             setLastAnnouncedId(latest.id);
             announceTicket(latest);
+        } else if (latest && latest.id === lastAnnouncedId) {
+            console.log("[TV] Same ticket still active:", latest.no);
+        } else {
+            console.log("[TV] No called tickets found");
         }
     }, [queue, lastAnnouncedId]);
 

@@ -29,11 +29,22 @@ export default function QueueWidget() {
 
     // Bilet çağırma
     const handleCall = async (id: string) => {
+        const ticket = queue.find(t => t.id === id);
+        console.log("[QueueWidget] Calling ticket:", ticket);
+        
         callQueueTicket(id, "admin");
+        
         // Hemen sync et
+        console.log("[QueueWidget] Syncing to server...");
         await syncToServer();
+        console.log("[QueueWidget] First sync completed");
+        
         // Ekstra güvenlik için bir kez daha dene
-        setTimeout(() => syncToServer(), 200);
+        setTimeout(async () => {
+            console.log("[QueueWidget] Second sync...");
+            await syncToServer();
+            console.log("[QueueWidget] Second sync completed");
+        }, 500);
     };
 
     // Tekrar anons
