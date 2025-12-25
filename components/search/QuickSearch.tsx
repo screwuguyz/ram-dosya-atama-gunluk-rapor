@@ -17,16 +17,17 @@ interface Teacher {
 interface CaseFile {
     id: string;
     student: string;
+    fileNo?: string;
     createdAt: string;
     assignedTo?: string;
     type?: string;
 }
 
 interface SearchResult {
-    type: "teacher" | "student" | "case";
+    type: "case";
     id: string;
     title: string;
-    subtitle?: string;
+    fileNo?: string;
     date?: string;
     icon: React.ReactNode;
 }
@@ -57,17 +58,20 @@ export default function QuickSearch({
         return [...cases, ...archived];
     }, [cases, history]);
 
-    // Arama sonuçları - sadece öğrenci
+    // Arama sonuçları - öğrenci adı veya dosya numarası
     const results = useMemo((): SearchResult[] => {
         if (!query.trim()) return [];
 
         const q = query.toLowerCase().trim();
         const results: SearchResult[] = [];
 
-        // Öğrenci/Dosya ara
+        // Öğrenci adı veya dosya numarası ile ara
         const seen = new Set<string>();
         allCases
-            .filter(c => c.student.toLowerCase().includes(q))
+            .filter(c =>
+                c.student.toLowerCase().includes(q) ||
+                (c.fileNo && c.fileNo.toLowerCase().includes(q))
+            )
             .slice(0, 15)
             .forEach(c => {
                 // Aynı öğrenciyi tekrar gösterme
@@ -75,19 +79,18 @@ export default function QuickSearch({
                 if (seen.has(key)) return;
                 seen.add(key);
 
-                const teacher = teachers.find(t => t.id === c.assignedTo);
                 results.push({
                     type: "case",
                     id: c.id,
                     title: c.student,
-                    subtitle: teacher ? `→ ${teacher.name}` : "Atanmadı",
+                    fileNo: c.fileNo,
                     date: c.createdAt.split("T")[0],
                     icon: <FileText className="h-4 w-4 text-emerald-500" />,
                 });
             });
 
         return results;
-    }, [query, teachers, allCases]);
+    }, [query, allCases]);
 
     // Klavye kısayolu (Ctrl+K)
     useEffect(() => {
@@ -129,9 +132,7 @@ export default function QuickSearch({
 
     // Seçim
     const handleSelect = (result: SearchResult) => {
-        if (result.type === "teacher" && onSelectTeacher) {
-            onSelectTeacher(result.id);
-        } else if (result.type === "case" && onSelectCase) {
+        if (onSelectCase) {
             const caseFile = allCases.find(c => c.id === result.id);
             if (caseFile) onSelectCase(caseFile);
         }
@@ -168,7 +169,7 @@ export default function QuickSearch({
                     <input
                         ref={inputRef}
                         type="text"
-                        placeholder="Öğrenci ara..."
+                        placeholder="Öğrenci adı veya dosya no..."
                         value={query}
                         onChange={e => {
                             setQuery(e.target.value);
@@ -210,9 +211,9 @@ export default function QuickSearch({
                                 <div className="font-medium text-slate-800 truncate">
                                     {result.title}
                                 </div>
-                                {result.subtitle && (
-                                    <div className="text-sm text-slate-500 truncate">
-                                        {result.subtitle}
+                                {result.fileNo && (
+                                    <div className="text-xs text-slate-400">
+                                        #{result.fileNo}
                                     </div>
                                 )}
                             </div>
