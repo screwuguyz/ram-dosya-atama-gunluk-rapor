@@ -1275,14 +1275,24 @@ export default function DosyaAtamaApp() {
     if (!isAdmin) return;
     if (!hydrated) return;
     if (!centralLoaded) return;
-
+    
     // KORUMA: Eğer Supabase'de öğretmen varsa ama local'de yoksa, yazma!
     // Bu, yeni tarayıcı/boş localStorage'ın Supabase verisini silmesini önler
     if (supabaseTeacherCountRef.current > 0 && teachers.length === 0) {
       console.warn("[state POST] BLOCKED: Supabase has", supabaseTeacherCountRef.current, "teachers but local has 0. Refusing to overwrite.");
       return;
     }
-
+    
+    // KORUMA: Queue boşsa ve Supabase'de queue varsa, yazma!
+    // Bu, /api/queue endpoint'inin yazdığı queue'yu silmeyi önler
+    // Queue sadece admin panelinde değişiklik yapıldığında yazılmalı
+    // /api/queue endpoint'i zaten queue'yu Supabase'e yazıyor
+    const currentQueue = useAppStore.getState().queue;
+    if (!Array.isArray(currentQueue) || currentQueue.length === 0) {
+      // Queue boş, Supabase'e yazma (queue sadece /api/queue veya admin panelinde değişiklik yapıldığında yazılmalı)
+      console.log("[state POST] Skipping queue sync - queue is empty (will be written by /api/queue endpoint)");
+    }
+    
     const ctrl = new AbortController();
     const nowTs = new Date().toISOString();
     lastAppliedAtRef.current = nowTs;
@@ -1313,7 +1323,8 @@ export default function DosyaAtamaApp() {
       },
       eArchive,
       absenceRecords,
-      queue, // Queue'yu payload'a ekle
+      // Queue'yu sadece boş değilse ekle
+      ...(Array.isArray(currentQueue) && currentQueue.length > 0 ? { queue: currentQueue } : {}),
       updatedAt: nowTs,
     };
     const t = window.setTimeout(() => {
@@ -1329,7 +1340,7 @@ export default function DosyaAtamaApp() {
             console.error("[state POST] Error:", json);
             toast(`Supabase kayıt hatası: ${json?.error || res.status}`);
           } else {
-            console.log("[state POST] Success, teachers:", teachers.length, "queue:", queue.length);
+            console.log("[state POST] Success, teachers:", teachers.length, "queue:", currentQueue.length);
           }
         })
         .catch((err) => {
