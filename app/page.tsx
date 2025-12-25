@@ -36,6 +36,7 @@ import FeedbackModal from "@/components/modals/FeedbackModal";
 import VersionModal from "@/components/modals/VersionModal";
 import CalendarView from "@/components/reports/CalendarView";
 import QuickSearch from "@/components/search/QuickSearch";
+import WeeklyChart from "@/components/dashboard/WeeklyChart";
 
 
 
@@ -3368,6 +3369,11 @@ export default function DosyaAtamaApp() {
             <div className="text-sm opacity-90">📅 Arşivli Gün</div>
           </div>
         </div>
+
+        {/* 📈 HAFTALIK TREND GRAFİĞİ (Admin için) */}
+        {isAdmin && (
+          <WeeklyChart cases={cases} history={history} />
+        )}
 
 
         {/* Admin olmayan kullanıcılar için randevu listesi ve duyurular */}
