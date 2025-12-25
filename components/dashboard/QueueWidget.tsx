@@ -1,6 +1,7 @@
 "use client";
 
 import { useAppStore } from "@/stores/useAppStore";
+import { useSupabaseSync } from "@/hooks/useSupabaseSync";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Play, Check, RefreshCw, Trash2, Megaphone, Printer } from "lucide-react";
@@ -13,6 +14,7 @@ export default function QueueWidget() {
     const callQueueTicket = useAppStore(s => s.callQueueTicket);
     const updateQueueTicketStatus = useAppStore(s => s.updateQueueTicketStatus);
     const resetQueue = useAppStore(s => s.resetQueue);
+    const { syncToServer } = useSupabaseSync();
 
     // Aktif Bilet (En son çağrılan ve henüz tamamlanmayan)
     const calledTickets = queue
@@ -28,18 +30,21 @@ export default function QueueWidget() {
     // Bilet çağırma
     const handleCall = (id: string) => {
         callQueueTicket(id, "admin");
+        setTimeout(syncToServer, 50);
     };
 
     // Tekrar anons
     const handleRecall = () => {
         if (activeTicket) {
             callQueueTicket(activeTicket.id, activeTicket.calledBy);
+            setTimeout(syncToServer, 50);
         }
     };
 
     // Tamamla
     const handleComplete = (id: string) => {
         updateQueueTicketStatus(id, 'done');
+        setTimeout(syncToServer, 50);
     };
 
     return (
@@ -55,7 +60,7 @@ export default function QueueWidget() {
                             <Printer className="w-4 h-4" />
                         </Button>
                     </Link>
-                    <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-400 hover:text-red-500" onClick={resetQueue} title="Sırayı Sıfırla">
+                    <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-400 hover:text-red-500" onClick={() => { resetQueue(); setTimeout(syncToServer, 50); }} title="Sırayı Sıfırla">
                         <Trash2 className="w-4 h-4" />
                     </Button>
                 </div>

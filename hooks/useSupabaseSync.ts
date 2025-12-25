@@ -11,7 +11,7 @@ import { useAppStore } from "@/stores/useAppStore";
 import { getTodayYmd } from "@/lib/date";
 import { loadThemeFromSupabase } from "@/lib/theme";
 import { REALTIME_CHANNEL, API_ENDPOINTS } from "@/lib/constants";
-import type { Teacher, CaseFile, Settings, EArchiveEntry, AbsenceRecord } from "@/types";
+import type { Teacher, CaseFile, Settings, EArchiveEntry, AbsenceRecord, QueueTicket } from "@/types";
 
 // Generate unique client ID
 function uid(): string {
@@ -54,6 +54,8 @@ export function useSupabaseSync(): SupabaseSyncHook {
         setLiveStatus,
         setHydrated,
         addToast,
+        queue,
+        setQueue,
     } = useAppStore();
 
     // Keep refs in sync with state
@@ -149,6 +151,11 @@ export function useSupabaseSync(): SupabaseSyncHook {
                 setAbsenceRecords(s.absenceRecords);
             }
 
+            // Load Queue
+            if (Array.isArray(s.queue)) {
+                setQueue(s.queue);
+            }
+
             console.log(
                 "[fetchCentralState] Loaded teachers:",
                 s.teachers?.length || 0,
@@ -189,6 +196,7 @@ export function useSupabaseSync(): SupabaseSyncHook {
                 absenceRecords,
                 lastRollover,
                 lastAbsencePenalty,
+                queue,
                 updatedAt: new Date().toISOString(),
                 clientId: clientId.current,
             };
@@ -215,6 +223,7 @@ export function useSupabaseSync(): SupabaseSyncHook {
         absenceRecords,
         lastRollover,
         lastAbsencePenalty,
+        queue,
     ]);
 
     // Setup realtime subscription

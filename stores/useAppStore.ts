@@ -98,6 +98,7 @@ interface AppState {
 
     // === Queue System ===
     queue: QueueTicket[];
+    setQueue: (queue: QueueTicket[]) => void;
     addQueueTicket: (name?: string) => void;
     callQueueTicket: (id: string, teacherId?: string) => void;
     updateQueueTicketStatus: (id: string, status: 'waiting' | 'called' | 'done') => void;
@@ -245,6 +246,7 @@ export const useAppStore = create<AppState>()(
             hideAssignmentPopup: () => set({ assignmentPopup: null }),
 
             // === Queue System ===
+            setQueue: (queue) => set({ queue }),
             addQueueTicket: (name) => set((state) => {
                 const maxNo = state.queue.length > 0 ? Math.max(...state.queue.map(t => t.no)) : 0;
                 // Eğer gün dönümü olduysa 0'dan başla (Veya manuel resetQueue ile yapılır)

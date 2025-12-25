@@ -3,12 +3,17 @@
 import { useEffect, useState, useRef } from "react";
 import { useAppStore } from "@/stores/useAppStore";
 import { useAudioFeedback } from "@/hooks/useAudioFeedback";
+import { useSupabaseSync } from "@/hooks/useSupabaseSync";
 import { QueueTicket } from "@/types";
 import { format } from "date-fns";
 
 export default function TvDisplayPage() {
     const queue = useAppStore(s => s.queue);
     const { playDingDong } = useAudioFeedback();
+
+    // Sync hook'unu aktif et (data fetch + realtime sub)
+    useSupabaseSync();
+
     const [lastAnnouncedId, setLastAnnouncedId] = useState<string | null>(null);
     const [currentTicket, setCurrentTicket] = useState<QueueTicket | null>(null);
     const hasInteractedRef = useRef(false);
