@@ -3371,20 +3371,16 @@ export default function DosyaAtamaApp() {
           </div>
         </div>
 
-        {/* 📊 DASHBOARD WIDGET'LAR (Admin için) */}
-        {isAdmin && (
-          <MiniWidgets
-            teachers={teachers}
-            cases={cases}
-            pdfEntries={pdfEntries}
-            history={history}
-          />
-        )}
+        {/* 📊 DASHBOARD WIDGET'LAR (Herkes için) */}
+        <MiniWidgets
+          teachers={teachers}
+          cases={cases}
+          pdfEntries={pdfEntries}
+          history={history}
+        />
 
-        {/* 📈 HAFTALIK TREND GRAFİĞİ (Admin için) */}
-        {isAdmin && (
-          <WeeklyChart cases={cases} history={history} />
-        )}
+        {/* 📈 HAFTALIK TREND GRAFİĞİ (Herkes için) */}
+        <WeeklyChart cases={cases} history={history} />
 
 
         {/* Admin olmayan kullanıcılar için randevu listesi ve duyurular */}
