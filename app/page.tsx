@@ -37,6 +37,7 @@ import VersionModal from "@/components/modals/VersionModal";
 import CalendarView from "@/components/reports/CalendarView";
 import QuickSearch from "@/components/search/QuickSearch";
 import WeeklyChart from "@/components/dashboard/WeeklyChart";
+import MiniWidgets from "@/components/dashboard/MiniWidgets";
 
 
 
@@ -3369,6 +3370,16 @@ export default function DosyaAtamaApp() {
             <div className="text-sm opacity-90">📅 Arşivli Gün</div>
           </div>
         </div>
+
+        {/* 📊 DASHBOARD WIDGET'LAR (Admin için) */}
+        {isAdmin && (
+          <MiniWidgets
+            teachers={teachers}
+            cases={cases}
+            pdfEntries={pdfEntries}
+            history={history}
+          />
+        )}
 
         {/* 📈 HAFTALIK TREND GRAFİĞİ (Admin için) */}
         {isAdmin && (

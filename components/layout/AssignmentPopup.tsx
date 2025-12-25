@@ -11,6 +11,37 @@ import { CheckCircle } from "lucide-react";
 export default function AssignmentPopup() {
     const assignmentPopup = useAppStore((state) => state.assignmentPopup);
 
+    React.useEffect(() => {
+        if (assignmentPopup) {
+            import("canvas-confetti").then((confetti) => {
+                const duration = 3000;
+                const end = Date.now() + duration;
+
+                const frame = () => {
+                    confetti.default({
+                        particleCount: 2,
+                        angle: 60,
+                        spread: 55,
+                        origin: { x: 0 },
+                        colors: ['#0d9488', '#f97316', '#14b8a6']
+                    });
+                    confetti.default({
+                        particleCount: 2,
+                        angle: 120,
+                        spread: 55,
+                        origin: { x: 1 },
+                        colors: ['#0d9488', '#f97316', '#14b8a6']
+                    });
+
+                    if (Date.now() < end) {
+                        requestAnimationFrame(frame);
+                    }
+                };
+                frame();
+            });
+        }
+    }, [assignmentPopup]);
+
     if (!assignmentPopup) return null;
 
     return (

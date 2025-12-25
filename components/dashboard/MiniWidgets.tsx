@@ -1,0 +1,236 @@
+// ============================================
+// Mini Dashboard Widget'ları
+// ============================================
+
+"use client";
+
+import React, { useMemo } from "react";
+import { Users, FileText, Calendar, TrendingUp, AlertCircle, Clock } from "lucide-react";
+import { CaseFile, Teacher, PdfAppointment } from "@/types";
+
+interface MiniWidgetsProps {
+    teachers: Teacher[];
+    cases: CaseFile[];
+    pdfEntries: PdfAppointment[];
+    history: Record<string, CaseFile[]>;
+}
+
+export default function MiniWidgets({ teachers, cases, pdfEntries, history }: MiniWidgetsProps) {
+    // 1. Bugünün Durumu
+    const todayStats = useMemo(() => {
+        const todayCases = cases.filter(c => !c.absencePenalty);
+        const count = todayCases.length;
+        const goal = 15; // Günlük hedef (varsayılan)
+        const progress = Math.min((count / goal) * 100, 100);
+
+        // En çok dosya alan öğretmen
+        const teacherCounts = new Map<string, number>();
+        todayCases.forEach(c => {
+            if (c.assignedTo) {
+                teacherCounts.set(c.assignedTo, (teacherCounts.get(c.assignedTo) || 0) + 1);
+            }
+        });
+
+        let topTeacher = { name: "-", count: 0 };
+        teacherCounts.forEach((cnt, id) => {
+            if (cnt > topTeacher.count) {
+                const teacher = teachers.find(t => t.id === id);
+                if (teacher) topTeacher = { name: teacher.name, count: cnt };
+            }
+        });
+
+        return { count, progress, topTeacher };
+    }, [cases, teachers]);
+
+    // 2. Öğretmen Özeti
+    const teacherStats = useMemo(() => {
+        const active = teachers.filter(t => t.active && !t.isAbsent);
+        const absent = teachers.filter(t => t.isAbsent);
+
+        // Yük durumu (kabaca bugün aldığı dosya sayısına göre)
+        // Bu basit bir mantık, daha karmaşık skorlama lib/scoring.ts'de var ama burası hızlı özet
+
+        return {
+            activeCount: active.length,
+            absentCount: absent.length,
+            total: teachers.length
+        };
+    }, [teachers]);
+
+    // 3. Sıradaki Randevu
+    const nextAppointment = useMemo(() => {
+        if (!pdfEntries || pdfEntries.length === 0) return null;
+
+        // Bugün atanmış öğrencilerin listesi (isimleri normalleştirerek)
+        const todayAssignedNames = new Set(
+            cases
+                .filter(c => !c.absencePenalty)
+                .map(c => c.student.toLowerCase().trim())
+        );
+
+        // Henüz atanmamış ilk randevuyu bul
+        // pdfEntries zaten saat sırasına göre gelmeli, değilse burada sıralanabilir
+        const pending = pdfEntries.filter(e => {
+            const studentName = e.name.toLowerCase().trim();
+            return !todayAssignedNames.has(studentName);
+        });
+
+        if (pending.length === 0) return null;
+
+        return pending[0];
+    }, [pdfEntries, cases]);
+
+    // 4. Aylık Performans
+    const performanceStats = useMemo(() => {
+        const today = new Date();
+        const currentMonth = today.toISOString().slice(0, 7); // YYYY-MM
+
+        // Geçen ay
+        const lastMonthDate = new Date(today);
+        lastMonthDate.setMonth(today.getMonth() - 1);
+        const lastMonth = lastMonthDate.toISOString().slice(0, 7);
+
+        let currentMonthCount = 0;
+        let lastMonthCount = 0;
+
+        // Arşivden say (bugün dahil değil çünkü history'de yok henüz)
+        Object.entries(history).forEach(([date, dayCases]) => {
+            if (date.startsWith(currentMonth)) {
+                currentMonthCount += dayCases.filter(c => !c.absencePenalty).length;
+            } else if (date.startsWith(lastMonth)) {
+                lastMonthCount += dayCases.filter(c => !c.absencePenalty).length;
+            }
+        });
+
+        // Bugünü de ekle
+        currentMonthCount += cases.filter(c => !c.absencePenalty).length;
+
+        const diff = currentMonthCount - lastMonthCount;
+        const isUp = diff >= 0;
+        const percentChange = lastMonthCount > 0
+            ? Math.round(((currentMonthCount - lastMonthCount) / lastMonthCount) * 100)
+            : 0;
+
+        return { currentMonthCount, lastMonthCount, isUp, percentChange };
+    }, [history, cases]);
+
+    return (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+
+            {/* 1. Bugünün Hedefi */}
+            <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 relative overflow-hidden group hover:border-teal-500 transition-colors">
+                <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+                    <FileText className="w-12 h-12 text-teal-600 dark:text-teal-400" />
+                </div>
+                <div className="flex flex-col h-full justify-between">
+                    <div>
+                        <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Bugün</div>
+                        <div className="text-2xl font-bold text-slate-800 dark:text-white mb-2">
+                            {todayStats.count} <span className="text-sm font-normal text-slate-400">/ 15</span>
+                        </div>
+                        {/* Progress Bar */}
+                        <div className="w-full bg-slate-100 dark:bg-slate-700 rounded-full h-2 mb-2">
+                            <div
+                                className="bg-teal-500 h-2 rounded-full transition-all duration-500"
+                                style={{ width: `${todayStats.progress}%` }}
+                            />
+                        </div>
+                    </div>
+                    <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                        <span className="font-medium text-teal-600 dark:text-teal-400">En çok:</span> {todayStats.topTeacher.name} ({todayStats.topTeacher.count})
+                    </div>
+                </div>
+            </div>
+
+            {/* 2. Öğretmen Durumu */}
+            <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 relative overflow-hidden group hover:border-blue-500 transition-colors">
+                <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+                    <Users className="w-12 h-12 text-blue-600 dark:text-blue-400" />
+                </div>
+                <div className="flex flex-col h-full justify-between">
+                    <div>
+                        <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Kadro Durumu</div>
+                        <div className="text-2xl font-bold text-slate-800 dark:text-white mb-2 flex items-baseline gap-2">
+                            <span>{teacherStats.activeCount}</span>
+                            <span className="text-sm font-normal text-slate-400">Aktif</span>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-1 text-sm mt-2">
+                        <div className="flex -space-x-2 overflow-hidden">
+                            {teachers.filter(t => t.active && !t.isAbsent).slice(0, 5).map(t => (
+                                <div key={t.id} className="w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900 border-2 border-white dark:border-slate-800 flex items-center justify-center text-[10px] text-blue-600 dark:text-blue-300 font-bold" title={t.name}>
+                                    {t.name.substring(0, 1)}
+                                </div>
+                            ))}
+                            {teacherStats.activeCount > 5 && (
+                                <div className="w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-700 border-2 border-white dark:border-slate-800 flex items-center justify-center text-[10px] text-slate-500 dark:text-slate-400">
+                                    +{teacherStats.activeCount - 5}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                    <div className="text-xs text-rose-500 mt-2 font-medium">
+                        {teacherStats.absentCount > 0 ? `${teacherStats.absentCount} kişi izinli` : "Tam kadro"}
+                    </div>
+                </div>
+            </div>
+
+            {/* 3. Sıradaki Randevu */}
+            <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 relative overflow-hidden group hover:border-purple-500 transition-colors">
+                <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+                    <Clock className="w-12 h-12 text-purple-600 dark:text-purple-400" />
+                </div>
+                <div className="flex flex-col h-full justify-between">
+                    <div>
+                        <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Sıradaki Randevu</div>
+                        {nextAppointment ? (
+                            <>
+                                <div className="text-lg font-bold text-slate-800 dark:text-white truncate" title={nextAppointment.name}>
+                                    {nextAppointment.name}
+                                </div>
+                                <div className="text-sm text-purple-600 dark:text-purple-400 font-medium">
+                                    {nextAppointment.time.split(" ")[0]}
+                                </div>
+                            </>
+                        ) : (
+                            <div className="text-slate-400 dark:text-slate-500 italic mt-2">
+                                Bekleyen yok
+                            </div>
+                        )}
+                    </div>
+
+                    {nextAppointment && (
+                        <div className="mt-2 text-xs bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 px-2 py-1 rounded inline-block w-fit">
+                            {nextAppointment.fileNo ? `#${nextAppointment.fileNo}` : "Dosya No Yok"} {nextAppointment.extra && `- ${nextAppointment.extra}`}
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* 4. Aylık Performans */}
+            <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 relative overflow-hidden group hover:border-orange-500 transition-colors">
+                <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+                    <TrendingUp className="w-12 h-12 text-orange-600 dark:text-orange-400" />
+                </div>
+                <div className="flex flex-col h-full justify-between">
+                    <div>
+                        <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Bu Ay Performans</div>
+                        <div className="text-2xl font-bold text-slate-800 dark:text-white mb-2">
+                            {performanceStats.currentMonthCount} <span className="text-sm font-normal text-slate-400">dosya</span>
+                        </div>
+                    </div>
+
+                    <div className={`flex items-center gap-1 text-sm font-medium ${performanceStats.isUp ? 'text-emerald-500' : 'text-rose-500'}`}>
+                        {performanceStats.isUp ? '↗' : '↘'} {Math.abs(performanceStats.percentChange)}%
+                        <span className="text-slate-400 font-normal text-xs ml-1">geçen aya göre</span>
+                    </div>
+                    <div className="text-xs text-slate-400 mt-1">
+                        Geçen ay: {performanceStats.lastMonthCount}
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    );
+}
