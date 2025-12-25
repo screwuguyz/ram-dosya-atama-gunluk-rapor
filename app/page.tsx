@@ -3136,10 +3136,27 @@ export default function DosyaAtamaApp() {
     }));
 
     // E-Archive'den mevcut dosyaları al
+    // E-Archive'den mevcut dosyaları al
     const existingFiles = new Map<string, EArchiveEntry>();
+
+    // 1. Manuel E-Arşiv kayıtları
     eArchive.forEach(entry => {
       if (entry.fileNo) {
         existingFiles.set(entry.fileNo, entry);
+      }
+    });
+
+    // 2. Otomatik Atanan Geçmiş (History) kayıtları
+    Object.values(history).flat().forEach(c => {
+      if (c.fileNo) {
+        const t = teachers.find(x => x.id === c.assignedTo);
+        existingFiles.set(c.fileNo, {
+          id: c.id,
+          student: c.student,
+          fileNo: c.fileNo,
+          assignedToName: t ? t.name : "Bilinmiyor",
+          createdAt: c.createdAt
+        });
       }
     });
 
