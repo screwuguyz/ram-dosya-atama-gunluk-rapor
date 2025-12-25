@@ -29,13 +29,33 @@ export default function QrPosterPage() {
                 </div>
 
                 {/* Talimatlar */}
-                <div className="space-y-4">
+                <div className="space-y-6">
                     <h2 className="text-4xl font-bold bg-black text-white px-6 py-2 rounded-full inline-block print:bg-black print:text-white print:px-6 print:py-2">
                         Kodu Okutunuz
                     </h2>
                     <p className="text-2xl text-slate-700 font-medium px-8 leading-relaxed">
                         Telefonunuzun kamerasını açın ve <br />yukarıdaki QR kodu okutun.
                     </p>
+                    
+                    {/* Alternatif: Manuel URL Girişi */}
+                    <div className="mt-8 pt-8 border-t-4 border-dashed border-slate-300">
+                        <h3 className="text-3xl font-bold text-slate-800 mb-4">
+                            QR Kod Çalışmıyor mu?
+                        </h3>
+                        <p className="text-xl text-slate-600 mb-4 font-medium">
+                            Tarayıcınızı açın ve şu adresi yazın:
+                        </p>
+                        <div className="bg-slate-100 border-4 border-slate-400 rounded-2xl p-6 print:bg-slate-50 print:border-2">
+                            <div className="text-3xl font-mono font-bold text-slate-900 break-all text-center leading-tight">
+                                ram-dosya-atama<br />
+                                .vercel.app<br />
+                                /sira-al
+                            </div>
+                        </div>
+                        <p className="text-lg text-slate-500 mt-4 font-medium">
+                            Veya telefonunuzun tarayıcısına <strong>"ram dosya atama sıra al"</strong> yazarak arayın.
+                        </p>
+                    </div>
                 </div>
 
                 {/* Alt Bilgi */}
