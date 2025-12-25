@@ -80,6 +80,15 @@ type AbsenceRecord = {
   teacherId: string;
   date: string; // YYYY-MM-DD
 };
+type QueueTicket = {
+  id: string;
+  no: number;
+  name?: string;
+  status: 'waiting' | 'called' | 'done';
+  calledBy?: string;
+  createdAt: string;
+  updatedAt: string;
+};
 
 type StateShape = {
   teachers: Teacher[];
@@ -92,6 +101,7 @@ type StateShape = {
   themeSettings?: ThemeSettings; // Tema ayarları
   eArchive?: EArchiveEntry[]; // E-Arşiv (tüm atanmış dosyalar)
   absenceRecords?: AbsenceRecord[]; // Devamsızlık kayıtları (öğretmen ID + tarih)
+  queue?: QueueTicket[];
   updatedAt?: string;
 };
 
@@ -106,6 +116,7 @@ const DEFAULT_STATE: StateShape = {
   settings: undefined,
   eArchive: [],
   absenceRecords: [],
+  queue: [],
   updatedAt: undefined,
 };
 
@@ -159,6 +170,7 @@ export async function POST(req: NextRequest) {
     themeSettings: body.themeSettings as ThemeSettings | undefined,
     eArchive: Array.isArray(body.eArchive) ? (body.eArchive as EArchiveEntry[]) : [],
     absenceRecords: Array.isArray(body.absenceRecords) ? (body.absenceRecords as AbsenceRecord[]) : [],
+    queue: Array.isArray(body.queue) ? (body.queue as QueueTicket[]) : [],
     updatedAt: body.updatedAt ? String(body.updatedAt) : new Date().toISOString(),
   };
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL as string;

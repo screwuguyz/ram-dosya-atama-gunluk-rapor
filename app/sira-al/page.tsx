@@ -7,53 +7,57 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Ticket } from "lucide-react";
+import { QueueTicket } from "@/types";
 
 export default function SiraAlPage() {
-    const { addQueueTicket, queue } = useAppStore();
-    const { syncToServer } = useSupabaseSync();
+    const { queue, setQueue } = useAppStore();
+    const { fetchCentralState } = useSupabaseSync();
 
-    // Client-side only state to match queue
+    // Client-side only state
     const [myTicketId, setMyTicketId] = useState<string | null>(null);
     const [name, setName] = useState("");
     const [loading, setLoading] = useState(false);
 
-    // Kuyruk değişimlerini takip et
+    // Initial fetch to get queue status
     useEffect(() => {
-        // Queue değişiminde bir şey yapmamıza gerek yok, re-render yeterli.
-        // Ama eğer myTicketId varsa, onun durumunu güncelleyebiliriz (zaten re-render ile oluyor)
-    }, [queue]);
+        fetchCentralState();
+        // Periodik fetch (backup for realtime) - optional
+        const interval = setInterval(fetchCentralState, 10000);
+        return () => clearInterval(interval);
+    }, [fetchCentralState]);
 
-    const handleSiraAl = () => {
+    const handleSiraAl = async () => {
         setLoading(true);
-        // İsim opsiyonel, "Misafir" veya boş
         const nameInput = name.trim() || "Misafir";
 
-        // Yeni bilet (Store, ID'yi otomatik üretir ama biz ID'yi geri alamıyoruz şu anki yapı ile.
-        // O yüzden en son eklenen bileti bulmamız lazım, ya da store'u değiştirmemiz lazım.
-        // Şimdilik en son eklenen ve ismi eşleşen bileti 'benim biletim' varsayalım.
-        // Daha güvenli yol: addQueueTicket ID döndürseydi iyi olurdu. 
-        // Ama `addQueueTicket` void dönüyor.
-        // Hızlı çözüm: Queue uzunluğunu al, ekle, sonra son elemanı al.
+        try {
+            // Public endpoint'e istek at
+            const res = await fetch("/api/queue", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ action: "add", name: nameInput })
+            });
 
-        const prevLen = queue.length;
-        addQueueTicket(nameInput);
+            if (!res.ok) throw new Error("Sıra alınamadı");
 
-        // Wait for state update then sync
-        setTimeout(() => {
-            const currentQueue = useAppStore.getState().queue;
-            if (currentQueue.length > prevLen) {
-                // Son eklenen bilet bizimdir
-                const newTicket = currentQueue[currentQueue.length - 1];
+            const data = await res.json();
+            if (data.ok && data.ticket) {
+                const newTicket = data.ticket as QueueTicket;
+                // Anında UI güncellemesi
+                setQueue([...queue, newTicket]);
                 setMyTicketId(newTicket.id);
             }
-            syncToServer();
+        } catch (err) {
+            console.error("Queue error:", err);
+            alert("Sıra alınırken bir hata oluştu.");
+        } finally {
             setLoading(false);
-        }, 100);
+        }
     };
 
     const myTicket = myTicketId ? queue.find(t => t.id === myTicketId) : null;
 
-    // Benim önümde kaç kişi var?
+    // Sıra hesaplama
     const peopleAhead = myTicket
         ? queue.filter(t => t.status === 'waiting' && t.no < myTicket.no).length
         : queue.filter(t => t.status === 'waiting').length;

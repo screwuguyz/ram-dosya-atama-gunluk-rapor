@@ -1,0 +1,73 @@
+import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
+
+export const runtime = "nodejs";
+
+// Allow insecure TLS for local dev
+if (process.env.ALLOW_INSECURE_TLS === "1") {
+    process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+}
+
+export async function POST(req: NextRequest) {
+    try {
+        const body = await req.json();
+        const { action, name } = body;
+
+        if (action !== "add") {
+            return NextResponse.json({ ok: false, error: "Invalid action" }, { status: 400 });
+        }
+
+        const url = process.env.NEXT_PUBLIC_SUPABASE_URL as string;
+        const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY as string;
+
+        if (!url || !serviceKey) {
+            return NextResponse.json({ ok: false, error: "Server config error" }, { status: 500 });
+        }
+
+        const adminMs = createClient(url, serviceKey);
+
+        // 1. Mevcut state'i oku
+        const { data: currentData, error: fetchError } = await adminMs
+            .from("app_state")
+            .select("state")
+            .eq("id", "global")
+            .single();
+
+        if (fetchError) throw fetchError;
+
+        const state = currentData?.state || {};
+        const queue = Array.isArray(state.queue) ? state.queue : [];
+
+        // 2. Yeni bilet oluştur
+        const maxNo = queue.length > 0 ? Math.max(...queue.map((t: any) => t.no || 0)) : 0;
+        const newTicket = {
+            id: Math.random().toString(36).slice(2, 9),
+            no: maxNo + 1,
+            name: name ? String(name).slice(0, 50) : "Misafir",
+            status: "waiting",
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+        };
+
+        const newQueue = [...queue, newTicket];
+
+        // 3. State'i güncelle
+        const { error: updateError } = await adminMs
+            .from("app_state")
+            .update({
+                state: { ...state, queue: newQueue },
+                updated_at: new Date().toISOString()
+            })
+            .eq("id", "global");
+
+        if (updateError) throw updateError;
+
+        console.log("[api/queue] New ticket added:", newTicket.no);
+
+        return NextResponse.json({ ok: true, ticket: newTicket });
+
+    } catch (err: any) {
+        console.error("[api/queue] Error:", err);
+        return NextResponse.json({ ok: false, error: err.message }, { status: 500 });
+    }
+}
