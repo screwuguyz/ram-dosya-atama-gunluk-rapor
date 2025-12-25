@@ -191,17 +191,30 @@ export function useSupabaseSync(): SupabaseSyncHook {
     // Sync current state to server
     const syncToServer = useCallback(async () => {
         try {
+            // Get latest state from store to avoid closure issues
+            const currentQueue = useAppStore.getState().queue;
+            const currentTeachers = useAppStore.getState().teachers;
+            const currentCases = useAppStore.getState().cases;
+            const currentHistory = useAppStore.getState().history;
+            const currentSettings = useAppStore.getState().settings;
+            const currentEArchive = useAppStore.getState().eArchive;
+            const currentAnnouncements = useAppStore.getState().announcements;
+            const currentAbsenceRecords = useAppStore.getState().absenceRecords;
+            
+            console.log("[syncToServer] Syncing queue:", currentQueue.length, "tickets");
+            console.log("[syncToServer] Called tickets:", currentQueue.filter(t => t.status === 'called').length);
+            
             const payload = {
-                teachers,
-                cases,
-                history,
-                settings,
-                eArchive,
-                announcements,
-                absenceRecords,
+                teachers: currentTeachers,
+                cases: currentCases,
+                history: currentHistory,
+                settings: currentSettings,
+                eArchive: currentEArchive,
+                announcements: currentAnnouncements,
+                absenceRecords: currentAbsenceRecords,
                 lastRollover,
                 lastAbsencePenalty,
-                queue,
+                queue: currentQueue, // Use latest queue from store
                 updatedAt: new Date().toISOString(),
                 clientId: clientId.current,
             };
@@ -219,16 +232,9 @@ export function useSupabaseSync(): SupabaseSyncHook {
             console.error("[syncToServer] Network error:", err);
         }
     }, [
-        teachers,
-        cases,
-        history,
-        settings,
-        eArchive,
-        announcements,
-        absenceRecords,
+        // Don't include queue in deps - we get it directly from store
         lastRollover,
         lastAbsencePenalty,
-        queue,
     ]);
 
     // Store fetchCentralState in ref to avoid reconnection issues

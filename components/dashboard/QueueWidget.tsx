@@ -32,7 +32,18 @@ export default function QueueWidget() {
         const ticket = queue.find(t => t.id === id);
         console.log("[QueueWidget] Calling ticket:", ticket);
         
+        // State'i güncelle
         callQueueTicket(id, "admin");
+        
+        // State güncellemesinin tamamlanmasını bekle
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        // Güncel queue state'ini al (Zustand store'dan direkt)
+        const updatedQueue = useAppStore.getState().queue;
+        const updatedTicket = updatedQueue.find(t => t.id === id);
+        console.log("[QueueWidget] After callQueueTicket - updated ticket:", updatedTicket);
+        console.log("[QueueWidget] Updated queue length:", updatedQueue.length);
+        console.log("[QueueWidget] Called tickets:", updatedQueue.filter(t => t.status === 'called').length);
         
         // Hemen sync et
         console.log("[QueueWidget] Syncing to server...");
