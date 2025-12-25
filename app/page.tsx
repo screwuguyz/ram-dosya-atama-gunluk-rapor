@@ -798,17 +798,29 @@ export default function DosyaAtamaApp() {
       if (Array.isArray(s.absenceRecords)) {
         setAbsenceRecords(s.absenceRecords);
       }
-      // Queue'yu Supabase'den yükle - eğer Supabase'de queue varsa onu kullan, yoksa local state'teki queue'yu koru
-      if (Array.isArray(s.queue) && s.queue.length > 0) {
-        console.log("[fetchCentralState] Loading queue from Supabase:", s.queue.length, "tickets");
-        setQueue(s.queue);
-      } else if (Array.isArray(s.queue) && s.queue.length === 0) {
-        // Supabase'de queue boş ama array olarak var - bu normal, sadece log
-        console.log("[fetchCentralState] Supabase queue is empty");
-        // Local state'teki queue'yu koru (silme)
+      // Queue'yu Supabase'den yükle
+      // Eğer Supabase'de queue varsa onu kullan (her zaman Supabase öncelikli)
+      if (Array.isArray(s.queue)) {
+        // Supabase'de queue var (boş olsa bile array olarak var)
+        if (s.queue.length > 0) {
+          console.log("[fetchCentralState] Loading queue from Supabase:", s.queue.length, "tickets");
+          setQueue(s.queue);
+        } else {
+          // Supabase'de queue boş array olarak var
+          console.log("[fetchCentralState] Supabase queue is empty array");
+          setQueue([]); // Boş array olarak set et
+        }
       } else {
-        // Supabase'de queue yok - local state'teki queue'yu koru
-        console.log("[fetchCentralState] No queue in Supabase, keeping local queue");
+        // Supabase'de queue property yok
+        console.log("[fetchCentralState] No queue property in Supabase state");
+        // Local state'te queue varsa onu koru, yoksa boş array set et
+        const currentLocalQueue = useAppStore.getState().queue;
+        if (Array.isArray(currentLocalQueue) && currentLocalQueue.length > 0) {
+          console.log("[fetchCentralState] Keeping local queue:", currentLocalQueue.length, "tickets (will sync to Supabase)");
+          // Local queue'yu koru (setQueue çağırma, zaten var)
+        } else {
+          setQueue([]);
+        }
       }
       console.log("[fetchCentralState] Loaded, teachers:", s.teachers?.length || 0, "eArchive:", s.eArchive?.length || 0, "absenceRecords:", s.absenceRecords?.length || 0, "queue:", s.queue?.length || 0);
     } catch (err) {
