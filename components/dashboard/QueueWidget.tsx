@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo, useCallback } from "react";
 import { useAppStore } from "@/stores/useAppStore";
 import { useSupabaseSync } from "@/hooks/useSupabaseSync";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,20 +17,31 @@ export default function QueueWidget() {
     const resetQueue = useAppStore(s => s.resetQueue);
     const { syncToServer } = useSupabaseSync();
 
-    // Aktif Bilet (En son çağrılan ve henüz tamamlanmayan)
-    const calledTickets = queue
-        .filter(t => t.status === 'called')
-        .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+    // Aktif Bilet (En son çağrılan ve henüz tamamlanmayan) - Memoize et
+    const calledTickets = useMemo(() => {
+        if (!Array.isArray(queue)) return [];
+        return queue
+            .filter(t => t && t.status === 'called')
+            .sort((a, b) => {
+                const aTime = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
+                const bTime = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
+                return bTime - aTime;
+            });
+    }, [queue]);
 
-    const activeTicket = calledTickets[0];
+    const activeTicket = useMemo(() => calledTickets[0] || null, [calledTickets]);
 
-    const waitingTickets = queue
-        .filter(t => t.status === 'waiting')
-        .sort((a, b) => a.no - b.no);
+    const waitingTickets = useMemo(() => {
+        if (!Array.isArray(queue)) return [];
+        return queue
+            .filter(t => t && t.status === 'waiting')
+            .sort((a, b) => (a.no || 0) - (b.no || 0));
+    }, [queue]);
 
-    // Bilet çağırma
-    const handleCall = async (id: string) => {
-        const ticket = queue.find(t => t.id === id);
+    // Bilet çağırma - useCallback ile memoize et
+    const handleCall = useCallback(async (id: string) => {
+        const currentQueue = useAppStore.getState().queue;
+        const ticket = currentQueue.find(t => t.id === id);
         console.log("[QueueWidget] Calling ticket:", ticket);
         
         // State'i güncelle
@@ -56,23 +68,37 @@ export default function QueueWidget() {
             await syncToServer();
             console.log("[QueueWidget] Second sync completed");
         }, 500);
-    };
+    }, [callQueueTicket, syncToServer]);
 
-    // Tekrar anons
-    const handleRecall = async () => {
-        if (activeTicket) {
-            callQueueTicket(activeTicket.id, activeTicket.calledBy);
+    // Tekrar anons - useCallback ile memoize et
+    const handleRecall = useCallback(async () => {
+        const currentActiveTicket = useAppStore.getState().queue
+            .filter(t => t && t.status === 'called')
+            .sort((a, b) => {
+                const aTime = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
+                const bTime = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
+                return bTime - aTime;
+            })[0];
+        
+        if (currentActiveTicket) {
+            callQueueTicket(currentActiveTicket.id, currentActiveTicket.calledBy);
             await syncToServer();
             setTimeout(() => syncToServer(), 200);
         }
-    };
+    }, [callQueueTicket, syncToServer]);
 
-    // Tamamla
-    const handleComplete = async (id: string) => {
+    // Tamamla - useCallback ile memoize et
+    const handleComplete = useCallback(async (id: string) => {
         updateQueueTicketStatus(id, 'done');
         await syncToServer();
         setTimeout(() => syncToServer(), 200);
-    };
+    }, [updateQueueTicketStatus, syncToServer]);
+
+    // Reset queue - useCallback ile memoize et
+    const handleResetQueue = useCallback(() => {
+        resetQueue();
+        setTimeout(() => syncToServer(), 50);
+    }, [resetQueue, syncToServer]);
 
     return (
         <Card className="h-full border-l-4 border-l-purple-500 shadow-sm">
@@ -87,7 +113,7 @@ export default function QueueWidget() {
                             <Printer className="w-4 h-4" />
                         </Button>
                     </Link>
-                    <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-400 hover:text-red-500" onClick={() => { resetQueue(); setTimeout(syncToServer, 50); }} title="Sırayı Sıfırla">
+                    <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-400 hover:text-red-500" onClick={handleResetQueue} title="Sırayı Sıfırla">
                         <Trash2 className="w-4 h-4" />
                     </Button>
                 </div>
