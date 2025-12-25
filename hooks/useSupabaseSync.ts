@@ -188,9 +188,18 @@ export function useSupabaseSync(): SupabaseSyncHook {
         addToast,
     ]);
 
-    // Sync current state to server
+    // Sync current state to server (only for admin users)
     const syncToServer = useCallback(async () => {
         try {
+            // Check if user is admin before syncing
+            const sessionRes = await fetch("/api/session");
+            const sessionData = sessionRes.ok ? await sessionRes.json() : { isAdmin: false };
+            
+            if (!sessionData.isAdmin) {
+                console.log("[syncToServer] Skipping sync - user is not admin");
+                return;
+            }
+            
             // Get latest state from store to avoid closure issues
             const currentQueue = useAppStore.getState().queue;
             const currentTeachers = useAppStore.getState().teachers;
@@ -227,6 +236,8 @@ export function useSupabaseSync(): SupabaseSyncHook {
 
             if (!res.ok) {
                 console.error("[syncToServer] HTTP error:", res.status);
+            } else {
+                console.log("[syncToServer] Successfully synced to server");
             }
         } catch (err) {
             console.error("[syncToServer] Network error:", err);
