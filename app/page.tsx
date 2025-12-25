@@ -31,6 +31,12 @@ import AssignedArchiveView from "@/components/archive/AssignedArchive";
 import AssignedArchiveSingleDayView from "@/components/archive/AssignedArchiveSingleDay";
 import { Calendar as CalendarIcon, Trash2, UserMinus, Plus, FileSpreadsheet, BarChart2, Volume2, VolumeX, X, Printer, Loader2, Inbox, FileText, ChevronLeft, ChevronRight } from "lucide-react";
 
+// === YENİ MODÜLER BİLEŞENLER ===
+import FeedbackModal from "@/components/modals/FeedbackModal";
+import VersionModal from "@/components/modals/VersionModal";
+
+
+
 
 
 // --- Tipler
@@ -310,7 +316,7 @@ function DailyAppointmentsCard({
                   <th className="p-2 text-left">Ad Soyad</th>
                   <th className="p-2 text-left">Dosya No</th>
                   <th className="p-2 text-left">Açıklama</th>
-                    {isAdmin && <th className="p-2 text-right">İşlem</th>}
+                  {isAdmin && <th className="p-2 text-right">İşlem</th>}
                 </tr>
               </thead>
               <tbody>
@@ -331,30 +337,30 @@ function DailyAppointmentsCard({
                         (sourceEntry.fileNo || "") === (entry.fileNo || "")
                       );
                     };
-                    
+
                     // cases içinde kontrol et
                     const inCases = cases?.some(c => matchesEntry(c.sourcePdfEntry)) || false;
                     // history içinde kontrol et
-                    const inHistory = history ? Object.values(history).some(dayCases => 
+                    const inHistory = history ? Object.values(history).some(dayCases =>
                       dayCases.some(c => matchesEntry(c.sourcePdfEntry))
                     ) : false;
                     isAssigned = inCases || inHistory;
                   }
-                  
+
                   return (
-                  <tr
-                    key={entry.id}
-                    className={`border-b last:border-b-0 ${selectedPdfEntryId === entry.id ? "bg-emerald-50" : "bg-white"} ${isAssigned ? "relative opacity-75" : ""}`}
-                  >
-                    {isAssigned && (
-                      <div className="absolute inset-0 pointer-events-none z-10">
-                        <div className="absolute top-1/2 left-0 right-0 h-1 bg-red-500 transform -translate-y-1/2 shadow-sm"></div>
-                      </div>
-                    )}
-                    <td className={`p-2 font-semibold relative z-0 ${isAssigned ? "text-red-600" : ""}`}>{entry.time}</td>
-                    <td className={`p-2 relative z-0 ${isAssigned ? "text-red-600" : ""}`}>{entry.name}</td>
-                    <td className={`p-2 relative z-0 ${isAssigned ? "text-red-600" : ""}`}>{entry.fileNo || "-"}</td>
-                    <td className={`p-2 text-xs text-slate-600 relative z-0 ${isAssigned ? "text-red-600" : ""}`}>{entry.extra || "-"}</td>
+                    <tr
+                      key={entry.id}
+                      className={`border-b last:border-b-0 ${selectedPdfEntryId === entry.id ? "bg-emerald-50" : "bg-white"} ${isAssigned ? "relative opacity-75" : ""}`}
+                    >
+                      {isAssigned && (
+                        <div className="absolute inset-0 pointer-events-none z-10">
+                          <div className="absolute top-1/2 left-0 right-0 h-1 bg-red-500 transform -translate-y-1/2 shadow-sm"></div>
+                        </div>
+                      )}
+                      <td className={`p-2 font-semibold relative z-0 ${isAssigned ? "text-red-600" : ""}`}>{entry.time}</td>
+                      <td className={`p-2 relative z-0 ${isAssigned ? "text-red-600" : ""}`}>{entry.name}</td>
+                      <td className={`p-2 relative z-0 ${isAssigned ? "text-red-600" : ""}`}>{entry.fileNo || "-"}</td>
+                      <td className={`p-2 text-xs text-slate-600 relative z-0 ${isAssigned ? "text-red-600" : ""}`}>{entry.extra || "-"}</td>
                       {isAdmin && onApplyEntry && onRemoveEntry && (
                         <td className="p-2 text-right">
                           <div className="flex items-center justify-end gap-1">
@@ -367,7 +373,7 @@ function DailyAppointmentsCard({
                           </div>
                         </td>
                       )}
-                  </tr>
+                    </tr>
                   );
                 })}
               </tbody>
@@ -429,8 +435,8 @@ export default function DosyaAtamaApp() {
   const [manualTeacherId, setManualTeacherId] = useState<string>("");
   const [manualReason, setManualReason] = useState<string>("");
   // Manuel atama alanı (ref gerekirse ileride kullanırız)
-const manualAssignRef = React.useRef<HTMLDivElement | null>(null);
-const pdfInputRef = React.useRef<HTMLInputElement | null>(null);
+  const manualAssignRef = React.useRef<HTMLDivElement | null>(null);
+  const pdfInputRef = React.useRef<HTMLInputElement | null>(null);
   // Duyurular (gün içinde gösterilir, gece sıfırlanır)
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [announcementText, setAnnouncementText] = useState("");
@@ -460,9 +466,9 @@ const pdfInputRef = React.useRef<HTMLInputElement | null>(null);
           (source.fileNo || "") === (entry.fileNo || "")
         );
       });
-      
+
       // history içinde kontrol et
-      const inHistory = Object.values(history).some((dayCases: CaseFile[]) => 
+      const inHistory = Object.values(history).some((dayCases: CaseFile[]) =>
         dayCases.some((c: CaseFile) => {
           const source = c.sourcePdfEntry;
           if (!source) return false;
@@ -474,10 +480,10 @@ const pdfInputRef = React.useRef<HTMLInputElement | null>(null);
           );
         })
       );
-      
+
       return inCases || inHistory;
     };
-    
+
     // Toplam randevu sayısından atananları çıkar
     return pdfEntries.filter(entry => !isEntryAssigned(entry)).length;
   }, [cases, history, pdfEntries]);
@@ -491,11 +497,11 @@ const pdfInputRef = React.useRef<HTMLInputElement | null>(null);
     try {
       const raw = localStorage.getItem(LS_SETTINGS);
       if (raw) return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) } as Settings;
-    } catch {}
+    } catch { }
     return DEFAULT_SETTINGS;
   });
   useEffect(() => {
-    try { localStorage.setItem(LS_SETTINGS, JSON.stringify(settings)); } catch {}
+    try { localStorage.setItem(LS_SETTINGS, JSON.stringify(settings)); } catch { }
   }, [settings]);
   // Basit toast altyapısı
   const [toasts, setToasts] = useState<Array<{ id: string; text: string }>>([]);
@@ -506,7 +512,7 @@ const pdfInputRef = React.useRef<HTMLInputElement | null>(null);
       setToasts((prev) => prev.filter((t) => t.id !== id));
     }, 2500);
   }
-  
+
   // Dosya atama bildirimi (büyük animasyonlu popup)
   const [assignmentPopup, setAssignmentPopup] = useState<{ teacherName: string; studentName: string; score: number } | null>(null);
   function showAssignmentPopup(teacherName: string, studentName: string, score: number) {
@@ -519,7 +525,7 @@ const pdfInputRef = React.useRef<HTMLInputElement | null>(null);
     try { return localStorage.getItem("sound_on") !== "0"; } catch { return true; }
   });
   useEffect(() => {
-    try { localStorage.setItem("sound_on", soundOn ? "1" : "0"); } catch {}
+    try { localStorage.setItem("sound_on", soundOn ? "1" : "0"); } catch { }
     if (soundOn) resumeAudioIfNeeded();
   }, [soundOn]);
   // Keep a ref in sync with soundOn to avoid stale closures in long-lived listeners
@@ -544,7 +550,7 @@ const pdfInputRef = React.useRef<HTMLInputElement | null>(null);
   function resumeAudioIfNeeded() {
     const ctx = getAudioCtx();
     if (ctx && ctx.state === "suspended") {
-      ctx.resume().catch(() => {});
+      ctx.resume().catch(() => { });
     }
   }
   useEffect(() => {
@@ -587,26 +593,26 @@ const pdfInputRef = React.useRef<HTMLInputElement | null>(null);
     const ctx = getAudioCtx();
     if (!ctx) return;
     if (ctx.state === "suspended") {
-      ctx.resume().catch(() => {});
+      ctx.resume().catch(() => { });
     }
-    
+
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.type = type;
     osc.frequency.value = freq;
-    
+
     const now = ctx.currentTime;
     const attackEnd = now + attack;
     const decayEnd = attackEnd + decay;
     const releaseStart = now + durationSec - release;
-    
+
     // ADSR envelope
     gain.gain.setValueAtTime(0, now);
     gain.gain.linearRampToValueAtTime(volume, attackEnd);
     gain.gain.linearRampToValueAtTime(volume * sustain, decayEnd);
     gain.gain.setValueAtTime(volume * sustain, releaseStart);
     gain.gain.linearRampToValueAtTime(0, now + durationSec);
-    
+
     osc.connect(gain).connect(ctx.destination);
     osc.start(now);
     osc.stop(now + durationSec);
@@ -622,12 +628,12 @@ const pdfInputRef = React.useRef<HTMLInputElement | null>(null);
     resumeAudioIfNeeded();
     const ctx = getAudioCtx();
     if (!ctx) return;
-    
+
     // C majör akor (C-E-G) - daha zengin ses
     playTone(523.25, 0.2, 0.2, "sine", 0.02, 0.05, 0.7, 0.1);  // C5
     playTone(659.25, 0.2, 0.18, "sine", 0.02, 0.05, 0.7, 0.1); // E5
     playTone(783.99, 0.2, 0.16, "sine", 0.02, 0.05, 0.7, 0.1);  // G5
-    
+
     // Yükselen melodi
     window.setTimeout(() => playTone(659.25, 0.15, 0.18, "sine", 0.01, 0.03, 0.8, 0.08), 220);
     window.setTimeout(() => playTone(783.99, 0.18, 0.2, "sine", 0.01, 0.03, 0.8, 0.1), 380);
@@ -683,7 +689,7 @@ const pdfInputRef = React.useRef<HTMLInputElement | null>(null);
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ userKey: key, title: "Duyuru", message: text, priority: 0 })
         });
-      } catch {}
+      } catch { }
     }
   }
 
@@ -734,22 +740,22 @@ const pdfInputRef = React.useRef<HTMLInputElement | null>(null);
         console.error("[fetchCentralState] Supabase error:", s._error);
         toast(`Supabase bağlantı hatası: ${s._error}`);
       }
-      
+
       // Supabase'den gelen öğretmen sayısını kaydet (koruma için)
       const supabaseTeacherCount = s.teachers?.length || 0;
       supabaseTeacherCountRef.current = supabaseTeacherCount;
       console.log("[fetchCentralState] Supabase teacher count:", supabaseTeacherCount);
-      
+
       const incomingTs = Date.parse(String(s.updatedAt || 0));
       const currentTs = Date.parse(String(lastAppliedAtRef.current || 0));
       if (!isNaN(incomingTs) && incomingTs <= currentTs) return;
       lastAppliedAtRef.current = s.updatedAt || new Date().toISOString();
-      
+
       // KORUMA: Eğer Supabase'de öğretmen yoksa ama mevcut state'te varsa, mevcut state'i koru
       // Ayrıca localStorage henüz yüklenmemişse (hydrated false), Supabase'den gelen boş veriyi kullanma
       const supabaseTeachers = s.teachers ?? [];
       const currentTeachers = teachersRef.current || [];
-      
+
       // Eğer localStorage henüz yüklenmemişse ve Supabase'de öğretmen yoksa, öğretmenleri güncelleme
       // (localStorage yüklemesi tamamlanana kadar bekle)
       if (!hydrated && supabaseTeachers.length === 0) {
@@ -763,7 +769,7 @@ const pdfInputRef = React.useRef<HTMLInputElement | null>(null);
         setTeachers(supabaseTeachers);
       }
       // Eğer hem Supabase hem mevcut state boşsa, zaten boş kalacak
-      
+
       setCases(s.cases ?? []);
       setHistory(s.history ?? {});
       setLastRollover(s.lastRollover ?? "");
@@ -959,18 +965,18 @@ const pdfInputRef = React.useRef<HTMLInputElement | null>(null);
       if (aRaw) {
         const arr = JSON.parse(aRaw) as Announcement[];
         const today = getTodayYmd();
-        setAnnouncements((arr || []).filter(a => (a.createdAt || "").slice(0,10) === today));
+        setAnnouncements((arr || []).filter(a => (a.createdAt || "").slice(0, 10) === today));
       }
       if (pRaw) {
         try {
           const parsed = JSON.parse(pRaw);
           if (Array.isArray(parsed)) setPdfEntries(parsed);
-        } catch {}
+        } catch { }
       }
       if (pdRaw) setPdfDate(pdRaw);
       if (pdIsoRaw) setPdfDateIso(pdIsoRaw);
       if (eaRaw) setEArchive(JSON.parse(eaRaw));
-    } catch {}
+    } catch { }
     // Hydration tamam
     setHydrated(true);
   }, []);
@@ -986,53 +992,53 @@ const pdfInputRef = React.useRef<HTMLInputElement | null>(null);
   // Duyuruları LS'ye yaz
   useEffect(() => {
     if (!hydrated) return;
-    try { localStorage.setItem(LS_ANNOUNCEMENTS, JSON.stringify(announcements)); } catch {}
+    try { localStorage.setItem(LS_ANNOUNCEMENTS, JSON.stringify(announcements)); } catch { }
   }, [announcements, hydrated]);
 
   // ---- LS'ye yazma
   useEffect(() => {
     if (!hydrated) return;
-    try { localStorage.setItem(LS_TEACHERS, JSON.stringify(teachers)); } catch {}
+    try { localStorage.setItem(LS_TEACHERS, JSON.stringify(teachers)); } catch { }
   }, [teachers, hydrated]);
   useEffect(() => {
     if (!hydrated) return;
-    try { localStorage.setItem(LS_CASES, JSON.stringify(cases)); } catch {}
+    try { localStorage.setItem(LS_CASES, JSON.stringify(cases)); } catch { }
   }, [cases, hydrated]);
   useEffect(() => {
     if (!hydrated) return;
-    try { localStorage.setItem(LS_HISTORY, JSON.stringify(history)); } catch {}
+    try { localStorage.setItem(LS_HISTORY, JSON.stringify(history)); } catch { }
   }, [history, hydrated]);
   useEffect(() => {
     if (!hydrated) return;
-    try { localStorage.setItem(LS_LAST_ROLLOVER, lastRollover); } catch {}
+    try { localStorage.setItem(LS_LAST_ROLLOVER, lastRollover); } catch { }
   }, [lastRollover, hydrated]);
   useEffect(() => {
     if (!hydrated) return;
-    try { localStorage.setItem(LS_LAST_ABSENCE_PENALTY, lastAbsencePenalty); } catch {}
+    try { localStorage.setItem(LS_LAST_ABSENCE_PENALTY, lastAbsencePenalty); } catch { }
   }, [lastAbsencePenalty, hydrated]);
   useEffect(() => {
     if (!hydrated) return;
-    try { localStorage.setItem(LS_PDF_ENTRIES, JSON.stringify(pdfEntries)); } catch {}
+    try { localStorage.setItem(LS_PDF_ENTRIES, JSON.stringify(pdfEntries)); } catch { }
   }, [pdfEntries, hydrated]);
   useEffect(() => {
     if (!hydrated) return;
     if (pdfDate) {
-      try { localStorage.setItem(LS_PDF_DATE, pdfDate); } catch {}
+      try { localStorage.setItem(LS_PDF_DATE, pdfDate); } catch { }
     } else {
-      try { localStorage.removeItem(LS_PDF_DATE); } catch {}
+      try { localStorage.removeItem(LS_PDF_DATE); } catch { }
     }
   }, [pdfDate, hydrated]);
   useEffect(() => {
     if (!hydrated) return;
     if (pdfDateIso) {
-      try { localStorage.setItem(LS_PDF_DATE_ISO, pdfDateIso); } catch {}
+      try { localStorage.setItem(LS_PDF_DATE_ISO, pdfDateIso); } catch { }
     } else {
-      try { localStorage.removeItem(LS_PDF_DATE_ISO); } catch {}
+      try { localStorage.removeItem(LS_PDF_DATE_ISO); } catch { }
     }
   }, [pdfDateIso, hydrated]);
   useEffect(() => {
     if (!hydrated) return;
-    try { localStorage.setItem(LS_E_ARCHIVE, JSON.stringify(eArchive)); } catch {}
+    try { localStorage.setItem(LS_E_ARCHIVE, JSON.stringify(eArchive)); } catch { }
   }, [eArchive, hydrated]);
 
 
@@ -1053,14 +1059,14 @@ const pdfInputRef = React.useRef<HTMLInputElement | null>(null);
         if (showPdfPanel) setShowPdfPanel(false);
         if (showRules) setShowRules(false);
       }
-      
+
       // Ctrl+Enter veya Cmd+Enter: Dosya ekle (admin ise)
       if ((e.ctrlKey || e.metaKey) && e.key === "Enter" && isAdmin && student.trim()) {
         e.preventDefault();
         addCase();
       }
     }
-    
+
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [loginOpen, settingsOpen, feedbackOpen, showPdfPanel, showRules, isAdmin, student]);
@@ -1104,104 +1110,104 @@ const pdfInputRef = React.useRef<HTMLInputElement | null>(null);
   useEffect(() => {
     fetch("/api/session").then(r => r.ok ? r.json() : { isAdmin: false })
       .then((d: any) => setIsAdmin(!!d.isAdmin))
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   // Versiyon kontrolü - Admin olmayan kullanıcılar için
   useEffect(() => {
     if (isAdmin || !hydrated) return; // Admin ise veya henüz yüklenmediyse gösterme
-    
+
     try {
       const lastSeenVersion = localStorage.getItem(LS_LAST_SEEN_VERSION);
       if (lastSeenVersion !== APP_VERSION) {
         setShowVersionPopup(true);
       }
-    } catch {}
+    } catch { }
   }, [isAdmin, hydrated]);
-// === Realtime abonelik: canlı güncelleme + ilk açılışta snapshot ===
-useEffect(() => {
-  if (process.env.NEXT_PUBLIC_DISABLE_REALTIME === '1') { setLive('offline'); return; }
-  const ch = supabase.channel("dosya-atama");
-  channelRef.current = ch;
+  // === Realtime abonelik: canlı güncelleme + ilk açılışta snapshot ===
+  useEffect(() => {
+    if (process.env.NEXT_PUBLIC_DISABLE_REALTIME === '1') { setLive('offline'); return; }
+    const ch = supabase.channel("dosya-atama");
+    channelRef.current = ch;
 
-  // 1) Tam state yayınını dinle
-  ch.on("broadcast", { event: "state" }, (e) => {
-    const p = e.payload as any;
-    if (!p || p.sender === clientId) return; // kendi yayınımı alma
-    const inc = Date.parse(String(p.updatedAt || 0));
-    const cur = Date.parse(String(lastAppliedAtRef.current || 0));
-    if (!isNaN(inc) && inc <= cur) return;
-    lastAppliedAtRef.current = p.updatedAt || new Date().toISOString();
-    setTeachers(p.teachers ?? []);
-    setCases(p.cases ?? []);
-    if (p.history) setHistory(p.history);
-    if (typeof p.lastAbsencePenalty === "string") setLastAbsencePenalty(p.lastAbsencePenalty);
-    // Tema ayarlarını güncelle
-    if (p.themeSettings) {
-      loadThemeFromSupabase(p.themeSettings);
-    }
-  });
-
-  // 2) İzleyici "hello" derse admin state göndersin
-  ch.on("broadcast", { event: "hello" }, (e) => {
-    if (!isAdmin) return;                 // sadece admin cevaplar
-    if (!hydrated) return;                // LS yüklenmeden varsayılan state'i yayınlama
-    const p = e.payload as any;
-    if (!p || p.sender === clientId) return;
-    const themeMode = getThemeMode();
-    const colorSchemeName = typeof window !== "undefined" ? (localStorage.getItem("site_color_scheme") || "default") : "default";
-    const customColors = typeof window !== "undefined" ? (() => {
-      try {
-        const custom = localStorage.getItem("site_custom_colors");
-        return custom ? JSON.parse(custom) : undefined;
-      } catch {
-        return undefined;
+    // 1) Tam state yayınını dinle
+    ch.on("broadcast", { event: "state" }, (e) => {
+      const p = e.payload as any;
+      if (!p || p.sender === clientId) return; // kendi yayınımı alma
+      const inc = Date.parse(String(p.updatedAt || 0));
+      const cur = Date.parse(String(lastAppliedAtRef.current || 0));
+      if (!isNaN(inc) && inc <= cur) return;
+      lastAppliedAtRef.current = p.updatedAt || new Date().toISOString();
+      setTeachers(p.teachers ?? []);
+      setCases(p.cases ?? []);
+      if (p.history) setHistory(p.history);
+      if (typeof p.lastAbsencePenalty === "string") setLastAbsencePenalty(p.lastAbsencePenalty);
+      // Tema ayarlarını güncelle
+      if (p.themeSettings) {
+        loadThemeFromSupabase(p.themeSettings);
       }
-    })() : undefined;
-    
-    ch.send({
-      type: "broadcast",
-      event: "state",
-      payload: { 
-        sender: clientId, 
-        teachers, 
-        cases, 
-        history, 
-        lastAbsencePenalty, 
-        absenceRecords,
-        themeSettings: {
-          themeMode,
-          colorScheme: colorSchemeName,
-          customColors: colorSchemeName === "custom" ? customColors : undefined,
-        },
-        updatedAt: (lastAppliedAtRef.current || new Date().toISOString()) 
-      },
     });
-  });
 
-  // 3) Bağlanınca herkes "hello" göndersin → snapshot iste
-  ch.subscribe((status) => {
-    setLive(status === "SUBSCRIBED" ? "online" : "connecting");
-    if (status === "SUBSCRIBED") {
-      ch.send({ type: "broadcast", event: "hello", payload: { sender: clientId } });
-    }
-  });
+    // 2) İzleyici "hello" derse admin state göndersin
+    ch.on("broadcast", { event: "hello" }, (e) => {
+      if (!isAdmin) return;                 // sadece admin cevaplar
+      if (!hydrated) return;                // LS yüklenmeden varsayılan state'i yayınlama
+      const p = e.payload as any;
+      if (!p || p.sender === clientId) return;
+      const themeMode = getThemeMode();
+      const colorSchemeName = typeof window !== "undefined" ? (localStorage.getItem("site_color_scheme") || "default") : "default";
+      const customColors = typeof window !== "undefined" ? (() => {
+        try {
+          const custom = localStorage.getItem("site_custom_colors");
+          return custom ? JSON.parse(custom) : undefined;
+        } catch {
+          return undefined;
+        }
+      })() : undefined;
 
-  // 4) Temizlik
-  return () => {
-    setLive("offline");
-    if (channelRef.current) supabase.removeChannel(channelRef.current);
-    channelRef.current = null;
-  };
-}, [clientId, isAdmin, teachers, cases, history, hydrated, centralLoaded]);
+      ch.send({
+        type: "broadcast",
+        event: "state",
+        payload: {
+          sender: clientId,
+          teachers,
+          cases,
+          history,
+          lastAbsencePenalty,
+          absenceRecords,
+          themeSettings: {
+            themeMode,
+            colorScheme: colorSchemeName,
+            customColors: colorSchemeName === "custom" ? customColors : undefined,
+          },
+          updatedAt: (lastAppliedAtRef.current || new Date().toISOString())
+        },
+      });
+    });
 
-// === Admin değiştirince herkese yayınla ===
-useEffect(() => {
-  if (!isAdmin) return;
-  if (!hydrated) return; // LS yüklenmeden yayınlama
-  if (!centralLoaded) return; // Merkez yüklenmeden yayınlama
-  const ch = channelRef.current;
-  if (!ch) return;
+    // 3) Bağlanınca herkes "hello" göndersin → snapshot iste
+    ch.subscribe((status) => {
+      setLive(status === "SUBSCRIBED" ? "online" : "connecting");
+      if (status === "SUBSCRIBED") {
+        ch.send({ type: "broadcast", event: "hello", payload: { sender: clientId } });
+      }
+    });
+
+    // 4) Temizlik
+    return () => {
+      setLive("offline");
+      if (channelRef.current) supabase.removeChannel(channelRef.current);
+      channelRef.current = null;
+    };
+  }, [clientId, isAdmin, teachers, cases, history, hydrated, centralLoaded]);
+
+  // === Admin değiştirince herkese yayınla ===
+  useEffect(() => {
+    if (!isAdmin) return;
+    if (!hydrated) return; // LS yüklenmeden yayınlama
+    if (!centralLoaded) return; // Merkez yüklenmeden yayınlama
+    const ch = channelRef.current;
+    if (!ch) return;
     const themeMode = getThemeMode();
     const colorSchemeName = typeof window !== "undefined" ? (localStorage.getItem("site_color_scheme") || "default") : "default";
     const customColors = typeof window !== "undefined" ? (() => {
@@ -1212,101 +1218,101 @@ useEffect(() => {
         return undefined;
       }
     })() : undefined;
-    
+
     ch.send({
       type: "broadcast",
       event: "state",
-      payload: { 
-        sender: clientId, 
-        teachers, 
-        cases, 
-        history, 
+      payload: {
+        sender: clientId,
+        teachers,
+        cases,
+        history,
         lastAbsencePenalty,
         themeSettings: {
           themeMode,
           colorScheme: colorSchemeName,
           customColors: colorSchemeName === "custom" ? customColors : undefined,
         },
-        updatedAt: (lastAppliedAtRef.current || new Date().toISOString()) 
+        updatedAt: (lastAppliedAtRef.current || new Date().toISOString())
       },
     });
-}, [teachers, cases, history, lastAbsencePenalty, isAdmin, clientId, hydrated, centralLoaded]);
+  }, [teachers, cases, history, lastAbsencePenalty, isAdmin, clientId, hydrated, centralLoaded]);
 
-// === Admin değiştirince merkezi state'e de yaz (kalıcılık)
-useEffect(() => {
-  if (!isAdmin) return;
-  if (!hydrated) return;
-  if (!centralLoaded) return;
-  
-  // KORUMA: Eğer Supabase'de öğretmen varsa ama local'de yoksa, yazma!
-  // Bu, yeni tarayıcı/boş localStorage'ın Supabase verisini silmesini önler
-  if (supabaseTeacherCountRef.current > 0 && teachers.length === 0) {
-    console.warn("[state POST] BLOCKED: Supabase has", supabaseTeacherCountRef.current, "teachers but local has 0. Refusing to overwrite.");
-    return;
-  }
-  
-  const ctrl = new AbortController();
-  const nowTs = new Date().toISOString();
-  lastAppliedAtRef.current = nowTs;
-  // Tema ayarlarını payload'a ekle
-  const themeMode = getThemeMode();
-  const colorSchemeName = typeof window !== "undefined" ? (localStorage.getItem("site_color_scheme") || "default") : "default";
-  const customColors = typeof window !== "undefined" ? (() => {
-    try {
-      const custom = localStorage.getItem("site_custom_colors");
-      return custom ? JSON.parse(custom) : undefined;
-    } catch {
-      return undefined;
+  // === Admin değiştirince merkezi state'e de yaz (kalıcılık)
+  useEffect(() => {
+    if (!isAdmin) return;
+    if (!hydrated) return;
+    if (!centralLoaded) return;
+
+    // KORUMA: Eğer Supabase'de öğretmen varsa ama local'de yoksa, yazma!
+    // Bu, yeni tarayıcı/boş localStorage'ın Supabase verisini silmesini önler
+    if (supabaseTeacherCountRef.current > 0 && teachers.length === 0) {
+      console.warn("[state POST] BLOCKED: Supabase has", supabaseTeacherCountRef.current, "teachers but local has 0. Refusing to overwrite.");
+      return;
     }
-  })() : undefined;
-  
-  const payload = {
-    teachers,
-    cases,
-    history,
-    lastRollover,
-    lastAbsencePenalty,
-    announcements,
-    settings,
-    themeSettings: {
-      themeMode,
-      colorScheme: colorSchemeName,
-      customColors: colorSchemeName === "custom" ? customColors : undefined,
-    },
-    eArchive,
-    absenceRecords,
-    updatedAt: nowTs,
-  };
-  const t = window.setTimeout(() => {
-    fetch("/api/state", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-      signal: ctrl.signal,
-    })
-      .then(async (res) => {
-        if (!res.ok) {
-          const json = await res.json().catch(() => ({}));
-          console.error("[state POST] Error:", json);
-          toast(`Supabase kayıt hatası: ${json?.error || res.status}`);
-        } else {
-          console.log("[state POST] Success, teachers:", teachers.length);
-        }
+
+    const ctrl = new AbortController();
+    const nowTs = new Date().toISOString();
+    lastAppliedAtRef.current = nowTs;
+    // Tema ayarlarını payload'a ekle
+    const themeMode = getThemeMode();
+    const colorSchemeName = typeof window !== "undefined" ? (localStorage.getItem("site_color_scheme") || "default") : "default";
+    const customColors = typeof window !== "undefined" ? (() => {
+      try {
+        const custom = localStorage.getItem("site_custom_colors");
+        return custom ? JSON.parse(custom) : undefined;
+      } catch {
+        return undefined;
+      }
+    })() : undefined;
+
+    const payload = {
+      teachers,
+      cases,
+      history,
+      lastRollover,
+      lastAbsencePenalty,
+      announcements,
+      settings,
+      themeSettings: {
+        themeMode,
+        colorScheme: colorSchemeName,
+        customColors: colorSchemeName === "custom" ? customColors : undefined,
+      },
+      eArchive,
+      absenceRecords,
+      updatedAt: nowTs,
+    };
+    const t = window.setTimeout(() => {
+      fetch("/api/state", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+        signal: ctrl.signal,
       })
-      .catch((err) => {
-        if (err.name !== "AbortError") {
-          console.error("[state POST] Network error:", err);
-        }
-      });
-  }, 300);
-  return () => { window.clearTimeout(t); ctrl.abort(); };
-}, [teachers, cases, history, lastRollover, lastAbsencePenalty, announcements, settings, eArchive, absenceRecords, isAdmin, hydrated, centralLoaded]);
+        .then(async (res) => {
+          if (!res.ok) {
+            const json = await res.json().catch(() => ({}));
+            console.error("[state POST] Error:", json);
+            toast(`Supabase kayıt hatası: ${json?.error || res.status}`);
+          } else {
+            console.log("[state POST] Success, teachers:", teachers.length);
+          }
+        })
+        .catch((err) => {
+          if (err.name !== "AbortError") {
+            console.error("[state POST] Network error:", err);
+          }
+        });
+    }, 300);
+    return () => { window.clearTimeout(t); ctrl.abort(); };
+  }, [teachers, cases, history, lastRollover, lastAbsencePenalty, announcements, settings, eArchive, absenceRecords, isAdmin, hydrated, centralLoaded]);
 
   // Tema ayarlarını Supabase'e senkronize et
   useEffect(() => {
     if (!isAdmin) return;
     if (!hydrated) return;
-    
+
     // Supabase sync callback'i ayarla
     setSupabaseSyncCallback((themeMode, colorScheme, customColors) => {
       // Tema değişikliği olduğunda Supabase'e kaydet
@@ -1359,14 +1365,14 @@ useEffect(() => {
     }
   }
   async function doLogout() {
-    try { await fetch("/api/logout", { method: "POST" }); } catch {}
+    try { await fetch("/api/logout", { method: "POST" }); } catch { }
     setIsAdmin(false);
   }
 
   // ---- Bugün test alıp almadı kontrolü (kilit)
   function hasTestToday(tid: string) {
     const today = getTodayYmd();
-    return cases.some(c => c.isTest && !c.absencePenalty && c.assignedTo === tid && c.createdAt.slice(0,10) === today);
+    return cases.some(c => c.isTest && !c.absencePenalty && c.assignedTo === tid && c.createdAt.slice(0, 10) === today);
   }
   // Bugün bu öğretmene kaç dosya atanmış (test/normal ayrımı gözetmeksizin)
   function countCasesToday(tid: string) {
@@ -1374,7 +1380,7 @@ useEffect(() => {
     let n = 0;
     for (const c of cases) {
       if (c.absencePenalty) continue;
-      if (c.assignedTo === tid && c.createdAt.slice(0,10) === today) n++;
+      if (c.assignedTo === tid && c.createdAt.slice(0, 10) === today) n++;
     }
     return n;
   }
@@ -1383,7 +1389,7 @@ useEffect(() => {
   // Bugün en son kime atama yapıldı? (liste en yeni başta olduğundan ilk uygun kaydı alır)
   function lastAssignedTeacherToday(): string | undefined {
     const today = getTodayYmd();
-    const recent = cases.find(c => !c.absencePenalty && c.createdAt.slice(0,10) === today && !!c.assignedTo);
+    const recent = cases.find(c => !c.absencePenalty && c.createdAt.slice(0, 10) === today && !!c.assignedTo);
     return recent?.assignedTo;
   }
 
@@ -1405,7 +1411,7 @@ useEffect(() => {
   function autoAssign(newCase: CaseFile): Teacher | null {
     const todayYmd = getTodayYmd();
     const lastTid = lastAssignedTeacherToday();
-    
+
     // Test dosyasıysa: sadece testörler ve bugün test almamış olanlar
     if (newCase.isTest) {
       let testers = teachers.filter(
@@ -1426,7 +1432,7 @@ useEffect(() => {
         if (byCount !== 0) return byCount;
         return Math.random() - 0.5;
       });
-      
+
       const chosen = testers[0];
 
       const ym = ymOf(newCase.createdAt);
@@ -1434,10 +1440,10 @@ useEffect(() => {
         prev.map((t) =>
           t.id === chosen.id
             ? {
-                ...t,
-                yearlyLoad: t.yearlyLoad + newCase.score,
-                monthly: { ...(t.monthly || {}), [ym]: (t.monthly?.[ym] || 0) + newCase.score },
-              }
+              ...t,
+              yearlyLoad: t.yearlyLoad + newCase.score,
+              monthly: { ...(t.monthly || {}), [ym]: (t.monthly?.[ym] || 0) + newCase.score },
+            }
             : t
         )
       );
@@ -1466,7 +1472,7 @@ useEffect(() => {
       if (byCount !== 0) return byCount;
       return Math.random() - 0.5;
     });
-    
+
     const chosen = available[0];
 
     const ym = ymOf(newCase.createdAt);
@@ -1474,10 +1480,10 @@ useEffect(() => {
       prev.map((t) =>
         t.id === chosen.id
           ? {
-              ...t,
-              yearlyLoad: t.yearlyLoad + newCase.score,
-              monthly: { ...(t.monthly || {}), [ym]: (t.monthly?.[ym] || 0) + newCase.score },
-            }
+            ...t,
+            yearlyLoad: t.yearlyLoad + newCase.score,
+            monthly: { ...(t.monthly || {}), [ym]: (t.monthly?.[ym] || 0) + newCase.score },
+          }
           : t
       )
     );
@@ -1516,17 +1522,17 @@ useEffect(() => {
         prev.map((t) =>
           t.id === manualTeacherId
             ? {
-                ...t,
-                yearlyLoad: t.yearlyLoad + newCase.score,
-                monthly: { ...(t.monthly || {}), [ym]: (t.monthly?.[ym] || 0) + newCase.score },
-              }
+              ...t,
+              yearlyLoad: t.yearlyLoad + newCase.score,
+              monthly: { ...(t.monthly || {}), [ym]: (t.monthly?.[ym] || 0) + newCase.score },
+            }
             : t
         )
       );
       const chosen = teachers.find((t) => t.id === manualTeacherId);
-      if (chosen) { 
-        notifyAssigned(chosen, newCase); 
-        playAssignSound(); 
+      if (chosen) {
+        notifyAssigned(chosen, newCase);
+        playAssignSound();
         showAssignmentPopup(chosen.name, newCase.student, newCase.score);
       }
     } else {
@@ -1540,9 +1546,9 @@ useEffect(() => {
     if (selectedPdfEntryId && activePdfEntry) {
       newCase.sourcePdfEntry = activePdfEntry;
     }
-    
+
     setCases(prev => [newCase, ...prev]);
-    
+
     // Atama başarılı olduysa ve PDF randevusundan geldiyse, randevu listesinden sil (sadece local state'ten)
     if (selectedPdfEntryId) {
       setPdfEntries(prev => prev.filter(e => e.id !== selectedPdfEntryId));
@@ -1595,17 +1601,17 @@ useEffect(() => {
   function removeCase(id: string, skipConfirm = false) {
     const targetNow = cases.find(c => c.id === id);
     if (!targetNow) return;
-    
+
     const who = `${targetNow.student}${targetNow.fileNo ? ` (${targetNow.fileNo})` : ""}`;
     const hasSourcePdf = !!targetNow.sourcePdfEntry;
-    
+
     if (!skipConfirm) {
-      const msg = hasSourcePdf 
+      const msg = hasSourcePdf
         ? `Bu dosyayı geri almak istiyor musunuz?\n${who}\n\nRandevu listesine geri dönecek.`
         : `Bu dosyayı silmek istiyor musunuz?\n${who}`;
       if (!confirm(msg)) return;
     }
-    
+
     // Eğer PDF randevusundan geldiyse, randevu listesine geri ekle
     if (hasSourcePdf && targetNow.sourcePdfEntry) {
       setPdfEntries(prev => [targetNow.sourcePdfEntry!, ...prev]);
@@ -1613,7 +1619,7 @@ useEffect(() => {
     } else {
       toast("Dosya silindi");
     }
-    
+
     setCases(prev => {
       const target = prev.find(c => c.id === id);
       if (!target) return prev;
@@ -1632,7 +1638,7 @@ useEffect(() => {
       }
       return prev.filter(c => c.id !== id);
     });
-    
+
     // E-Arşiv'den de sil
     setEArchive(prev => prev.filter(e => e.id !== id));
   }
@@ -1643,17 +1649,17 @@ useEffect(() => {
     // Önce mevcut durumu kontrol et
     const currentTeacher = teachers.find(t => t.id === tid);
     const newAbsent = !currentTeacher?.isAbsent;
-    
+
     setTeachers(prev => prev.map(t => {
       if (t.id !== tid) return t;
-      return { 
-        ...t, 
+      return {
+        ...t,
         isAbsent: newAbsent,
         // Devamsız işaretlenirken tarihi kaydet, uygun yapılırken temizle
         absentDay: newAbsent ? today : undefined
       };
     }));
-    
+
     // Devamsızlık kaydını Supabase'de sakla/sil
     setAbsenceRecords(prev => {
       if (newAbsent) {
@@ -1707,8 +1713,8 @@ useEffect(() => {
 
     // Çalışan öğretmenler: aktif, o gün devamsız DEĞİL ve o gün yedek DEĞİL
     // absentDay === day kontrolü: öğretmen o gün için devamsız işaretlenmişse çalışmıyor sayılır
-    const workingTeachers = teachersRef.current.filter((t) => 
-      t.active && 
+    const workingTeachers = teachersRef.current.filter((t) =>
+      t.active &&
       t.absentDay !== day && // O gün için devamsız değil
       !t.isAbsent && // Şu an devamsız değil
       t.backupDay !== day
@@ -1734,7 +1740,7 @@ useEffect(() => {
     const penaltyScore = Math.max(0, minScore - absencePenaltyAmount);
 
     // Devamsız öğretmenler: o gün için devamsız işaretlenmiş VEYA şu an devamsız olan aktif öğretmenler
-    const absentTeachers = teachersRef.current.filter((t) => 
+    const absentTeachers = teachersRef.current.filter((t) =>
       t.active && (t.absentDay === day || t.isAbsent)
     );
     const absentIds = new Set(absentTeachers.map((t) => t.id));
@@ -1841,11 +1847,11 @@ useEffect(() => {
       const tid = c.assignedTo as string;
       pointsByTeacher.set(tid, (pointsByTeacher.get(tid) || 0) + c.score);
     }
-    
+
     // Ayarlardan bonus miktarını al
     const { backupBonusAmount } = settingsRef.current;
     const maxScore = pointsByTeacher.size ? Math.max(...pointsByTeacher.values()) : 0;
-    
+
     // Bonus hesapla (her zaman en yüksek + X)
     const bonus = maxScore + backupBonusAmount;
     const reasonText = `Başkan yedek bonusu: en yüksek ${maxScore} + ${backupBonusAmount} = ${bonus}`;
@@ -1956,23 +1962,23 @@ useEffect(() => {
   // ---- Liste filtreleme
   // "Dosyalar" sadece BUGÜN
   const filteredCases = useMemo(
-    () => cases.filter(c => c.createdAt.slice(0,10) === getTodayYmd()),
+    () => cases.filter(c => c.createdAt.slice(0, 10) === getTodayYmd()),
     [cases]
   );
 
   // ---- Canlı puan hesaplama (Yedek Başkan ve Devamsız için)
   const liveScores = useMemo(() => {
     const today = getTodayYmd();
-    
+
     // Çalışan öğretmenler: aktif, devamsız DEĞİL ve bugün yedek DEĞİL
     const workingTeachers = teachers.filter((t) => t.active && !t.isAbsent && t.backupDay !== today);
     const workingIds = new Set(workingTeachers.map((t) => t.id));
-    
+
     // Bugünkü çalışan öğretmenlerin dosyaları (ceza/bonus hariç)
     const todayCases = cases.filter(
       (c) => !c.absencePenalty && !c.backupBonus && c.assignedTo && c.createdAt.slice(0, 10) === today && workingIds.has(c.assignedTo)
     );
-    
+
     // Öğretmen başına puan hesapla
     const pointsByTeacher = new Map<string, number>();
     workingTeachers.forEach((t) => pointsByTeacher.set(t.id, 0));
@@ -1980,17 +1986,17 @@ useEffect(() => {
       const tid = c.assignedTo as string;
       pointsByTeacher.set(tid, (pointsByTeacher.get(tid) || 0) + c.score);
     }
-    
+
     const scores = Array.from(pointsByTeacher.values());
     const maxScore = scores.length ? Math.max(...scores) : 0;
     const minScore = scores.length ? Math.min(...scores) : 0;
-    
+
     // Yedek başkan için hesaplanan bonus (her zaman en yüksek + X)
     const backupBonus = maxScore + settings.backupBonusAmount;
-    
+
     // Devamsız için hesaplanan ceza puanı (her zaman en düşük - X)
     const absencePenalty = Math.max(0, minScore - settings.absencePenaltyAmount);
-    
+
     return {
       maxScore,
       minScore,
@@ -2012,7 +2018,7 @@ useEffect(() => {
   // Ay seçimleri: arşivdeki aylar + bugünkü ay
   const allMonths = useMemo(() => {
     const set = new Set<string>();
-    Object.keys(history).forEach(d => set.add(d.slice(0,7)));
+    Object.keys(history).forEach(d => set.add(d.slice(0, 7)));
     cases.forEach(c => set.add(ymOf(c.createdAt)));
     if (set.size === 0) set.add(ymOf(nowISO()));
     return Array.from(set).sort();
@@ -2059,7 +2065,7 @@ useEffect(() => {
 
   // ---- CSV dışa aktar (arşiv + bugün, seçili ay)
   function exportCSV() {
-    const headers = ['DosyaID','Öğrenci','Tür','Yeni','Tanı','Puan','Tarih','Ay','Test','Atanan Öğretmen'];
+    const headers = ['DosyaID', 'Öğrenci', 'Tür', 'Yeni', 'Tanı', 'Puan', 'Tarih', 'Ay', 'Test', 'Atanan Öğretmen'];
     const fmt = (iso: string) => new Date(iso).toLocaleString("tr-TR", { dateStyle: "short", timeStyle: "short" });
 
     const data = getCasesForMonth(filterYM);
@@ -2127,7 +2133,7 @@ useEffect(() => {
       // Öğrenci adına göre filtrele
       if (searchStudent.trim()) {
         const searchLower = searchStudent.toLowerCase().trim();
-        filtered = filtered.filter(e => 
+        filtered = filtered.filter(e =>
           e.student.toLowerCase().includes(searchLower)
         );
       }
@@ -2135,7 +2141,7 @@ useEffect(() => {
       // Dosya numarasına göre filtrele
       if (searchFileNo.trim()) {
         const searchLower = searchFileNo.toLowerCase().trim();
-        filtered = filtered.filter(e => 
+        filtered = filtered.filter(e =>
           e.fileNo?.toLowerCase().includes(searchLower)
         );
       }
@@ -2166,7 +2172,7 @@ useEffect(() => {
       }
 
       // Tarihe göre sırala (en yeni üstte)
-      return filtered.sort((a, b) => 
+      return filtered.sort((a, b) =>
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       );
     }, [eArchive, searchStudent, searchFileNo, filterTeacher, dateFrom, dateTo]);
@@ -2305,7 +2311,7 @@ useEffect(() => {
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    const ts = new Date().toISOString().slice(0,19).replace(/[:T]/g,'-');
+    const ts = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
     a.href = url;
     a.download = `yedek_${ts}.json`;
     a.click();
@@ -2315,17 +2321,17 @@ useEffect(() => {
   // ---- CSV dışa aktar (ayrıştırılmış sütunlar)
   function exportCSV2() {
     const headers = [
-      "DosyaID","DosyaNo","Öğrenci","Tür","Yeni","Yeni(1/0)",
-      "Tanı","Puan","Tarih","Saat","Gün","Ay","Yıl","ISO",
-      "Test","Test(1/0)","Atanan Öğretmen","Neden"
+      "DosyaID", "DosyaNo", "Öğrenci", "Tür", "Yeni", "Yeni(1/0)",
+      "Tanı", "Puan", "Tarih", "Saat", "Gün", "Ay", "Yıl", "ISO",
+      "Test", "Test(1/0)", "Atanan Öğretmen", "Neden"
     ];
     const data = getCasesForMonth(filterYM);
     const rows = data.map((c) => {
       const d = new Date(c.createdAt);
       const tarih = d.toLocaleDateString('tr-TR');
-      const saat = d.toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'});
-      const gun = String(d.getDate()).padStart(2,'0');
-      const ay  = String(d.getMonth()+1).padStart(2,'0');
+      const saat = d.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+      const gun = String(d.getDate()).padStart(2, '0');
+      const ay = String(d.getMonth() + 1).padStart(2, '0');
       const yil = String(d.getFullYear());
       return [
         c.id,
@@ -2418,258 +2424,258 @@ useEffect(() => {
     };
     reader.readAsText(file);
   }
-// === Pushover Test Bildirimi ===
-async function testNotifyTeacher(t: Teacher) {
-  if (!t.pushoverKey) {
-    alert("Bu öğretmenin Pushover User Key’i boş.");
-    return;
-  }
-  try {
-    const res = await fetch("/api/notify", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        userKey: t.pushoverKey,
-        title: "Test Bildirim",
-        message: `${t.name} için test bildirimi`,
-        priority: 0, // normal
-      }),
-    });
-    const json = await res.json();
-    if (!res.ok) {
-      alert("Bildirim hatası: " + (json?.errors?.[0] || JSON.stringify(json)));
-    } else {
-      alert("Test bildirimi gönderildi!");
+  // === Pushover Test Bildirimi ===
+  async function testNotifyTeacher(t: Teacher) {
+    if (!t.pushoverKey) {
+      alert("Bu öğretmenin Pushover User Key’i boş.");
+      return;
     }
-  } catch {
-    alert("Bildirim gönderilemedi.");
+    try {
+      const res = await fetch("/api/notify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userKey: t.pushoverKey,
+          title: "Test Bildirim",
+          message: `${t.name} için test bildirimi`,
+          priority: 0, // normal
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        alert("Bildirim hatası: " + (json?.errors?.[0] || JSON.stringify(json)));
+      } else {
+        alert("Test bildirimi gönderildi!");
+      }
+    } catch {
+      alert("Bildirim gönderilemedi.");
+    }
   }
-}
-// === Otomatik atamada/yeniden atamada haber ver ===
-async function notifyAssigned(t: Teacher, c: CaseFile) {
-  if (!t?.pushoverKey) return; // key yoksa sessizce çık
-  const desc = `Tür: ${humanType(c.type)} • Yeni: ${c.isNew ? "Evet" : "Hayır"} • Tanı: ${c.diagCount ?? 0}`;
-  try {
-    await fetch("/api/notify", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        userKey: t.pushoverKey,
-        title: "📁 Yeni Dosya Atandı",
-        message: `${t.name} için dosya: ${c.student}\n${desc}`,
-        priority: 0, // normal
-      }),
-    });
-  } catch {}
-}
+  // === Otomatik atamada/yeniden atamada haber ver ===
+  async function notifyAssigned(t: Teacher, c: CaseFile) {
+    if (!t?.pushoverKey) return; // key yoksa sessizce çık
+    const desc = `Tür: ${humanType(c.type)} • Yeni: ${c.isNew ? "Evet" : "Hayır"} • Tanı: ${c.diagCount ?? 0}`;
+    try {
+      await fetch("/api/notify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userKey: t.pushoverKey,
+          title: "📁 Yeni Dosya Atandı",
+          message: `${t.name} için dosya: ${c.student}\n${desc}`,
+          priority: 0, // normal
+        }),
+      });
+    } catch { }
+  }
 
-  
-  
+
+
   // ---- Atanan Dosyalar: dış bileşen kullanılacak (AssignedArchiveView)
-function AssignedArchiveSingleDay() {
-  const days = React.useMemo(() => {
-    const set = new Set<string>(Object.keys(history));
-    const todayYmd = getTodayYmd();
-    if (cases.some((c) => c.createdAt.slice(0,10) === todayYmd)) set.add(todayYmd);
-    return Array.from(set).sort();
-  }, [history, cases]);
+  function AssignedArchiveSingleDay() {
+    const days = React.useMemo(() => {
+      const set = new Set<string>(Object.keys(history));
+      const todayYmd = getTodayYmd();
+      if (cases.some((c) => c.createdAt.slice(0, 10) === todayYmd)) set.add(todayYmd);
+      return Array.from(set).sort();
+    }, [history, cases]);
 
-  const [day, setDay] = React.useState<string>(() => {
-    const today = getTodayYmd();
-    if (days.length === 0) return today;
-    return days.includes(today) ? today : days[days.length - 1];
-  });
+    const [day, setDay] = React.useState<string>(() => {
+      const today = getTodayYmd();
+      if (days.length === 0) return today;
+      return days.includes(today) ? today : days[days.length - 1];
+    });
 
-  // Gün listesi değişirse mevcut gün yoksa en yakın son güne git
-  React.useEffect(() => {
-    if (days.length === 0) return;
-    if (!days.includes(day)) setDay(days[days.length - 1]);
-  }, [days, day]);
+    // Gün listesi değişirse mevcut gün yoksa en yakın son güne git
+    React.useEffect(() => {
+      if (days.length === 0) return;
+      if (!days.includes(day)) setDay(days[days.length - 1]);
+    }, [days, day]);
 
-  const list = React.useMemo(() => {
-    return [
-      ...(history[day] || []),
-      ...cases.filter((c) => c.createdAt.slice(0,10) === day),
-    ].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
-  }, [day, history, cases]);
+    const list = React.useMemo(() => {
+      return [
+        ...(history[day] || []),
+        ...cases.filter((c) => c.createdAt.slice(0, 10) === day),
+      ].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+    }, [day, history, cases]);
 
-  const idx = days.indexOf(day);
-  const prevDisabled = idx <= 0;
-  const nextDisabled = idx === -1 || idx >= days.length - 1;
-  const [openExplainId, setOpenExplainId] = React.useState<string | null>(null);
-  const [aiOpenId, setAiOpenId] = React.useState<string | null>(null);
-  const [aiLoading, setAiLoading] = React.useState(false);
-  const [aiMessages, setAiMessages] = React.useState<Array<{role: 'user'|'assistant', content: string}>>([]);
-  const [aiInput, setAiInput] = React.useState("");
+    const idx = days.indexOf(day);
+    const prevDisabled = idx <= 0;
+    const nextDisabled = idx === -1 || idx >= days.length - 1;
+    const [openExplainId, setOpenExplainId] = React.useState<string | null>(null);
+    const [aiOpenId, setAiOpenId] = React.useState<string | null>(null);
+    const [aiLoading, setAiLoading] = React.useState(false);
+    const [aiMessages, setAiMessages] = React.useState<Array<{ role: 'user' | 'assistant', content: string }>>([]);
+    const [aiInput, setAiInput] = React.useState("");
 
-  function explainWhy(c: CaseFile): string {
-    const t = teacherById(c.assignedTo);
-    if (!t) return "ATANAN ÖĞRETMEN BULUNAMADI.";
-    if (c.assignReason) {
-      return `BU DOSYA YÖNETİCİ TARAFINDAN MANUEL OLARAK '${t.name}' ÖĞRETMENİNE ATANMIŞTIR. NEDEN: ${c.assignReason}.`;
+    function explainWhy(c: CaseFile): string {
+      const t = teacherById(c.assignedTo);
+      if (!t) return "ATANAN ÖĞRETMEN BULUNAMADI.";
+      if (c.assignReason) {
+        return `BU DOSYA YÖNETİCİ TARAFINDAN MANUEL OLARAK '${t.name}' ÖĞRETMENİNE ATANMIŞTIR. NEDEN: ${c.assignReason}.`;
+      }
+      const reasons: string[] = [];
+      if (c.isTest) {
+        reasons.push("DOSYA TEST OLDUĞU İÇİN SADECE TESTÖR ÖĞRETMENLER DEĞERLENDİRİLDİ.");
+      }
+      reasons.push("UYGUNLUK FİLTRELERİ: AKTİF, DEVAMSIZ DEĞİL, BUGÜN TEST ALMAMIŞ, GÜNLÜK SINIRI AŞMAMIŞ.");
+      reasons.push("SIRALAMA: ÖNCE YILLIK YÜK AZ, EŞİTSE BUGÜNKÜ DOSYA SAYISI AZ, SONRA RASTGELE.");
+      reasons.push("ART ARDA AYNI ÖĞRETMENE ATAMA YAPMAMAK İÇİN MÜMKÜNSE FARKLI ÖĞRETMEN TERCİH EDİLDİ.");
+      reasons.push(`GÜNLÜK ÜST SINIR: ÖĞRETMEN BAŞINA EN FAZLA ${MAX_DAILY_CASES} DOSYA.`);
+      reasons.push(`SEÇİM SONUCU: '${t.name}' BU KRİTERLERE GÖRE EN UYGUN ADAYDI.`);
+      return reasons.join(" ");
     }
-    const reasons: string[] = [];
-    if (c.isTest) {
-      reasons.push("DOSYA TEST OLDUĞU İÇİN SADECE TESTÖR ÖĞRETMENLER DEĞERLENDİRİLDİ.");
-    }
-    reasons.push("UYGUNLUK FİLTRELERİ: AKTİF, DEVAMSIZ DEĞİL, BUGÜN TEST ALMAMIŞ, GÜNLÜK SINIRI AŞMAMIŞ.");
-    reasons.push("SIRALAMA: ÖNCE YILLIK YÜK AZ, EŞİTSE BUGÜNKÜ DOSYA SAYISI AZ, SONRA RASTGELE.");
-    reasons.push("ART ARDA AYNI ÖĞRETMENE ATAMA YAPMAMAK İÇİN MÜMKÜNSE FARKLI ÖĞRETMEN TERCİH EDİLDİ.");
-    reasons.push(`GÜNLÜK ÜST SINIR: ÖĞRETMEN BAŞINA EN FAZLA ${MAX_DAILY_CASES} DOSYA.`);
-    reasons.push(`SEÇİM SONUCU: '${t.name}' BU KRİTERLERE GÖRE EN UYGUN ADAYDI.`);
-    return reasons.join(" ");
-  }
 
-  return (
-    <Card className="mt-4">
-      <CardHeader className="flex items-center justify-between">
-        <CardTitle>📋 Atanan Dosyalar (Tek Gün)</CardTitle>
-        <div className="flex items-center gap-2">
-          <Button size="sm" variant="outline" disabled={prevDisabled} onClick={() => !prevDisabled && setDay(days[idx - 1])}>
-            Önceki
-          </Button>
-          <Select value={day} onValueChange={setDay}>
-            <SelectTrigger className="w-[160px]"><SelectValue placeholder="Gün seç" /></SelectTrigger>
-            <SelectContent>
-              {days.map((d) => <SelectItem key={d} value={d}>{d}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Button size="sm" variant="outline" disabled={nextDisabled} onClick={() => !nextDisabled && setDay(days[idx + 1])}>
-            Sonraki
-          </Button>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <div className="overflow-auto">
-          <table className="w-full text-sm border border-border">
-            <thead>
-              <tr className="bg-muted">
-                <th className="p-2 text-left">Öğrenci</th>
-                <th className="p-2 text-right">Puan</th>
-                <th className="p-2 text-left">Saat</th>
-                <th className="p-2 text-left">Atanan</th>
-                <th className="p-2 text-left">Test</th>
-                <th className="p-2 text-left">Açıklama</th>
-                <th className="p-2 text-left">Neden?</th>
-                <th className="p-2 text-left">Yapay Zeka</th>
-              </tr>
-            </thead>
-            <tbody>
-              {list.map((c) => (
-                <React.Fragment key={c.id}>
-                  <tr className="border-t">
-                    <td className="p-2">{c.student}</td>
-                    <td className="p-2 text-right">{c.score}</td>
-                    <td className="p-2">
-                      {new Date(c.createdAt).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}
-                    </td>
-                    <td className="p-2">{teacherName(c.assignedTo)}</td>
-                    <td className="p-2">{c.isTest ? `Evet (+${settings.scoreTest})` : "Hayır"}</td>
-                    <td className="p-2 text-sm text-muted-foreground">{caseDesc(c)}</td>
-                    <td className="p-2">
-                      {!isAdmin && (
-                        <Button size="sm" variant="outline" onClick={() => setOpenExplainId(id => id === c.id ? null : c.id)}>
-                          NEDEN?
-                        </Button>
-                      )}
-                    </td>
-                    <td className="p-2">
-                      {!isAdmin && (
-                        <Button size="sm" onClick={() => {
-                          setAiOpenId(prev => prev === c.id ? null : c.id);
-                          setAiMessages(prev => prev.length ? prev : [{ role: 'user', content: 'Bu dosyayı neden bu öğretmen aldı?' }]);
-                        }}>YAPAY ZEKA İLE AÇIKLA</Button>
-                      )}
+    return (
+      <Card className="mt-4">
+        <CardHeader className="flex items-center justify-between">
+          <CardTitle>📋 Atanan Dosyalar (Tek Gün)</CardTitle>
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="outline" disabled={prevDisabled} onClick={() => !prevDisabled && setDay(days[idx - 1])}>
+              Önceki
+            </Button>
+            <Select value={day} onValueChange={setDay}>
+              <SelectTrigger className="w-[160px]"><SelectValue placeholder="Gün seç" /></SelectTrigger>
+              <SelectContent>
+                {days.map((d) => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Button size="sm" variant="outline" disabled={nextDisabled} onClick={() => !nextDisabled && setDay(days[idx + 1])}>
+              Sonraki
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-auto">
+            <table className="w-full text-sm border border-border">
+              <thead>
+                <tr className="bg-muted">
+                  <th className="p-2 text-left">Öğrenci</th>
+                  <th className="p-2 text-right">Puan</th>
+                  <th className="p-2 text-left">Saat</th>
+                  <th className="p-2 text-left">Atanan</th>
+                  <th className="p-2 text-left">Test</th>
+                  <th className="p-2 text-left">Açıklama</th>
+                  <th className="p-2 text-left">Neden?</th>
+                  <th className="p-2 text-left">Yapay Zeka</th>
+                </tr>
+              </thead>
+              <tbody>
+                {list.map((c) => (
+                  <React.Fragment key={c.id}>
+                    <tr className="border-t">
+                      <td className="p-2">{c.student}</td>
+                      <td className="p-2 text-right">{c.score}</td>
+                      <td className="p-2">
+                        {new Date(c.createdAt).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}
+                      </td>
+                      <td className="p-2">{teacherName(c.assignedTo)}</td>
+                      <td className="p-2">{c.isTest ? `Evet (+${settings.scoreTest})` : "Hayır"}</td>
+                      <td className="p-2 text-sm text-muted-foreground">{caseDesc(c)}</td>
+                      <td className="p-2">
+                        {!isAdmin && (
+                          <Button size="sm" variant="outline" onClick={() => setOpenExplainId(id => id === c.id ? null : c.id)}>
+                            NEDEN?
+                          </Button>
+                        )}
+                      </td>
+                      <td className="p-2">
+                        {!isAdmin && (
+                          <Button size="sm" onClick={() => {
+                            setAiOpenId(prev => prev === c.id ? null : c.id);
+                            setAiMessages(prev => prev.length ? prev : [{ role: 'user', content: 'Bu dosyayı neden bu öğretmen aldı?' }]);
+                          }}>YAPAY ZEKA İLE AÇIKLA</Button>
+                        )}
+                      </td>
+                    </tr>
+                    {openExplainId === c.id && (
+                      <tr className="border-t bg-slate-50">
+                        <td className="p-3" colSpan={7}>
+                          <div className="text-sm leading-relaxed">
+                            {explainWhy(c)}
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                    {aiOpenId === c.id && (
+                      <tr className="border-t bg-white">
+                        <td className="p-3" colSpan={8}>
+                          <div className="border rounded-md p-3 space-y-3">
+                            <div className="font-medium">Yapay Zeka Açıklaması</div>
+                            <div className="space-y-2 max-h-64 overflow-auto">
+                              {aiMessages.map((m, idx) => (
+                                <div key={idx} className={m.role === 'user' ? 'text-slate-800' : 'text-emerald-800'}>
+                                  <span className="text-xs uppercase font-semibold mr-2">{m.role === 'user' ? 'Siz' : 'Asistan'}</span>
+                                  <span>{m.content}</span>
+                                </div>
+                              ))}
+                            </div>
+                            <form className="flex gap-2" onSubmit={async (e) => {
+                              e.preventDefault();
+                              const q = aiInput.trim() || 'Bu dosyayı neden bu öğretmen aldı?';
+                              setAiMessages(msgs => [...msgs, { role: 'user', content: q }]);
+                              setAiInput('');
+                              setAiLoading(true);
+                              try {
+                                const rules = [
+                                  'ÖNCE TEST DOSYALARI YALNIZCA TESTÖR ÖĞRETMENLERE ATANIR.',
+                                  'UYGUNLUK: AKTİF, DEVAMSIZ DEĞİL, BUGÜN TEST ALMAMIŞ, GÜNLÜK SINIRI AŞMAMIŞ.',
+                                  'SIRALAMA: ÖNCE YILLIK YÜK AZ → DAHA SONRA BUGÜN ALINAN DOSYA SAYISI AZ → RASTGELE.',
+                                  'ARDIŞIK AYNI ÖĞRETMENE ATAMA YAPILMAZSA TERCİH EDİLİR.',
+                                  `GÜNLÜK ÜST SINIR: ÖĞRETMEN BAŞINA EN FAZLA ${MAX_DAILY_CASES} DOSYA.`,
+                                ];
+                                const res = await fetch('/api/explain', {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({
+                                    question: q,
+                                    caseFile: c,
+                                    selectedTeacher: teacherById(c.assignedTo),
+                                    rules,
+                                    context: { today: day, countsToday: Object.fromEntries(teachers.map(t => [t.id, countCasesToday(t.id)])) },
+                                  }),
+                                });
+                                const json = await res.json();
+                                const answer = json?.answer || json?.error || '(Yanıt alınamadı)';
+                                setAiMessages(msgs => [...msgs, { role: 'assistant', content: String(answer) }]);
+                              } catch (err: any) {
+                                setAiMessages(msgs => [...msgs, { role: 'assistant', content: 'Bir hata oluştu.' }]);
+                              } finally {
+                                setAiLoading(false);
+                              }
+                            }}>
+                              <Input
+                                value={aiInput}
+                                onChange={(e) => setAiInput(e.target.value)}
+                                placeholder="Sorunuzu yazın..."
+                                className="flex-1"
+                              />
+                              <Button type="submit" disabled={aiLoading}>{aiLoading ? 'Gönderiliyor...' : 'Gönder'}</Button>
+                            </form>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                ))}
+                {list.length === 0 && (
+                  <tr>
+                    <td className="p-8 text-center" colSpan={6}>
+                      <div className="flex flex-col items-center justify-center text-muted-foreground">
+                        <Inbox className="h-10 w-10 mb-2 text-slate-400" />
+                        <p className="text-sm font-medium">Bu günde kayıt yok</p>
+                        <p className="text-xs text-slate-400 mt-1">Seçili tarihte dosya atanmamış</p>
+                      </div>
                     </td>
                   </tr>
-                  {openExplainId === c.id && (
-                    <tr className="border-t bg-slate-50">
-                      <td className="p-3" colSpan={7}>
-                        <div className="text-sm leading-relaxed">
-                          {explainWhy(c)}
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-                  {aiOpenId === c.id && (
-                    <tr className="border-t bg-white">
-                      <td className="p-3" colSpan={8}>
-                        <div className="border rounded-md p-3 space-y-3">
-                          <div className="font-medium">Yapay Zeka Açıklaması</div>
-                          <div className="space-y-2 max-h-64 overflow-auto">
-                            {aiMessages.map((m, idx) => (
-                              <div key={idx} className={m.role === 'user' ? 'text-slate-800' : 'text-emerald-800'}>
-                                <span className="text-xs uppercase font-semibold mr-2">{m.role === 'user' ? 'Siz' : 'Asistan'}</span>
-                                <span>{m.content}</span>
-                              </div>
-                            ))}
-                          </div>
-                          <form className="flex gap-2" onSubmit={async (e) => {
-                            e.preventDefault();
-                            const q = aiInput.trim() || 'Bu dosyayı neden bu öğretmen aldı?';
-                            setAiMessages(msgs => [...msgs, { role: 'user', content: q }]);
-                            setAiInput('');
-                            setAiLoading(true);
-                            try {
-                              const rules = [
-                                'ÖNCE TEST DOSYALARI YALNIZCA TESTÖR ÖĞRETMENLERE ATANIR.',
-                                'UYGUNLUK: AKTİF, DEVAMSIZ DEĞİL, BUGÜN TEST ALMAMIŞ, GÜNLÜK SINIRI AŞMAMIŞ.',
-                                'SIRALAMA: ÖNCE YILLIK YÜK AZ → DAHA SONRA BUGÜN ALINAN DOSYA SAYISI AZ → RASTGELE.',
-                                'ARDIŞIK AYNI ÖĞRETMENE ATAMA YAPILMAZSA TERCİH EDİLİR.',
-                                `GÜNLÜK ÜST SINIR: ÖĞRETMEN BAŞINA EN FAZLA ${MAX_DAILY_CASES} DOSYA.`,
-                              ];
-                              const res = await fetch('/api/explain', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({
-                                  question: q,
-                                  caseFile: c,
-                                  selectedTeacher: teacherById(c.assignedTo),
-                                  rules,
-                                  context: { today: day, countsToday: Object.fromEntries(teachers.map(t => [t.id, countCasesToday(t.id)])) },
-                                }),
-                              });
-                              const json = await res.json();
-                              const answer = json?.answer || json?.error || '(Yanıt alınamadı)';
-                              setAiMessages(msgs => [...msgs, { role: 'assistant', content: String(answer) }]);
-                            } catch (err: any) {
-                              setAiMessages(msgs => [...msgs, { role: 'assistant', content: 'Bir hata oluştu.' }]);
-                            } finally {
-                              setAiLoading(false);
-                            }
-                          }}>
-                            <Input
-                              value={aiInput}
-                              onChange={(e) => setAiInput(e.target.value)}
-                              placeholder="Sorunuzu yazın..."
-                              className="flex-1"
-                            />
-                            <Button type="submit" disabled={aiLoading}>{aiLoading ? 'Gönderiliyor...' : 'Gönder'}</Button>
-                          </form>
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-                </React.Fragment>
-              ))}
-              {list.length === 0 && (
-                <tr>
-                  <td className="p-8 text-center" colSpan={6}>
-                    <div className="flex flex-col items-center justify-center text-muted-foreground">
-                      <Inbox className="h-10 w-10 mb-2 text-slate-400" />
-                      <p className="text-sm font-medium">Bu günde kayıt yok</p>
-                      <p className="text-xs text-slate-400 mt-1">Seçili tarihte dosya atanmamış</p>
-                    </div>
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
+                )}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (viewMode === "landing") {
     return (
@@ -2680,7 +2686,7 @@ function AssignedArchiveSingleDay() {
           <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-orange-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-2000"></div>
           <div className="absolute top-40 left-40 w-80 h-80 bg-purple-200 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-4000"></div>
         </div>
-        
+
         <div className="relative z-10 max-w-3xl w-full mx-4 px-8 py-14 text-center space-y-8 bg-white/80 backdrop-blur-xl rounded-[40px] shadow-2xl border border-white/50 animate-landing-card">
           {/* Logo/İkon - Floating animasyonu */}
           <div className="flex justify-center">
@@ -2688,25 +2694,25 @@ function AssignedArchiveSingleDay() {
               <span className="text-4xl">📚</span>
             </div>
           </div>
-          
-          <div className="text-sm md:text-base uppercase tracking-[0.5em] text-teal-600 font-semibold animate-fade-in-up" style={{animationDelay: '0.2s'}}>
+
+          <div className="text-sm md:text-base uppercase tracking-[0.5em] text-teal-600 font-semibold animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
             Karşıyaka Rehberlik ve Araştırma Merkezi
           </div>
-          
-          <h1 className="text-4xl md:text-5xl font-extrabold bg-gradient-to-r from-teal-600 via-teal-500 to-orange-500 bg-clip-text text-transparent animate-fade-in-up" style={{animationDelay: '0.3s'}}>
+
+          <h1 className="text-4xl md:text-5xl font-extrabold bg-gradient-to-r from-teal-600 via-teal-500 to-orange-500 bg-clip-text text-transparent animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
             Özel Eğitim Bölümü Paneli
           </h1>
-          
-          <p className="text-lg md:text-xl text-slate-600 leading-relaxed max-w-xl mx-auto animate-fade-in-up" style={{animationDelay: '0.4s'}}>
+
+          <p className="text-lg md:text-xl text-slate-600 leading-relaxed max-w-xl mx-auto animate-fade-in-up" style={{ animationDelay: '0.4s' }}>
             👋 Hoş geldiniz! Günlük randevu listelerini yükleyin, dosya atamalarını yönetin ve öğretmen bildirimlerini takip edin.
           </p>
-          
+
           {/* Özellik kartları - Buton olarak çalışır */}
           <div className="grid grid-cols-3 gap-4 py-4">
             <Button
               onClick={() => setViewMode("main")}
               className="group p-6 rounded-xl bg-teal-50 border-2 border-teal-200 hover:border-teal-400 hover:bg-teal-100 transition-all duration-300 hover:scale-110 hover:shadow-lg hover:shadow-teal-200 animate-card-pop h-auto flex flex-col items-center justify-center"
-              style={{animationDelay: '0.5s'}}
+              style={{ animationDelay: '0.5s' }}
             >
               <div className="text-3xl mb-2 transition-transform duration-300 group-hover:scale-125 group-hover:animate-bounce">📁</div>
               <div className="text-sm text-teal-700 font-semibold">Dosya Atama</div>
@@ -2714,7 +2720,7 @@ function AssignedArchiveSingleDay() {
             <Button
               onClick={() => setViewMode("teacher-tracking")}
               className="group p-6 rounded-xl bg-orange-50 border-2 border-orange-200 hover:border-orange-400 hover:bg-orange-100 transition-all duration-300 hover:scale-110 hover:shadow-lg hover:shadow-orange-200 animate-card-pop h-auto flex flex-col items-center justify-center"
-              style={{animationDelay: '0.6s'}}
+              style={{ animationDelay: '0.6s' }}
             >
               <div className="text-3xl mb-2 transition-transform duration-300 group-hover:scale-125 group-hover:animate-bounce">👨‍🏫</div>
               <div className="text-sm text-orange-700 font-semibold">Öğretmen Takibi</div>
@@ -2722,14 +2728,14 @@ function AssignedArchiveSingleDay() {
             <Button
               onClick={() => setViewMode("archive")}
               className="group p-6 rounded-xl bg-purple-50 border-2 border-purple-200 hover:border-purple-400 hover:bg-purple-100 transition-all duration-300 hover:scale-110 hover:shadow-lg hover:shadow-purple-200 animate-card-pop h-auto flex flex-col items-center justify-center"
-              style={{animationDelay: '0.7s'}}
+              style={{ animationDelay: '0.7s' }}
             >
               <div className="text-3xl mb-2 transition-transform duration-300 group-hover:scale-125 group-hover:animate-bounce">🗄️</div>
               <div className="text-sm text-purple-700 font-semibold">Arşiv</div>
             </Button>
           </div>
-          
-          <div className="text-xs text-slate-400 animate-fade-in-up" style={{animationDelay: '0.9s'}}>
+
+          <div className="text-xs text-slate-400 animate-fade-in-up" style={{ animationDelay: '0.9s' }}>
             v{APP_VERSION} • Son güncelleme: {new Date().toLocaleDateString('tr-TR')}
           </div>
         </div>
@@ -2743,7 +2749,7 @@ function AssignedArchiveSingleDay() {
   // Öğretmen Takibi sayfası
   if (viewMode === "teacher-tracking") {
     const absentByDay: Record<string, Teacher[]> = {};
-    
+
     // Supabase'deki devamsızlık kayıtlarından oku (ana kaynak)
     absenceRecords.forEach(record => {
       const teacher = teachers.find(t => t.id === record.teacherId);
@@ -2755,7 +2761,7 @@ function AssignedArchiveSingleDay() {
         }
       }
     });
-    
+
     // Mevcut devamsızlıklar (absentDay'den - bugün için)
     const today = getTodayYmd();
     teachers.filter(t => t.absentDay === today).forEach(t => {
@@ -2764,7 +2770,7 @@ function AssignedArchiveSingleDay() {
         absentByDay[today].push(t);
       }
     });
-    
+
     // Geçmiş devamsızlıklar (history'den absencePenalty kayıtları)
     Object.keys(history).forEach(day => {
       history[day].forEach(entry => {
@@ -2780,9 +2786,9 @@ function AssignedArchiveSingleDay() {
         }
       });
     });
-    
+
     const sortedDays = Object.keys(absentByDay).sort((a, b) => b.localeCompare(a));
-    
+
     // Seçili tarih yoksa veya listede yoksa en son tarihi seç
     let currentSelectedDate = selectedAbsenceDate;
     if (!currentSelectedDate || !sortedDays.includes(currentSelectedDate)) {
@@ -2797,7 +2803,7 @@ function AssignedArchiveSingleDay() {
     // Sonraki = daha yeni tarih = dizide daha önceki eleman (index - 1)
     const prevDate = currentIndex >= 0 && currentIndex < sortedDays.length - 1 ? sortedDays[currentIndex + 1] : null;
     const nextDate = currentIndex > 0 ? sortedDays[currentIndex - 1] : null;
-    
+
     // Haftalık gruplama
     const weeklyGroups: Record<string, { week: string; teachers: Teacher[]; days: string[] }> = {};
     sortedDays.forEach(day => {
@@ -2815,7 +2821,7 @@ function AssignedArchiveSingleDay() {
       });
       weeklyGroups[weekKey].days.push(day);
     });
-    
+
     // Aylık gruplama
     const monthlyGroups: Record<string, { month: string; teachers: Teacher[]; days: string[] }> = {};
     sortedDays.forEach(day => {
@@ -2830,11 +2836,11 @@ function AssignedArchiveSingleDay() {
       });
       monthlyGroups[monthKey].days.push(day);
     });
-    
+
     // Sıralı hafta ve ay listeleri
     const sortedWeeks = Object.values(weeklyGroups).sort((a, b) => b.week.localeCompare(a.week));
     const sortedMonths = Object.values(monthlyGroups).sort((a, b) => b.month.localeCompare(a.month));
-    
+
     // Seçili hafta ve ay index'lerini kontrol et
     const currentWeekIndex = Math.min(selectedWeekIndex, sortedWeeks.length - 1);
     const currentMonthIndex = Math.min(selectedMonthIndex, sortedMonths.length - 1);
@@ -2929,7 +2935,7 @@ function AssignedArchiveSingleDay() {
                       Önceki
                     </Button>
                     <div className="font-semibold text-lg text-orange-700 text-center flex-1">
-                      Hafta: {format(new Date(currentWeek.week), 'dd MMMM yyyy', { locale: tr })} - {format(new Date(new Date(currentWeek.week).getTime() + 6*24*60*60*1000), 'dd MMMM yyyy', { locale: tr })}
+                      Hafta: {format(new Date(currentWeek.week), 'dd MMMM yyyy', { locale: tr })} - {format(new Date(new Date(currentWeek.week).getTime() + 6 * 24 * 60 * 60 * 1000), 'dd MMMM yyyy', { locale: tr })}
                     </div>
                     <Button
                       variant="outline"
@@ -2950,24 +2956,24 @@ function AssignedArchiveSingleDay() {
                     <div className="space-y-1">
                       {currentWeek.teachers.map(t => {
                         // Bu öğretmenin bu hafta içinde hangi günler devamsız olduğunu bul
-                        const teacherAbsentDays = currentWeek.days.filter(day => 
+                        const teacherAbsentDays = currentWeek.days.filter(day =>
                           absentByDay[day]?.some(teacher => teacher.id === t.id)
                         ).sort();
-                        
+
                         // Günleri formatla (örn: "14, 16, 19 Aralık")
                         const formattedDays = teacherAbsentDays.map(day => {
                           const date = new Date(day);
                           return format(date, 'd MMMM', { locale: tr });
                         }).join(', ');
-                        
+
                         return (
-                        <div key={t.id} className="flex items-center gap-2 text-slate-700">
-                          <span className="w-2 h-2 bg-orange-500 rounded-full"></span>
+                          <div key={t.id} className="flex items-center gap-2 text-slate-700">
+                            <span className="w-2 h-2 bg-orange-500 rounded-full"></span>
                             <span className="font-medium">{t.name}</span>
                             {formattedDays && (
                               <span className="text-xs text-slate-500 ml-2">({formattedDays})</span>
                             )}
-                        </div>
+                          </div>
                         );
                       })}
                       {currentWeek.teachers.length === 0 && (
@@ -3026,24 +3032,24 @@ function AssignedArchiveSingleDay() {
                     <div className="space-y-1">
                       {currentMonth.teachers.map(t => {
                         // Bu öğretmenin bu ay içinde hangi günler devamsız olduğunu bul
-                        const teacherAbsentDays = currentMonth.days.filter(day => 
+                        const teacherAbsentDays = currentMonth.days.filter(day =>
                           absentByDay[day]?.some(teacher => teacher.id === t.id)
                         ).sort();
-                        
+
                         // Günleri formatla (örn: "14, 16, 19 Aralık")
                         const formattedDays = teacherAbsentDays.map(day => {
                           const date = new Date(day);
                           return format(date, 'd MMMM', { locale: tr });
                         }).join(', ');
-                        
+
                         return (
-                        <div key={t.id} className="flex items-center gap-2 text-slate-700">
-                          <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
+                          <div key={t.id} className="flex items-center gap-2 text-slate-700">
+                            <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
                             <span className="font-medium">{t.name}</span>
                             {formattedDays && (
                               <span className="text-xs text-slate-500 ml-2">({formattedDays})</span>
                             )}
-                        </div>
+                          </div>
                         );
                       })}
                       {currentMonth.teachers.length === 0 && (
@@ -3065,7 +3071,7 @@ function AssignedArchiveSingleDay() {
   // Arşiv sayfası - Şifre korumalı
   if (viewMode === "archive") {
     const ARCHIVE_PASSWORD = "ram2025"; // Şifreyi buradan değiştirebilirsiniz
-    
+
     if (!archiveAuthenticated) {
       return (
         <div className="container mx-auto p-4">
@@ -3164,9 +3170,8 @@ function AssignedArchiveSingleDay() {
               {archiveFiles.map(file => (
                 <div
                   key={file.id}
-                  className={`p-3 border rounded-lg ${
-                    existingFiles.has(file.fileNo) ? 'bg-teal-50 border-teal-200' : 'bg-slate-50 border-slate-200'
-                  }`}
+                  className={`p-3 border rounded-lg ${existingFiles.has(file.fileNo) ? 'bg-teal-50 border-teal-200' : 'bg-slate-50 border-slate-200'
+                    }`}
                 >
                   <div className="flex items-center justify-between">
                     <div>
@@ -3206,745 +3211,157 @@ function AssignedArchiveSingleDay() {
   // ---------- TEK RETURN: BİLEŞEN ÇIKIŞI ----------
   return (
     <>
-    <ThemeToggle />
-    <div className="container mx-auto p-4 space-y-6">
-      {/* Üst araç çubuğu: rapor ve giriş */}
-     {/* ÜST BAR (sticky + cam) */}
-<div className="sticky top-0 z-40 backdrop-blur bg-white/70 border-b border-slate-200/60">
-  <div className="container mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-2 md:gap-3">
+      <ThemeToggle />
+      <div className="container mx-auto p-4 space-y-6">
+        {/* Üst araç çubuğu: rapor ve giriş */}
+        {/* ÜST BAR (sticky + cam) */}
+        <div className="sticky top-0 z-40 backdrop-blur bg-white/70 border-b border-slate-200/60">
+          <div className="container mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-2 md:gap-3">
 
-    {/* Sol: Ana sayfa butonu + Ay seçici (sadece admin için) */}
-    <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
-      <Button size="sm" variant="outline" onClick={() => setViewMode("landing")}>
-        🏠 Ana Sayfa
-      </Button>
-      {isAdmin && (
-        <Select value={filterYM} onValueChange={setFilterYM}>
-          <SelectTrigger className="w-[160px]">
-            <SelectValue placeholder="Ay seç" />
-          </SelectTrigger>
-          <SelectContent>
-            {allMonths.map((m) => (
-              <SelectItem key={m} value={m}>{m}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      )}
-    </div>
-
-    {/* Sağ: Canlı rozet + giriş/çıkış */}
-    <div className="flex items-center gap-3">
-      <Button size="sm" variant="outline" className="min-h-9" onClick={() => setShowRules(true)}>📖 Kurallar</Button>
-
-      {/* CANLI ROZET (şık stil) */}
-      <span
-        className={
-          "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ring-1 " +
-          (live === "online"
-            ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
-            : live === "connecting"
-            ? "bg-amber-50 text-amber-700 ring-amber-200"
-            : "bg-rose-50 text-rose-700 ring-rose-200")
-        }
-        title={live === "online" ? "Bağlı" : live === "connecting" ? "Bağlanıyor" : "Bağlı değil"}
-      >
-        <span className="inline-block size-1.5 rounded-full bg-current animate-pulse" />
-        🔴 Canlı: {live}
-      </span>
-
-      <Button size="sm" variant="outline" className="min-h-9" onClick={() => setFeedbackOpen(true)}>💬 Öneri/Şikayet</Button>
-
-      {isAdmin ? (
-  <>
-    <span className="text-sm text-emerald-700 font-medium">👑 Admin</span>
-
-    {/* Ses Aç/Kapat */}
-    <Button
-      size="sm"
-      variant="outline"
-      className="min-h-9"
-      data-silent="true"
-      title={soundOn ? "Sesi Kapat" : "Sesi Aç"}
-      onClick={() => setSoundOn(v => !v)}
-    >
-      {soundOn ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
-    </Button>
-
-    {/* Simülasyon Modu */}
-    {typeof window !== "undefined" && new URLSearchParams(window.location.search).get("simDate") && (
-      <>
-        <span className="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded font-medium">
-          📅 Simülasyon: {new URLSearchParams(window.location.search).get("simDate")}
-        </span>
-        <Button
-          size="sm"
-          variant="destructive"
-          className="min-h-9"
-          onClick={() => {
-            if (confirm("Günü bitir ve arşivle? (Devamsızlık cezası + Yedek bonusu uygulanacak)")) {
-              doRollover();
-              toast("Gün bitirildi! Devamsızlık/yedek puanları uygulandı.");
-            }
-          }}
-        >
-          🌙 Günü Bitir
-        </Button>
-      </>
-    )}
-
-    {/* Çıkış */}
-    <Button size="sm" variant="outline" className="min-h-9" onClick={() => setSettingsOpen(true)}>⚙️ Ayarlar</Button>
-    <Button size="sm" variant="outline" className="min-h-9" onClick={doLogout}>🚪 Çıkış</Button>
-  </>
-) : (
-  <Button size="sm" className="min-h-9" onClick={() => setLoginOpen(true)}>🔐 Giriş</Button>
-)}
-    </div>
-
-  </div>
-</div>
-
-      {/* 📊 DASHBOARD ÖZET KARTLARI */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <div className="bg-gradient-to-br from-teal-500 to-teal-600 rounded-xl p-4 text-white shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200 cursor-default">
-          <div className="text-3xl font-bold">{teachers.filter(t => t.active && !t.isAbsent).length}</div>
-          <div className="text-sm opacity-90">👨‍🏫 Aktif Öğretmen</div>
-        </div>
-        <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl p-4 text-white shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200 cursor-default">
-          <div className="text-3xl font-bold">{cases.filter(c => !c.absencePenalty).length}</div>
-          <div className="text-sm opacity-90">📁 Bugün Atanan</div>
-        </div>
-        <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-4 text-white shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200 cursor-default">
-          <div className="text-3xl font-bold">{pendingAppointmentsCount}</div>
-          <div className="text-sm opacity-90">📋 Bekleyen Randevu</div>
-        </div>
-        <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl p-4 text-white shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200 cursor-default">
-          <div className="text-3xl font-bold">{Object.keys(history).length}</div>
-          <div className="text-sm opacity-90">📅 Arşivli Gün</div>
-        </div>
-      </div>
-
-      
-      {/* Admin olmayan kullanıcılar için randevu listesi ve duyurular */}
-      {!isAdmin && (
-        <>
-          {announcements.length > 0 && (
-            <div className="border rounded-md p-3 bg-amber-50 border-amber-300 animate-pulse">
-              <div className="font-medium text-amber-900">Duyuru</div>
-              <ul className="list-disc pl-5 mt-1 space-y-1">
-                {announcements.map((a) => (
-                  <li key={a.id} className="text-sm text-amber-900">{a.text}</li>
-                ))}
-              </ul>
-              <div className="text-xs text-amber-800 mt-1">Bu duyurular gün sonunda temizlenir.</div>
+            {/* Sol: Ana sayfa butonu + Ay seçici (sadece admin için) */}
+            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
+              <Button size="sm" variant="outline" onClick={() => setViewMode("landing")}>
+                🏠 Ana Sayfa
+              </Button>
+              {isAdmin && (
+                <Select value={filterYM} onValueChange={setFilterYM}>
+                  <SelectTrigger className="w-[160px]">
+                    <SelectValue placeholder="Ay seç" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {allMonths.map((m) => (
+                      <SelectItem key={m} value={m}>{m}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
-          )}
-          <DailyAppointmentsCard
-            pdfDate={pdfDate}
-            pdfLoading={pdfLoading}
-            pdfEntries={pdfEntries}
-            selectedPdfEntryId={selectedPdfEntryId}
-            onShowDetails={(date) => { if (date instanceof Date) { fetchPdfEntriesFromServer(date); } else { setShowPdfPanel(true); } }}
-            onPrint={handlePrintPdfList}
-            onClearAll={() => clearPdfEntries(true, true)}
-            cases={cases}
-            history={history}
-          />
-          
-          {/* Non-admin için Raporlar ve Atanan Dosyalar */}
-          <Card className="mt-4">
-            <CardHeader>
-              <CardTitle>📊 Raporlar ve Arşiv</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-wrap gap-2">
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant={["statistics", "weekly", "yearly", "teacher-performance", "file-type-analysis"].includes(reportMode) ? "default" : "outline"}>
-                      📈 İstatistikler
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-56 p-2">
-                    <div className="flex flex-col gap-1">
-                      <Button 
-                        variant={reportMode === "statistics" ? "default" : "ghost"} 
-                        className="w-full justify-start"
-                        onClick={() => setReportMode("statistics")}
-                      >
-                        📈 İstatistikler
-                      </Button>
-                      <Button 
-                        variant={reportMode === "weekly" ? "default" : "ghost"} 
-                        className="w-full justify-start"
-                        onClick={() => setReportMode("weekly")}
-                      >
-                        📆 Haftalık Rapor
-                      </Button>
-                      <Button 
-                        variant={reportMode === "yearly" ? "default" : "ghost"} 
-                        className="w-full justify-start"
-                        onClick={() => setReportMode("yearly")}
-                      >
-                        📆 Yıllık Rapor
-                      </Button>
-                      <Button 
-                        variant={reportMode === "teacher-performance" ? "default" : "ghost"} 
-                        className="w-full justify-start"
-                        onClick={() => setReportMode("teacher-performance")}
-                      >
-                        👨‍🏫 Öğretmen Performansı
-                      </Button>
-                      <Button 
-                        variant={reportMode === "file-type-analysis" ? "default" : "ghost"} 
-                        className="w-full justify-start"
-                        onClick={() => setReportMode("file-type-analysis")}
-                      >
-                        📊 Dosya Türü Analizi
-                      </Button>
-                    </div>
-                  </PopoverContent>
-                </Popover>
-                <Button variant={reportMode === "daily" ? "default" : "outline"} onClick={() => setReportMode("daily")}>
-                  📅 Günlük Rapor
-                </Button>
-                <Button variant={reportMode === "monthly" ? "default" : "outline"} onClick={() => setReportMode("monthly")}>
-                  📊 Aylık Rapor
-                </Button>
-                <Button variant={reportMode === "archive" ? "default" : "outline"} onClick={() => setReportMode("archive")}>
-                  📋 Atanan Dosyalar
-                </Button>
-                <Button variant={reportMode === "e-archive" ? "default" : "outline"} onClick={() => setReportMode("e-archive")}>
-                  🗄️ E-Arşiv
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </>
-      )}
 
-      {/* İzleyici/Normal kullanıcı için Duyuru Paneli */}
-      {!isAdmin && announcements.length > 0 && (
-        <div className="border rounded-md p-3 bg-amber-50 border-amber-300 animate-pulse">
-          <div className="font-medium text-amber-900">Duyuru</div>
-          <ul className="list-disc pl-5 mt-1 space-y-1">
-            {announcements.map((a) => (
-              <li key={a.id} className="text-sm text-amber-900">{a.text}</li>
-            ))}
-          </ul>
-          <div className="text-xs text-amber-800 mt-1">Bu duyurular gün sonunda temizlenir.</div>
-        </div>
-      )}
+            {/* Sağ: Canlı rozet + giriş/çıkış */}
+            <div className="flex items-center gap-3">
+              <Button size="sm" variant="outline" className="min-h-9" onClick={() => setShowRules(true)}>📖 Kurallar</Button>
 
-      {/* Admin alanı - Tab Sistemi */}
-      {isAdmin && (
-        <Card className="border-2">
-          {/* Tab Navigation */}
-          <div className="border-b">
-            <div className="flex flex-wrap gap-2 p-3 bg-slate-50">
-              <Button
-                variant={adminTab === "files" ? "default" : "ghost"}
-                size="sm"
-                onClick={() => setAdminTab("files")}
-                className="min-h-9"
+              {/* CANLI ROZET (şık stil) */}
+              <span
+                className={
+                  "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ring-1 " +
+                  (live === "online"
+                    ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
+                    : live === "connecting"
+                      ? "bg-amber-50 text-amber-700 ring-amber-200"
+                      : "bg-rose-50 text-rose-700 ring-rose-200")
+                }
+                title={live === "online" ? "Bağlı" : live === "connecting" ? "Bağlanıyor" : "Bağlı değil"}
               >
-                📁 Dosya Atama
-              </Button>
-              <Button
-                variant={adminTab === "teachers" ? "default" : "ghost"}
-                size="sm"
-                onClick={() => setAdminTab("teachers")}
-                className="min-h-9"
-              >
-                👨‍🏫 Öğretmenler
-              </Button>
-              <Button
-                variant={adminTab === "reports" ? "default" : "ghost"}
-                size="sm"
-                onClick={() => setAdminTab("reports")}
-                className="min-h-9"
-              >
-                📊 Raporlar
-              </Button>
-              <Button
-                variant={adminTab === "announcements" ? "default" : "ghost"}
-                size="sm"
-                onClick={() => setAdminTab("announcements")}
-                className="min-h-9"
-              >
-                📢 Duyuru
-              </Button>
-              <Button
-                variant={adminTab === "backup" ? "default" : "ghost"}
-                size="sm"
-                onClick={() => setAdminTab("backup")}
-                className="min-h-9"
-              >
-                💾 Yedekleme
-              </Button>
+                <span className="inline-block size-1.5 rounded-full bg-current animate-pulse" />
+                🔴 Canlı: {live}
+              </span>
+
+              <Button size="sm" variant="outline" className="min-h-9" onClick={() => setFeedbackOpen(true)}>💬 Öneri/Şikayet</Button>
+
+              {isAdmin ? (
+                <>
+                  <span className="text-sm text-emerald-700 font-medium">👑 Admin</span>
+
+                  {/* Ses Aç/Kapat */}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="min-h-9"
+                    data-silent="true"
+                    title={soundOn ? "Sesi Kapat" : "Sesi Aç"}
+                    onClick={() => setSoundOn(v => !v)}
+                  >
+                    {soundOn ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+                  </Button>
+
+                  {/* Simülasyon Modu */}
+                  {typeof window !== "undefined" && new URLSearchParams(window.location.search).get("simDate") && (
+                    <>
+                      <span className="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded font-medium">
+                        📅 Simülasyon: {new URLSearchParams(window.location.search).get("simDate")}
+                      </span>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        className="min-h-9"
+                        onClick={() => {
+                          if (confirm("Günü bitir ve arşivle? (Devamsızlık cezası + Yedek bonusu uygulanacak)")) {
+                            doRollover();
+                            toast("Gün bitirildi! Devamsızlık/yedek puanları uygulandı.");
+                          }
+                        }}
+                      >
+                        🌙 Günü Bitir
+                      </Button>
+                    </>
+                  )}
+
+                  {/* Çıkış */}
+                  <Button size="sm" variant="outline" className="min-h-9" onClick={() => setSettingsOpen(true)}>⚙️ Ayarlar</Button>
+                  <Button size="sm" variant="outline" className="min-h-9" onClick={doLogout}>🚪 Çıkış</Button>
+                </>
+              ) : (
+                <Button size="sm" className="min-h-9" onClick={() => setLoginOpen(true)}>🔐 Giriş</Button>
+              )}
             </div>
+
           </div>
+        </div>
 
-          {/* Tab Content */}
-          <div className="p-4">
-            {adminTab === "files" && (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4"
-                onKeyDown={(e) => {
-                  // Enter: kaydet, Shift+Enter: boş (açıklamada newline)
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    addCase();
-                  }
-                }}
-              >
-                {/* Sol: Dosya Atama Formu */}
-                <div className="space-y-4">
+        {/* 📊 DASHBOARD ÖZET KARTLARI */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="bg-gradient-to-br from-teal-500 to-teal-600 rounded-xl p-4 text-white shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200 cursor-default">
+            <div className="text-3xl font-bold">{teachers.filter(t => t.active && !t.isAbsent).length}</div>
+            <div className="text-sm opacity-90">👨‍🏫 Aktif Öğretmen</div>
+          </div>
+          <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl p-4 text-white shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200 cursor-default">
+            <div className="text-3xl font-bold">{cases.filter(c => !c.absencePenalty).length}</div>
+            <div className="text-sm opacity-90">📁 Bugün Atanan</div>
+          </div>
+          <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-4 text-white shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200 cursor-default">
+            <div className="text-3xl font-bold">{pendingAppointmentsCount}</div>
+            <div className="text-sm opacity-90">📋 Bekleyen Randevu</div>
+          </div>
+          <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl p-4 text-white shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200 cursor-default">
+            <div className="text-3xl font-bold">{Object.keys(history).length}</div>
+            <div className="text-sm opacity-90">📅 Arşivli Gün</div>
+          </div>
+        </div>
+
+
+        {/* Admin olmayan kullanıcılar için randevu listesi ve duyurular */}
+        {!isAdmin && (
+          <>
+            {announcements.length > 0 && (
+              <div className="border rounded-md p-3 bg-amber-50 border-amber-300 animate-pulse">
+                <div className="font-medium text-amber-900">Duyuru</div>
+                <ul className="list-disc pl-5 mt-1 space-y-1">
+                  {announcements.map((a) => (
+                    <li key={a.id} className="text-sm text-amber-900">{a.text}</li>
+                  ))}
+                </ul>
+                <div className="text-xs text-amber-800 mt-1">Bu duyurular gün sonunda temizlenir.</div>
+              </div>
+            )}
             <DailyAppointmentsCard
               pdfDate={pdfDate}
               pdfLoading={pdfLoading}
               pdfEntries={pdfEntries}
               selectedPdfEntryId={selectedPdfEntryId}
-            isAdmin={isAdmin}
-            onApplyEntry={applyPdfEntry}
-            onRemoveEntry={removePdfEntry}
-            onPrint={handlePrintPdfList}
-            onClearAll={() => clearPdfEntries()}
               onShowDetails={(date) => { if (date instanceof Date) { fetchPdfEntriesFromServer(date); } else { setShowPdfPanel(true); } }}
-            cases={cases}
-            history={history}
+              onPrint={handlePrintPdfList}
+              onClearAll={() => clearPdfEntries(true, true)}
+              cases={cases}
+              history={history}
             />
-            {activePdfEntry && (
-              <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900 flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
-                <div>
-                  <div className="font-semibold">{activePdfEntry.name} — {activePdfEntry.time}</div>
-                  <div className="text-xs text-emerald-800">
-                    Dosya: {activePdfEntry.fileNo || "—"}
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <Button size="sm" variant="outline" onClick={() => applyPdfEntry(activePdfEntry!)}>Tekrar Aktar</Button>
-                  <Button size="sm" variant="ghost" onClick={clearActivePdfEntry}>Seçimi Kaldır</Button>
-                </div>
-              </div>
-            )}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>👤 Öğrenci Adı</Label>
-                <Input
-                  value={student}
-                  onChange={(e) => setStudent(e.target.value)}
-                  placeholder="Örn. Ali Veli"
-                  className={(!student.trim() && triedAdd) ? "border-red-500 focus-visible:ring-red-500" : ""}
-                />
-                {(!student.trim() && triedAdd) && (
-                  <div className="text-xs text-red-600">Bu alan gerekli.</div>
-                )}
-              </div>
-              <div className="space-y-2">
-                <Label>🔢 Dosya No</Label>
-                <Input value={fileNo} onChange={(e) => setFileNo(e.target.value)} placeholder="Örn. 2025-001" />
-              </div>
-            </div>
 
-      {/* İzleyici/Normal kullanıcı için Duyuru Paneli */}
-      {!isAdmin && announcements.length > 0 && (
-        <div className="border rounded-md p-3 bg-amber-50 border-amber-300 animate-pulse">
-          <div className="font-medium text-amber-900">Duyuru</div>
-          <ul className="list-disc pl-5 mt-1 space-y-1">
-            {announcements.map((a) => (
-              <li key={a.id} className="text-sm text-amber-900">{a.text}</li>
-            ))}
-          </ul>
-          <div className="text-xs text-amber-800 mt-1">Bu duyurular gün sonunda temizlenir.</div>
-        </div>
-      )}
-            <div className="space-y-2">
-              <Label>📑 Dosya Türü</Label>
-              <div className="grid grid-cols-3 gap-2 text-sm">
-                <Button variant={type === "YONLENDIRME" ? "default" : "outline"} onClick={() => setType("YONLENDIRME")}>Yönlendirme (+{settings.scoreTypeY})</Button>
-                <Button variant={type === "DESTEK" ? "default" : "outline"} onClick={() => setType("DESTEK")}>Destek (+{settings.scoreTypeD})</Button>
-                <Button variant={type === "IKISI" ? "default" : "outline"} onClick={() => setType("IKISI")}>Yönlendirme+Destek (+{settings.scoreTypeI})</Button>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3 pt-2">
-              <Checkbox id="isNew" checked={isNew} onCheckedChange={(v) => setIsNew(Boolean(v))} className="h-5 w-5" />
-              <Label htmlFor="isNew" className="text-base">Yeni başvuru (+{settings.scoreNewBonus})</Label>
-            </div>
-
-            <div className="space-y-2 pt-2">
-              <Label className="text-base">Tanı sayısı (0-6) (+n)</Label>
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <Button type="button" variant="outline" size="lg" className="px-3" onClick={() => setDiagCount((n) => Math.max(0, n - 1))}><UserMinus className="h-5 w-5"/></Button>
-                  <Input
-                    className="w-24 h-12 text-center text-xl font-bold"
-                    inputMode="numeric"
-                    value={diagCount}
-                    onChange={(e) => {
-                      const n = Number((e.target.value || "").replace(/[^\d]/g, ""));
-                      setDiagCount(Math.max(0, Math.min(6, Number.isFinite(n) ? n : 0)));
-                    }}
-                  />
-                  <Button type="button" variant="outline" size="lg" className="px-3" onClick={() => setDiagCount((n) => Math.min(6, n + 1))}><Plus className="h-5 w-5"/></Button>
-                </div>
-                <Button
-                  data-silent="true"
-                  onClick={addCase}
-                  disabled={!student.trim()}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white px-5"
-                >
-                  📁 DOSYA ATA
-                </Button>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Checkbox id="isTest" checked={isTestCase} onCheckedChange={(v) => setIsTestCase(Boolean(v))} />
-              <Label htmlFor="isTest">Test dosyası (+{settings.scoreTest})</Label>
-            </div>
-            {/* Manuel atama (opsiyonel) + Ekle butonu tek kapsayıcıda (click-away ref) */}
-            <div ref={manualAssignRef}>
-              <div className="space-y-2">
-                <Label>👨‍🏫 Öğretmeni Manuel Ata (opsiyonel)</Label>
-                <Select value={manualTeacherId} onValueChange={(v) => setManualTeacherId(v)}>
-                  <SelectTrigger className="w-full"><SelectValue placeholder="Öğretmen seçin" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="">— Manuel atama yok —</SelectItem>
-                    {teachers.filter(t => t.active).map(t => (
-                      <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <div className="flex justify-end mt-2">
-                  <Button size="sm" variant="ghost" onClick={() => { setManualTeacherId(""); setManualReason(""); }}>
-                    Seçimi temizle
-                  </Button>
-                </div>
-              </div>
-              <div className="space-y-2 mt-3">
-                <Label>📝 Açıklama (neden)</Label>
-                <textarea
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  rows={2}
-                  value={manualReason}
-                  onChange={(e) => setManualReason(e.target.value)}
-                  placeholder="Örn. Öğrenci talebi / yoğunluk dengesi"
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && e.shiftKey) {
-                      // Allow newline (default)
-                      return;
-                    }
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      addCase();
-                    }
-                  }}
-                />
-              </div>
-              <div className="flex items-center justify-between mt-3">
-                <div className="text-sm text-muted-foreground">
-                  Puan: <span className="font-semibold">{calcScore()}</span>
-                  <span className="hidden md:inline ml-3 text-xs opacity-60">⌨️ Ctrl+Enter ile hızlı ekle</span>
-                </div>
-              </div>
-            </div>
-
-                </div>
-
-                {/* Sağ: Dosyalar (Bugün) ve Atanan Dosyalar */}
-                <div className="space-y-4">
-                  {/* Dosyalar (Bugün) */}
-                  <Card>
-                    <CardHeader className="flex flex-row items-center justify-between">
-                      <CardTitle>📂 Dosyalar (Bugün)</CardTitle>
-                      <div className="flex items-center gap-2">
-                        <Button variant="outline" size="sm" onClick={testSound}>Ses Test</Button>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      {/* md+ masaüstü: tablo görünümü */}
-                      <div className="overflow-auto hidden md:block">
-                        <table className="w-full text-sm border border-border">
-                          <thead className="sticky top-0 z-10 bg-muted">
-                            <tr>
-                              <th className="p-2 text-left">Öğrenci</th>
-                              <th className="p-2 text-right">Puan</th>
-                              <th className="p-2 text-left">Tarih</th>
-                              <th className="p-2 text-left">Atanan</th>
-                              <th className="p-2 text-left">Test</th>
-                              <th className="p-2 text-left">Açıklama</th>
-                              <th className="p-2"></th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {filteredCases.map((c) => (
-                              <tr key={c.id} className="border-t hover:bg-slate-50 transition-colors duration-150">
-                                <td className="p-2">{c.student}</td>
-                                <td className="p-2 text-right">{c.score}</td>
-                                <td className="p-2">{new Date(c.createdAt).toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' })}</td>
-                                <td className="p-2">{teacherName(c.assignedTo)}
-                                  {c.assignedTo ? (
-                                    <Button
-                                      size="sm"
-                                      variant="destructive"
-                                      className="ml-2"
-                                      data-silent="true"
-                                      title="Acil çağrı: Tekrarlı bildirim gönder"
-                                      onClick={() => notifyEmergencyNow(c)}
-                                    >
-                                      Acil
-                                    </Button>
-                                  ) : null}
-                                </td>
-                                <td className="p-2">{c.isTest ? `Evet (+${settings.scoreTest})` : "Hayır"}</td>
-                                <td className="p-2 text-sm text-muted-foreground">{caseDesc(c)}</td>
-                                <td className="p-2 text-right">
-                                  {c.sourcePdfEntry ? (
-                                    <Button size="sm" variant="outline" onClick={() => removeCase(c.id)} title="Randevu listesine geri al" className="text-amber-600 hover:text-amber-700">
-                                      ↩️ Geri Al
-                                    </Button>
-                                  ) : (
-                                    <Button size="icon" variant="ghost" onClick={() => removeCase(c.id)} title="Sil">
-                                      <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                  )}
-                                </td>
-                              </tr>
-                            ))}
-                            {filteredCases.length === 0 && (
-                              <tr>
-                                <td className="p-8 text-center" colSpan={7}>
-                                  <div className="flex flex-col items-center justify-center text-muted-foreground">
-                                    <FileText className="h-10 w-10 mb-2 text-slate-400" />
-                                    <p className="text-sm font-medium">Bugün için kayıt yok</p>
-                                    <p className="text-xs text-slate-400 mt-1">Henüz dosya atanmamış</p>
-                                  </div>
-                                </td>
-                              </tr>
-                            )}
-                          </tbody>
-                        </table>
-                      </div>
-
-                      {/* Mobil: kart görünümü */}
-                      <div className="md:hidden space-y-2">
-                        {filteredCases.length === 0 && (
-                          <div className="flex flex-col items-center justify-center py-12 text-muted-foreground border rounded-lg bg-slate-50">
-                            <FileText className="h-10 w-10 mb-2 text-slate-400" />
-                            <p className="text-sm font-medium">Bugün için kayıt yok</p>
-                            <p className="text-xs text-slate-400 mt-1">Henüz dosya atanmamış</p>
-                          </div>
-                        )}
-                        {filteredCases.map((c) => (
-                          <div key={c.id} className="border rounded-lg p-3 bg-white shadow-sm hover:shadow-md transition-shadow duration-200">
-                            <div className="flex items-center justify-between">
-                              <div className="font-medium">{c.student}</div>
-                              <div className="text-sm">Puan: <span className="font-semibold">{c.score}</span></div>
-                            </div>
-                            <div className="text-xs text-muted-foreground mt-1">{new Date(c.createdAt).toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' })}</div>
-                            <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
-                              <div><span className="text-muted-foreground">Atanan:</span> {teacherName(c.assignedTo)}</div>
-                              <div><span className="text-muted-foreground">Test:</span> {c.isTest ? `Evet (+${settings.scoreTest})` : "Hayır"}</div>
-                            </div>
-                            <div className="text-xs text-muted-foreground mt-1">{caseDesc(c)}</div>
-                            <div className="flex items-center justify-end gap-2 mt-2">
-                              {c.assignedTo ? (
-                                <Button
-                                  size="sm"
-                                  variant="destructive"
-                                  title="Acil çağrı: Tekrarlı bildirim gönder"
-                                  onClick={() => notifyEmergencyNow(c)}
-                                >
-                                  Acil
-                                </Button>
-                              ) : null}
-                              {c.sourcePdfEntry ? (
-                                <Button size="sm" variant="outline" onClick={() => removeCase(c.id)} title="Randevu listesine geri al" className="text-amber-600 hover:text-amber-700">
-                                  ↩️ Geri Al
-                                </Button>
-                              ) : (
-                                <Button size="icon" variant="ghost" onClick={() => removeCase(c.id)} title="Sil">
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  {/* Atanan Dosyalar (Tek Gün) */}
-                  <AssignedArchiveSingleDayView
-                    history={history}
-                    cases={cases}
-                    teacherName={teacherName}
-                    caseDesc={caseDesc}
-                    teachers={teachers}
-                    settings={settings}
-                  />
-                </div>
-              </div>
-            )}
-
-            {adminTab === "teachers" && (
-              <div className="space-y-4">
-                {/* Öğretmen Ekle */}
-                <div className="flex items-end gap-2">
-              <div className="flex-1">
-                <Label>➕ Öğretmen Ekle</Label>
-                <Input
-                  value={newTeacherName}
-                  onChange={(e) => setNewTeacherName(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && addTeacher()}
-                  placeholder="Ad Soyad"
-                />
-              </div>
-              <Button onClick={addTeacher}>➕ Ekle</Button>
-            </div>
-
-            {teachers.map((t) => {
-              const locked = hasTestToday(t.id);
-              return (
-                <div key={t.id} className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:shadow-md hover:border-slate-300 transition-all duration-200">
-                  <div className="space-y-1 min-w-0 flex-shrink">
-                    <div className="font-medium">{t.name}</div>
-                    <div className="text-xs text-muted-foreground">
-                      Yıllık Yük: {t.yearlyLoad} {t.isTester ? " • Testör" : ""} {locked ? " • Bugün test aldı" : ""} {t.backupDay === getTodayYmd() ? " • Yedek" : ""}
-                      {/* Pushover: opsiyonel giriş */}
-                      {!t.pushoverKey && !editKeyOpen[t.id] ? (
-                        <div className="mt-2">
-                          <Button size="sm" variant="outline" onClick={() => setEditKeyOpen((p) => ({ ...p, [t.id]: true }))}>
-                            Key Yükle
-                          </Button>
-                        </div>
-                      ) : null}
-
-                      {editKeyOpen[t.id] ? (
-                        <div className="mt-2 flex items-center gap-2">
-                          <Label className="text-xs w-32">Pushover User Key</Label>
-                          <Input
-                            autoFocus
-                            className="h-8 w-[320px]"
-                            placeholder="uQiRzpo4DXghDmr9QzzfQu27cmVRsG"
-                            value={editPushover[t.id] ?? ""}
-                            onChange={(e) => {
-                              const v = e.target.value;
-                              setEditPushover((prev) => ({ ...prev, [t.id]: v }));
-                            }}
-                            onBlur={() => {
-                              // Dışarı tıklanınca kaydetmeden kapat
-                              setEditPushover((prev) => {
-                                const next = { ...prev } as Record<string, string>;
-                                delete next[t.id];
-                                return next;
-                              });
-                              setEditKeyOpen((prev) => ({ ...prev, [t.id]: false }));
-                            }}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") {
-                                const v = (editPushover[t.id] ?? "").trim();
-                                if (v) {
-                                  setTeachers((prev) =>
-                                    prev.map((tt) => (tt.id === t.id ? { ...tt, pushoverKey: v } : tt))
-                                  );
-                                }
-                                setEditPushover((prev) => {
-                                  const next = { ...prev };
-                                  delete next[t.id];
-                                  return next;
-                                });
-                                setEditKeyOpen((prev) => ({ ...prev, [t.id]: false }));
-                              } else if (e.key === "Escape") {
-                                // Vazgeç: kaydetmeden kapat
-                                e.preventDefault();
-                                setEditPushover((prev) => {
-                                  const next = { ...prev } as Record<string, string>;
-                                  delete next[t.id];
-                                  return next;
-                                });
-                                setEditKeyOpen((prev) => ({ ...prev, [t.id]: false }));
-                              }
-                            }}
-                          />
-                        </div>
-                      ) : null}
-
-                      {t.pushoverKey && !editKeyOpen[t.id] ? (
-                        <div className="mt-2 flex items-center gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => testNotifyTeacher(t)}
-                            title="Telefona test bildirimi gönder"
-                          >
-                            Test Gönder
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                              setEditPushover((prev) => ({ ...prev, [t.id]: t.pushoverKey || "" }));
-                              setEditKeyOpen((prev) => ({ ...prev, [t.id]: true }));
-                            }}
-                          >
-                            Anahtarı değiştir
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            onClick={() => {
-                              setTeachers((prev) =>
-                                prev.map((tt) => (tt.id === t.id ? { ...tt, pushoverKey: undefined } : tt))
-                              );
-                              setEditPushover((prev) => {
-                                const next = { ...prev };
-                                delete next[t.id];
-                                return next;
-                              });
-                              setEditKeyOpen((prev) => ({ ...prev, [t.id]: false }));
-                            }}
-                          >
-                            Anahtarı temizle
-                          </Button>
-                        </div>
-                      ) : null}
-
-                    </div>
-                    </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <div className="text-xs text-muted-foreground mr-2">
-                      {t.isAbsent ? (
-                        <span className="text-red-600 font-medium">🚫 Devamsız</span>
-                      ) : t.backupDay === getTodayYmd() ? (
-                        <span className="text-amber-600 font-medium">👑 Yedek</span>
-                      ) : "Uygun"}
-                    </div>
-                    <Button variant={t.isAbsent ? "default" : "outline"} onClick={() => toggleAbsent(t.id)} size="sm">
-                      {t.isAbsent ? "✅ Uygun Yap" : "🚫 Devamsız Yap"}
-                    </Button>
-                    <Button variant={t.isTester ? "default" : "outline"} onClick={() => toggleTester(t.id)} size="sm">
-                      {t.isTester ? "🧪 Testör (Açık)" : "🧪 Testör Yap"}
-                    </Button>
-                    <Button
-                      variant={t.backupDay === getTodayYmd() ? "default" : "outline"}
-                      onClick={() => toggleBackupToday(t.id)}
-                      size="sm"
-                      title={`Bugün yedek: dosya almaz. Gün sonunda en yüksek puan +${settings.backupBonusAmount} ile başlar.`}
-                    >
-                      {t.backupDay === getTodayYmd() ? "👑 Yedek İptal" : "👑 Başkan Yedek"}
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => toggleActive(t.id)}>{t.active ? "📦 Arşivle" : "✨ Aktif Et"}</Button>
-                    <Button variant="destructive" size="sm" title="Kalıcı Sil" onClick={() => deleteTeacher(t.id)}>🗑️ Sil</Button>
-                  </div>
-                </div>
-              );
-            })}
-              </div>
-            )}
-
-            {adminTab === "reports" && (
-              <div className="space-y-4">
+            {/* Non-admin için Raporlar ve Atanan Dosyalar */}
+            <Card className="mt-4">
+              <CardHeader>
+                <CardTitle>📊 Raporlar ve Arşiv</CardTitle>
+              </CardHeader>
+              <CardContent>
                 <div className="flex flex-wrap gap-2">
                   <Popover>
                     <PopoverTrigger asChild>
@@ -3954,36 +3371,36 @@ function AssignedArchiveSingleDay() {
                     </PopoverTrigger>
                     <PopoverContent className="w-56 p-2">
                       <div className="flex flex-col gap-1">
-                        <Button 
-                          variant={reportMode === "statistics" ? "default" : "ghost"} 
+                        <Button
+                          variant={reportMode === "statistics" ? "default" : "ghost"}
                           className="w-full justify-start"
                           onClick={() => setReportMode("statistics")}
                         >
                           📈 İstatistikler
                         </Button>
-                        <Button 
-                          variant={reportMode === "weekly" ? "default" : "ghost"} 
+                        <Button
+                          variant={reportMode === "weekly" ? "default" : "ghost"}
                           className="w-full justify-start"
                           onClick={() => setReportMode("weekly")}
                         >
                           📆 Haftalık Rapor
                         </Button>
-                        <Button 
-                          variant={reportMode === "yearly" ? "default" : "ghost"} 
+                        <Button
+                          variant={reportMode === "yearly" ? "default" : "ghost"}
                           className="w-full justify-start"
                           onClick={() => setReportMode("yearly")}
                         >
                           📆 Yıllık Rapor
                         </Button>
-                        <Button 
-                          variant={reportMode === "teacher-performance" ? "default" : "ghost"} 
+                        <Button
+                          variant={reportMode === "teacher-performance" ? "default" : "ghost"}
                           className="w-full justify-start"
                           onClick={() => setReportMode("teacher-performance")}
                         >
                           👨‍🏫 Öğretmen Performansı
                         </Button>
-                        <Button 
-                          variant={reportMode === "file-type-analysis" ? "default" : "ghost"} 
+                        <Button
+                          variant={reportMode === "file-type-analysis" ? "default" : "ghost"}
                           className="w-full justify-start"
                           onClick={() => setReportMode("file-type-analysis")}
                         >
@@ -3998,471 +3415,1058 @@ function AssignedArchiveSingleDay() {
                   <Button variant={reportMode === "monthly" ? "default" : "outline"} onClick={() => setReportMode("monthly")}>
                     📊 Aylık Rapor
                   </Button>
+                  <Button variant={reportMode === "archive" ? "default" : "outline"} onClick={() => setReportMode("archive")}>
+                    📋 Atanan Dosyalar
+                  </Button>
                   <Button variant={reportMode === "e-archive" ? "default" : "outline"} onClick={() => setReportMode("e-archive")}>
                     🗄️ E-Arşiv
                   </Button>
                 </div>
-                <div className="border-t pt-4">
-                  <div className="flex flex-wrap gap-2">
-                    <Button variant="outline" onClick={exportCSV2}>
-                      📥 CSV Dışa Aktar
-                    </Button>
-                    <Button variant="outline" onClick={exportJSON}>
-                      💾 JSON Yedek
-                    </Button>
-                    <label className="cursor-pointer">
-                      <Input type="file" accept=".json" onChange={handleImportJSON} className="hidden" id="json-import-input" />
-                      <Button variant="outline" type="button" onClick={() => (document.getElementById('json-import-input') as HTMLInputElement)?.click()}>
-                        📤 JSON İçe Aktar
-                      </Button>
-                    </label>
-                  </div>
-                </div>
-              </div>
-            )}
+              </CardContent>
+            </Card>
+          </>
+        )}
 
-            {adminTab === "announcements" && (
-              <div className="space-y-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>📢 Duyuru Yönetimi</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      <Label>📢 Yeni Duyuru (gün içinde gösterilir)</Label>
-                      <div className="flex items-end gap-2">
-                        <div className="flex-1">
-                          <Input 
-                            value={announcementText} 
-                            onChange={(e) => setAnnouncementText(e.target.value)} 
-                            placeholder="Kısa duyuru metni"
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter" && !e.shiftKey) {
-                                e.preventDefault();
-                                sendAnnouncement().then(() => playAnnouncementSound());
-                              }
-                            }}
-                          />
+        {/* İzleyici/Normal kullanıcı için Duyuru Paneli */}
+        {!isAdmin && announcements.length > 0 && (
+          <div className="border rounded-md p-3 bg-amber-50 border-amber-300 animate-pulse">
+            <div className="font-medium text-amber-900">Duyuru</div>
+            <ul className="list-disc pl-5 mt-1 space-y-1">
+              {announcements.map((a) => (
+                <li key={a.id} className="text-sm text-amber-900">{a.text}</li>
+              ))}
+            </ul>
+            <div className="text-xs text-amber-800 mt-1">Bu duyurular gün sonunda temizlenir.</div>
+          </div>
+        )}
+
+        {/* Admin alanı - Tab Sistemi */}
+        {isAdmin && (
+          <Card className="border-2">
+            {/* Tab Navigation */}
+            <div className="border-b">
+              <div className="flex flex-wrap gap-2 p-3 bg-slate-50">
+                <Button
+                  variant={adminTab === "files" ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setAdminTab("files")}
+                  className="min-h-9"
+                >
+                  📁 Dosya Atama
+                </Button>
+                <Button
+                  variant={adminTab === "teachers" ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setAdminTab("teachers")}
+                  className="min-h-9"
+                >
+                  👨‍🏫 Öğretmenler
+                </Button>
+                <Button
+                  variant={adminTab === "reports" ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setAdminTab("reports")}
+                  className="min-h-9"
+                >
+                  📊 Raporlar
+                </Button>
+                <Button
+                  variant={adminTab === "announcements" ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setAdminTab("announcements")}
+                  className="min-h-9"
+                >
+                  📢 Duyuru
+                </Button>
+                <Button
+                  variant={adminTab === "backup" ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setAdminTab("backup")}
+                  className="min-h-9"
+                >
+                  💾 Yedekleme
+                </Button>
+              </div>
+            </div>
+
+            {/* Tab Content */}
+            <div className="p-4">
+              {adminTab === "files" && (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4"
+                  onKeyDown={(e) => {
+                    // Enter: kaydet, Shift+Enter: boş (açıklamada newline)
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      addCase();
+                    }
+                  }}
+                >
+                  {/* Sol: Dosya Atama Formu */}
+                  <div className="space-y-4">
+                    <DailyAppointmentsCard
+                      pdfDate={pdfDate}
+                      pdfLoading={pdfLoading}
+                      pdfEntries={pdfEntries}
+                      selectedPdfEntryId={selectedPdfEntryId}
+                      isAdmin={isAdmin}
+                      onApplyEntry={applyPdfEntry}
+                      onRemoveEntry={removePdfEntry}
+                      onPrint={handlePrintPdfList}
+                      onClearAll={() => clearPdfEntries()}
+                      onShowDetails={(date) => { if (date instanceof Date) { fetchPdfEntriesFromServer(date); } else { setShowPdfPanel(true); } }}
+                      cases={cases}
+                      history={history}
+                    />
+                    {activePdfEntry && (
+                      <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900 flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
+                        <div>
+                          <div className="font-semibold">{activePdfEntry.name} — {activePdfEntry.time}</div>
+                          <div className="text-xs text-emerald-800">
+                            Dosya: {activePdfEntry.fileNo || "—"}
+                          </div>
                         </div>
-                        <Button 
-                          data-silent="true" 
-                          onClick={async () => { 
-                            await sendAnnouncement(); 
-                            playAnnouncementSound(); 
-                          }}
-                          disabled={!announcementText.trim()}
-                        >
-                          <Volume2 className="h-4 w-4 mr-1" /> Duyuru Gönder
-                        </Button>
+                        <div className="flex gap-2">
+                          <Button size="sm" variant="outline" onClick={() => applyPdfEntry(activePdfEntry!)}>Tekrar Aktar</Button>
+                          <Button size="sm" variant="ghost" onClick={clearActivePdfEntry}>Seçimi Kaldır</Button>
+                        </div>
                       </div>
-                      <div className="text-xs text-muted-foreground">Gönderince tüm öğretmenlere bildirim gider. Gece sıfırlanır.</div>
+                    )}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>👤 Öğrenci Adı</Label>
+                        <Input
+                          value={student}
+                          onChange={(e) => setStudent(e.target.value)}
+                          placeholder="Örn. Ali Veli"
+                          className={(!student.trim() && triedAdd) ? "border-red-500 focus-visible:ring-red-500" : ""}
+                        />
+                        {(!student.trim() && triedAdd) && (
+                          <div className="text-xs text-red-600">Bu alan gerekli.</div>
+                        )}
+                      </div>
+                      <div className="space-y-2">
+                        <Label>🔢 Dosya No</Label>
+                        <Input value={fileNo} onChange={(e) => setFileNo(e.target.value)} placeholder="Örn. 2025-001" />
+                      </div>
                     </div>
 
-                    {announcements.length > 0 && (
-                      <div className="space-y-3">
-                        <Label className="text-base font-semibold">Bugünkü Duyurular ({announcements.length})</Label>
-                        <div className="space-y-2">
+                    {/* İzleyici/Normal kullanıcı için Duyuru Paneli */}
+                    {!isAdmin && announcements.length > 0 && (
+                      <div className="border rounded-md p-3 bg-amber-50 border-amber-300 animate-pulse">
+                        <div className="font-medium text-amber-900">Duyuru</div>
+                        <ul className="list-disc pl-5 mt-1 space-y-1">
                           {announcements.map((a) => (
-                            <div key={a.id} className="flex items-start justify-between gap-2 border rounded-md p-3 bg-amber-50 border-amber-200">
-                              <div className="flex-1">
-                                <div className="text-sm font-medium text-amber-900">{a.text}</div>
-                                <div className="text-xs text-amber-700 mt-1">
-                                  {new Date(a.createdAt).toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' })}
-                                </div>
+                            <li key={a.id} className="text-sm text-amber-900">{a.text}</li>
+                          ))}
+                        </ul>
+                        <div className="text-xs text-amber-800 mt-1">Bu duyurular gün sonunda temizlenir.</div>
+                      </div>
+                    )}
+                    <div className="space-y-2">
+                      <Label>📑 Dosya Türü</Label>
+                      <div className="grid grid-cols-3 gap-2 text-sm">
+                        <Button variant={type === "YONLENDIRME" ? "default" : "outline"} onClick={() => setType("YONLENDIRME")}>Yönlendirme (+{settings.scoreTypeY})</Button>
+                        <Button variant={type === "DESTEK" ? "default" : "outline"} onClick={() => setType("DESTEK")}>Destek (+{settings.scoreTypeD})</Button>
+                        <Button variant={type === "IKISI" ? "default" : "outline"} onClick={() => setType("IKISI")}>Yönlendirme+Destek (+{settings.scoreTypeI})</Button>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3 pt-2">
+                      <Checkbox id="isNew" checked={isNew} onCheckedChange={(v) => setIsNew(Boolean(v))} className="h-5 w-5" />
+                      <Label htmlFor="isNew" className="text-base">Yeni başvuru (+{settings.scoreNewBonus})</Label>
+                    </div>
+
+                    <div className="space-y-2 pt-2">
+                      <Label className="text-base">Tanı sayısı (0-6) (+n)</Label>
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                          <Button type="button" variant="outline" size="lg" className="px-3" onClick={() => setDiagCount((n) => Math.max(0, n - 1))}><UserMinus className="h-5 w-5" /></Button>
+                          <Input
+                            className="w-24 h-12 text-center text-xl font-bold"
+                            inputMode="numeric"
+                            value={diagCount}
+                            onChange={(e) => {
+                              const n = Number((e.target.value || "").replace(/[^\d]/g, ""));
+                              setDiagCount(Math.max(0, Math.min(6, Number.isFinite(n) ? n : 0)));
+                            }}
+                          />
+                          <Button type="button" variant="outline" size="lg" className="px-3" onClick={() => setDiagCount((n) => Math.min(6, n + 1))}><Plus className="h-5 w-5" /></Button>
+                        </div>
+                        <Button
+                          data-silent="true"
+                          onClick={addCase}
+                          disabled={!student.trim()}
+                          className="bg-emerald-600 hover:bg-emerald-700 text-white px-5"
+                        >
+                          📁 DOSYA ATA
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <Checkbox id="isTest" checked={isTestCase} onCheckedChange={(v) => setIsTestCase(Boolean(v))} />
+                      <Label htmlFor="isTest">Test dosyası (+{settings.scoreTest})</Label>
+                    </div>
+                    {/* Manuel atama (opsiyonel) + Ekle butonu tek kapsayıcıda (click-away ref) */}
+                    <div ref={manualAssignRef}>
+                      <div className="space-y-2">
+                        <Label>👨‍🏫 Öğretmeni Manuel Ata (opsiyonel)</Label>
+                        <Select value={manualTeacherId} onValueChange={(v) => setManualTeacherId(v)}>
+                          <SelectTrigger className="w-full"><SelectValue placeholder="Öğretmen seçin" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="">— Manuel atama yok —</SelectItem>
+                            {teachers.filter(t => t.active).map(t => (
+                              <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <div className="flex justify-end mt-2">
+                          <Button size="sm" variant="ghost" onClick={() => { setManualTeacherId(""); setManualReason(""); }}>
+                            Seçimi temizle
+                          </Button>
+                        </div>
+                      </div>
+                      <div className="space-y-2 mt-3">
+                        <Label>📝 Açıklama (neden)</Label>
+                        <textarea
+                          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                          rows={2}
+                          value={manualReason}
+                          onChange={(e) => setManualReason(e.target.value)}
+                          placeholder="Örn. Öğrenci talebi / yoğunluk dengesi"
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" && e.shiftKey) {
+                              // Allow newline (default)
+                              return;
+                            }
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              addCase();
+                            }
+                          }}
+                        />
+                      </div>
+                      <div className="flex items-center justify-between mt-3">
+                        <div className="text-sm text-muted-foreground">
+                          Puan: <span className="font-semibold">{calcScore()}</span>
+                          <span className="hidden md:inline ml-3 text-xs opacity-60">⌨️ Ctrl+Enter ile hızlı ekle</span>
+                        </div>
+                      </div>
+                    </div>
+
+                  </div>
+
+                  {/* Sağ: Dosyalar (Bugün) ve Atanan Dosyalar */}
+                  <div className="space-y-4">
+                    {/* Dosyalar (Bugün) */}
+                    <Card>
+                      <CardHeader className="flex flex-row items-center justify-between">
+                        <CardTitle>📂 Dosyalar (Bugün)</CardTitle>
+                        <div className="flex items-center gap-2">
+                          <Button variant="outline" size="sm" onClick={testSound}>Ses Test</Button>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        {/* md+ masaüstü: tablo görünümü */}
+                        <div className="overflow-auto hidden md:block">
+                          <table className="w-full text-sm border border-border">
+                            <thead className="sticky top-0 z-10 bg-muted">
+                              <tr>
+                                <th className="p-2 text-left">Öğrenci</th>
+                                <th className="p-2 text-right">Puan</th>
+                                <th className="p-2 text-left">Tarih</th>
+                                <th className="p-2 text-left">Atanan</th>
+                                <th className="p-2 text-left">Test</th>
+                                <th className="p-2 text-left">Açıklama</th>
+                                <th className="p-2"></th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {filteredCases.map((c) => (
+                                <tr key={c.id} className="border-t hover:bg-slate-50 transition-colors duration-150">
+                                  <td className="p-2">{c.student}</td>
+                                  <td className="p-2 text-right">{c.score}</td>
+                                  <td className="p-2">{new Date(c.createdAt).toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' })}</td>
+                                  <td className="p-2">{teacherName(c.assignedTo)}
+                                    {c.assignedTo ? (
+                                      <Button
+                                        size="sm"
+                                        variant="destructive"
+                                        className="ml-2"
+                                        data-silent="true"
+                                        title="Acil çağrı: Tekrarlı bildirim gönder"
+                                        onClick={() => notifyEmergencyNow(c)}
+                                      >
+                                        Acil
+                                      </Button>
+                                    ) : null}
+                                  </td>
+                                  <td className="p-2">{c.isTest ? `Evet (+${settings.scoreTest})` : "Hayır"}</td>
+                                  <td className="p-2 text-sm text-muted-foreground">{caseDesc(c)}</td>
+                                  <td className="p-2 text-right">
+                                    {c.sourcePdfEntry ? (
+                                      <Button size="sm" variant="outline" onClick={() => removeCase(c.id)} title="Randevu listesine geri al" className="text-amber-600 hover:text-amber-700">
+                                        ↩️ Geri Al
+                                      </Button>
+                                    ) : (
+                                      <Button size="icon" variant="ghost" onClick={() => removeCase(c.id)} title="Sil">
+                                        <Trash2 className="h-4 w-4" />
+                                      </Button>
+                                    )}
+                                  </td>
+                                </tr>
+                              ))}
+                              {filteredCases.length === 0 && (
+                                <tr>
+                                  <td className="p-8 text-center" colSpan={7}>
+                                    <div className="flex flex-col items-center justify-center text-muted-foreground">
+                                      <FileText className="h-10 w-10 mb-2 text-slate-400" />
+                                      <p className="text-sm font-medium">Bugün için kayıt yok</p>
+                                      <p className="text-xs text-slate-400 mt-1">Henüz dosya atanmamış</p>
+                                    </div>
+                                  </td>
+                                </tr>
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+
+                        {/* Mobil: kart görünümü */}
+                        <div className="md:hidden space-y-2">
+                          {filteredCases.length === 0 && (
+                            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground border rounded-lg bg-slate-50">
+                              <FileText className="h-10 w-10 mb-2 text-slate-400" />
+                              <p className="text-sm font-medium">Bugün için kayıt yok</p>
+                              <p className="text-xs text-slate-400 mt-1">Henüz dosya atanmamış</p>
+                            </div>
+                          )}
+                          {filteredCases.map((c) => (
+                            <div key={c.id} className="border rounded-lg p-3 bg-white shadow-sm hover:shadow-md transition-shadow duration-200">
+                              <div className="flex items-center justify-between">
+                                <div className="font-medium">{c.student}</div>
+                                <div className="text-sm">Puan: <span className="font-semibold">{c.score}</span></div>
                               </div>
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => { 
-                                  if (confirm("Duyuruyu silmek istiyor musunuz?")) removeAnnouncement(a.id); 
-                                }}
-                                title="Duyuruyu sil"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
+                              <div className="text-xs text-muted-foreground mt-1">{new Date(c.createdAt).toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' })}</div>
+                              <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
+                                <div><span className="text-muted-foreground">Atanan:</span> {teacherName(c.assignedTo)}</div>
+                                <div><span className="text-muted-foreground">Test:</span> {c.isTest ? `Evet (+${settings.scoreTest})` : "Hayır"}</div>
+                              </div>
+                              <div className="text-xs text-muted-foreground mt-1">{caseDesc(c)}</div>
+                              <div className="flex items-center justify-end gap-2 mt-2">
+                                {c.assignedTo ? (
+                                  <Button
+                                    size="sm"
+                                    variant="destructive"
+                                    title="Acil çağrı: Tekrarlı bildirim gönder"
+                                    onClick={() => notifyEmergencyNow(c)}
+                                  >
+                                    Acil
+                                  </Button>
+                                ) : null}
+                                {c.sourcePdfEntry ? (
+                                  <Button size="sm" variant="outline" onClick={() => removeCase(c.id)} title="Randevu listesine geri al" className="text-amber-600 hover:text-amber-700">
+                                    ↩️ Geri Al
+                                  </Button>
+                                ) : (
+                                  <Button size="icon" variant="ghost" onClick={() => removeCase(c.id)} title="Sil">
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                )}
+                              </div>
                             </div>
                           ))}
                         </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Atanan Dosyalar (Tek Gün) */}
+                    <AssignedArchiveSingleDayView
+                      history={history}
+                      cases={cases}
+                      teacherName={teacherName}
+                      caseDesc={caseDesc}
+                      teachers={teachers}
+                      settings={settings}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {adminTab === "teachers" && (
+                <div className="space-y-4">
+                  {/* Öğretmen Ekle */}
+                  <div className="flex items-end gap-2">
+                    <div className="flex-1">
+                      <Label>➕ Öğretmen Ekle</Label>
+                      <Input
+                        value={newTeacherName}
+                        onChange={(e) => setNewTeacherName(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && addTeacher()}
+                        placeholder="Ad Soyad"
+                      />
+                    </div>
+                    <Button onClick={addTeacher}>➕ Ekle</Button>
+                  </div>
+
+                  {teachers.map((t) => {
+                    const locked = hasTestToday(t.id);
+                    return (
+                      <div key={t.id} className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:shadow-md hover:border-slate-300 transition-all duration-200">
+                        <div className="space-y-1 min-w-0 flex-shrink">
+                          <div className="font-medium">{t.name}</div>
+                          <div className="text-xs text-muted-foreground">
+                            Yıllık Yük: {t.yearlyLoad} {t.isTester ? " • Testör" : ""} {locked ? " • Bugün test aldı" : ""} {t.backupDay === getTodayYmd() ? " • Yedek" : ""}
+                            {/* Pushover: opsiyonel giriş */}
+                            {!t.pushoverKey && !editKeyOpen[t.id] ? (
+                              <div className="mt-2">
+                                <Button size="sm" variant="outline" onClick={() => setEditKeyOpen((p) => ({ ...p, [t.id]: true }))}>
+                                  Key Yükle
+                                </Button>
+                              </div>
+                            ) : null}
+
+                            {editKeyOpen[t.id] ? (
+                              <div className="mt-2 flex items-center gap-2">
+                                <Label className="text-xs w-32">Pushover User Key</Label>
+                                <Input
+                                  autoFocus
+                                  className="h-8 w-[320px]"
+                                  placeholder="uQiRzpo4DXghDmr9QzzfQu27cmVRsG"
+                                  value={editPushover[t.id] ?? ""}
+                                  onChange={(e) => {
+                                    const v = e.target.value;
+                                    setEditPushover((prev) => ({ ...prev, [t.id]: v }));
+                                  }}
+                                  onBlur={() => {
+                                    // Dışarı tıklanınca kaydetmeden kapat
+                                    setEditPushover((prev) => {
+                                      const next = { ...prev } as Record<string, string>;
+                                      delete next[t.id];
+                                      return next;
+                                    });
+                                    setEditKeyOpen((prev) => ({ ...prev, [t.id]: false }));
+                                  }}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") {
+                                      const v = (editPushover[t.id] ?? "").trim();
+                                      if (v) {
+                                        setTeachers((prev) =>
+                                          prev.map((tt) => (tt.id === t.id ? { ...tt, pushoverKey: v } : tt))
+                                        );
+                                      }
+                                      setEditPushover((prev) => {
+                                        const next = { ...prev };
+                                        delete next[t.id];
+                                        return next;
+                                      });
+                                      setEditKeyOpen((prev) => ({ ...prev, [t.id]: false }));
+                                    } else if (e.key === "Escape") {
+                                      // Vazgeç: kaydetmeden kapat
+                                      e.preventDefault();
+                                      setEditPushover((prev) => {
+                                        const next = { ...prev } as Record<string, string>;
+                                        delete next[t.id];
+                                        return next;
+                                      });
+                                      setEditKeyOpen((prev) => ({ ...prev, [t.id]: false }));
+                                    }
+                                  }}
+                                />
+                              </div>
+                            ) : null}
+
+                            {t.pushoverKey && !editKeyOpen[t.id] ? (
+                              <div className="mt-2 flex items-center gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => testNotifyTeacher(t)}
+                                  title="Telefona test bildirimi gönder"
+                                >
+                                  Test Gönder
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => {
+                                    setEditPushover((prev) => ({ ...prev, [t.id]: t.pushoverKey || "" }));
+                                    setEditKeyOpen((prev) => ({ ...prev, [t.id]: true }));
+                                  }}
+                                >
+                                  Anahtarı değiştir
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  onClick={() => {
+                                    setTeachers((prev) =>
+                                      prev.map((tt) => (tt.id === t.id ? { ...tt, pushoverKey: undefined } : tt))
+                                    );
+                                    setEditPushover((prev) => {
+                                      const next = { ...prev };
+                                      delete next[t.id];
+                                      return next;
+                                    });
+                                    setEditKeyOpen((prev) => ({ ...prev, [t.id]: false }));
+                                  }}
+                                >
+                                  Anahtarı temizle
+                                </Button>
+                              </div>
+                            ) : null}
+
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <div className="text-xs text-muted-foreground mr-2">
+                            {t.isAbsent ? (
+                              <span className="text-red-600 font-medium">🚫 Devamsız</span>
+                            ) : t.backupDay === getTodayYmd() ? (
+                              <span className="text-amber-600 font-medium">👑 Yedek</span>
+                            ) : "Uygun"}
+                          </div>
+                          <Button variant={t.isAbsent ? "default" : "outline"} onClick={() => toggleAbsent(t.id)} size="sm">
+                            {t.isAbsent ? "✅ Uygun Yap" : "🚫 Devamsız Yap"}
+                          </Button>
+                          <Button variant={t.isTester ? "default" : "outline"} onClick={() => toggleTester(t.id)} size="sm">
+                            {t.isTester ? "🧪 Testör (Açık)" : "🧪 Testör Yap"}
+                          </Button>
+                          <Button
+                            variant={t.backupDay === getTodayYmd() ? "default" : "outline"}
+                            onClick={() => toggleBackupToday(t.id)}
+                            size="sm"
+                            title={`Bugün yedek: dosya almaz. Gün sonunda en yüksek puan +${settings.backupBonusAmount} ile başlar.`}
+                          >
+                            {t.backupDay === getTodayYmd() ? "👑 Yedek İptal" : "👑 Başkan Yedek"}
+                          </Button>
+                          <Button variant="outline" size="sm" onClick={() => toggleActive(t.id)}>{t.active ? "📦 Arşivle" : "✨ Aktif Et"}</Button>
+                          <Button variant="destructive" size="sm" title="Kalıcı Sil" onClick={() => deleteTeacher(t.id)}>🗑️ Sil</Button>
+                        </div>
                       </div>
-                    )}
+                    );
+                  })}
+                </div>
+              )}
 
-                    {announcements.length === 0 && (
-                      <div className="flex flex-col items-center justify-center py-12 text-muted-foreground border rounded-lg bg-slate-50">
-                        <Volume2 className="h-10 w-10 mb-2 text-slate-400" />
-                        <p className="text-sm font-medium">Henüz bugün için duyuru yok</p>
-                        <p className="text-xs text-slate-400 mt-1">Duyuru gönderildiğinde burada görünecek</p>
+              {adminTab === "reports" && (
+                <div className="space-y-4">
+                  <div className="flex flex-wrap gap-2">
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant={["statistics", "weekly", "yearly", "teacher-performance", "file-type-analysis"].includes(reportMode) ? "default" : "outline"}>
+                          📈 İstatistikler
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-56 p-2">
+                        <div className="flex flex-col gap-1">
+                          <Button
+                            variant={reportMode === "statistics" ? "default" : "ghost"}
+                            className="w-full justify-start"
+                            onClick={() => setReportMode("statistics")}
+                          >
+                            📈 İstatistikler
+                          </Button>
+                          <Button
+                            variant={reportMode === "weekly" ? "default" : "ghost"}
+                            className="w-full justify-start"
+                            onClick={() => setReportMode("weekly")}
+                          >
+                            📆 Haftalık Rapor
+                          </Button>
+                          <Button
+                            variant={reportMode === "yearly" ? "default" : "ghost"}
+                            className="w-full justify-start"
+                            onClick={() => setReportMode("yearly")}
+                          >
+                            📆 Yıllık Rapor
+                          </Button>
+                          <Button
+                            variant={reportMode === "teacher-performance" ? "default" : "ghost"}
+                            className="w-full justify-start"
+                            onClick={() => setReportMode("teacher-performance")}
+                          >
+                            👨‍🏫 Öğretmen Performansı
+                          </Button>
+                          <Button
+                            variant={reportMode === "file-type-analysis" ? "default" : "ghost"}
+                            className="w-full justify-start"
+                            onClick={() => setReportMode("file-type-analysis")}
+                          >
+                            📊 Dosya Türü Analizi
+                          </Button>
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                    <Button variant={reportMode === "daily" ? "default" : "outline"} onClick={() => setReportMode("daily")}>
+                      📅 Günlük Rapor
+                    </Button>
+                    <Button variant={reportMode === "monthly" ? "default" : "outline"} onClick={() => setReportMode("monthly")}>
+                      📊 Aylık Rapor
+                    </Button>
+                    <Button variant={reportMode === "e-archive" ? "default" : "outline"} onClick={() => setReportMode("e-archive")}>
+                      🗄️ E-Arşiv
+                    </Button>
+                  </div>
+                  <div className="border-t pt-4">
+                    <div className="flex flex-wrap gap-2">
+                      <Button variant="outline" onClick={exportCSV2}>
+                        📥 CSV Dışa Aktar
+                      </Button>
+                      <Button variant="outline" onClick={exportJSON}>
+                        💾 JSON Yedek
+                      </Button>
+                      <label className="cursor-pointer">
+                        <Input type="file" accept=".json" onChange={handleImportJSON} className="hidden" id="json-import-input" />
+                        <Button variant="outline" type="button" onClick={() => (document.getElementById('json-import-input') as HTMLInputElement)?.click()}>
+                          📤 JSON İçe Aktar
+                        </Button>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {adminTab === "announcements" && (
+                <div className="space-y-4">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>📢 Duyuru Yönetimi</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="space-y-2">
+                        <Label>📢 Yeni Duyuru (gün içinde gösterilir)</Label>
+                        <div className="flex items-end gap-2">
+                          <div className="flex-1">
+                            <Input
+                              value={announcementText}
+                              onChange={(e) => setAnnouncementText(e.target.value)}
+                              placeholder="Kısa duyuru metni"
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" && !e.shiftKey) {
+                                  e.preventDefault();
+                                  sendAnnouncement().then(() => playAnnouncementSound());
+                                }
+                              }}
+                            />
+                          </div>
+                          <Button
+                            data-silent="true"
+                            onClick={async () => {
+                              await sendAnnouncement();
+                              playAnnouncementSound();
+                            }}
+                            disabled={!announcementText.trim()}
+                          >
+                            <Volume2 className="h-4 w-4 mr-1" /> Duyuru Gönder
+                          </Button>
+                        </div>
+                        <div className="text-xs text-muted-foreground">Gönderince tüm öğretmenlere bildirim gider. Gece sıfırlanır.</div>
                       </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </div>
-            )}
 
-            {adminTab === "backup" && (
-              <BackupManager 
-                currentState={{
-                  teachers,
-                  cases,
-                  history,
-                  lastRollover,
-                  lastAbsencePenalty,
-                  announcements,
-                  settings,
-                  eArchive,
-                }}
-                onRestore={(state) => {
-                  if (state.teachers) setTeachers(state.teachers);
-                  if (state.cases) setCases(state.cases);
-                  if (state.history) setHistory(state.history);
-                  if (state.announcements) setAnnouncements(state.announcements);
-                  if (state.settings) setSettings(state.settings);
-                  if (state.eArchive) setEArchive(state.eArchive);
-                }}
-              />
-            )}
-          </div>
-        </Card>
-      )}
+                      {announcements.length > 0 && (
+                        <div className="space-y-3">
+                          <Label className="text-base font-semibold">Bugünkü Duyurular ({announcements.length})</Label>
+                          <div className="space-y-2">
+                            {announcements.map((a) => (
+                              <div key={a.id} className="flex items-start justify-between gap-2 border rounded-md p-3 bg-amber-50 border-amber-200">
+                                <div className="flex-1">
+                                  <div className="text-sm font-medium text-amber-900">{a.text}</div>
+                                  <div className="text-xs text-amber-700 mt-1">
+                                    {new Date(a.createdAt).toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' })}
+                                  </div>
+                                </div>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => {
+                                    if (confirm("Duyuruyu silmek istiyor musunuz?")) removeAnnouncement(a.id);
+                                  }}
+                                  title="Duyuruyu sil"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
 
-      {reportMode === "statistics" && <Statistics teachers={teachers} cases={cases} history={history} />}
-      {reportMode === "daily" && (
-        <DailyReport 
-          teachers={teachers} 
-          cases={cases} 
-          history={history} 
-          liveScores={liveScores}
-          settings={{
-            backupBonusAmount: settings.backupBonusAmount,
-            absencePenaltyAmount: settings.absencePenaltyAmount,
-          }}
-        />
-      )}
-      {reportMode === "weekly" && <WeeklyReport teachers={teachers} cases={cases} history={history} />}
-      {reportMode === "monthly" && <MonthlyReport teachers={teachers} />}
-      {reportMode === "yearly" && <YearlyReport teachers={teachers} cases={cases} history={history} />}
-      {reportMode === "teacher-performance" && <TeacherPerformanceReport teachers={teachers} cases={cases} history={history} />}
-      {reportMode === "file-type-analysis" && <FileTypeAnalysis teachers={teachers} cases={cases} history={history} />}
-      {reportMode === "archive" && (
-        isAdmin ? (
-          <AssignedArchiveView
-            history={history}
-            cases={cases}
-            teacherName={teacherName}
-            caseDesc={caseDesc}
-            settings={settings}
-          />
-        ) : (
-          <AssignedArchiveSingleDayView
-            history={history}
-            cases={cases}
-            teacherName={teacherName}
-            caseDesc={caseDesc}
-            teachers={teachers}
-            settings={settings}
-          />
-        )
-      )}
-      {reportMode === "e-archive" && <EArchiveView showAdminButtons={isAdmin} />}
+                      {announcements.length === 0 && (
+                        <div className="flex flex-col items-center justify-center py-12 text-muted-foreground border rounded-lg bg-slate-50">
+                          <Volume2 className="h-10 w-10 mb-2 text-slate-400" />
+                          <p className="text-sm font-medium">Henüz bugün için duyuru yok</p>
+                          <p className="text-xs text-slate-400 mt-1">Duyuru gönderildiğinde burada görünecek</p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
 
-
-      
-      {/* Öneri/Şikayet Modal */}
-      {feedbackOpen && (
-        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50" onClick={() => setFeedbackOpen(false)}>
-          <Card className="w-[420px] shadow-2xl border-0" onClick={(e) => e.stopPropagation()}>
-            <CardHeader className="bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-t-lg">
-              <CardTitle className="text-white flex items-center gap-2">
-                <span className="text-2xl">💬</span>
-                <span>Öneri / Şikayet</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="grid grid-cols-1 gap-3">
-                <div>
-                  <Label>Ad Soyad</Label>
-                  <Input value={fbName} onChange={e => setFbName(e.target.value)} placeholder="Ad Soyad" />
-                </div>
-                <div>
-                  <Label>E‑posta</Label>
-                  <Input value={fbEmail} onChange={e => setFbEmail(e.target.value)} placeholder="ornek@eposta.com" />
-                </div>
-                <div className="flex items-center gap-2">
-                  <Label className="whitespace-nowrap">Tür</Label>
-                  <Select value={fbType} onValueChange={(v) => setFbType(v as any)}>
-                    <SelectTrigger className="w-[160px]"><SelectValue placeholder="Tür seç" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="oneri">Öneri</SelectItem>
-                      <SelectItem value="sikayet">Şikayet</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label>Mesaj</Label>
-                  <textarea className="w-full border rounded-md p-2 text-sm min-h-28" value={fbMessage} onChange={e => setFbMessage(e.target.value)} placeholder="Mesajınızı yazın..." />
-                </div>
-              </div>
-              <div className="flex justify-end gap-2 pt-1">
-                <Button variant="outline" onClick={() => setFeedbackOpen(false)}>Kapat</Button>
-                <Button onClick={async () => {
-                  const payload = { name: fbName.trim(), email: fbEmail.trim(), type: fbType, message: fbMessage.trim() } as any;
-                  if (!payload.name || !payload.email || payload.message.length < 10) { toast("Lütfen ad, e‑posta ve en az 10 karakterlik mesaj girin."); return; }
-                  try {
-                    const res = await fetch("/api/feedback", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-                    if (res.ok) { toast("Gönderildi. Teşekkür ederiz!"); setFeedbackOpen(false); setFbName(""); setFbEmail(""); setFbMessage(""); setFbType("oneri"); }
-                    else { const j = await res.json().catch(() => ({})); toast("Gönderilemedi: " + (j?.error || res.statusText)); }
-                  } catch { toast("Ağ hatası: Gönderilemedi"); }
-                }}>Gönder</Button>
-              </div>
-              <div className="text-[11px] text-muted-foreground">Gönderimler <strong>ataafurkan@gmail.com</strong> adresine iletilir.</div>
-            </CardContent>
+              {adminTab === "backup" && (
+                <BackupManager
+                  currentState={{
+                    teachers,
+                    cases,
+                    history,
+                    lastRollover,
+                    lastAbsencePenalty,
+                    announcements,
+                    settings,
+                    eArchive,
+                  }}
+                  onRestore={(state) => {
+                    if (state.teachers) setTeachers(state.teachers);
+                    if (state.cases) setCases(state.cases);
+                    if (state.history) setHistory(state.history);
+                    if (state.announcements) setAnnouncements(state.announcements);
+                    if (state.settings) setSettings(state.settings);
+                    if (state.eArchive) setEArchive(state.eArchive);
+                  }}
+                />
+              )}
+            </div>
           </Card>
-        </div>
-      )}
+        )}
+
+        {reportMode === "statistics" && <Statistics teachers={teachers} cases={cases} history={history} />}
+        {reportMode === "daily" && (
+          <DailyReport
+            teachers={teachers}
+            cases={cases}
+            history={history}
+            liveScores={liveScores}
+            settings={{
+              backupBonusAmount: settings.backupBonusAmount,
+              absencePenaltyAmount: settings.absencePenaltyAmount,
+            }}
+          />
+        )}
+        {reportMode === "weekly" && <WeeklyReport teachers={teachers} cases={cases} history={history} />}
+        {reportMode === "monthly" && <MonthlyReport teachers={teachers} />}
+        {reportMode === "yearly" && <YearlyReport teachers={teachers} cases={cases} history={history} />}
+        {reportMode === "teacher-performance" && <TeacherPerformanceReport teachers={teachers} cases={cases} history={history} />}
+        {reportMode === "file-type-analysis" && <FileTypeAnalysis teachers={teachers} cases={cases} history={history} />}
+        {reportMode === "archive" && (
+          isAdmin ? (
+            <AssignedArchiveView
+              history={history}
+              cases={cases}
+              teacherName={teacherName}
+              caseDesc={caseDesc}
+              settings={settings}
+            />
+          ) : (
+            <AssignedArchiveSingleDayView
+              history={history}
+              cases={cases}
+              teacherName={teacherName}
+              caseDesc={caseDesc}
+              teachers={teachers}
+              settings={settings}
+            />
+          )
+        )}
+        {reportMode === "e-archive" && <EArchiveView showAdminButtons={isAdmin} />}
+
+
+
+        {/* Öneri/Şikayet Modal */}
+        {feedbackOpen && (
+          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50" onClick={() => setFeedbackOpen(false)}>
+            <Card className="w-[420px] shadow-2xl border-0" onClick={(e) => e.stopPropagation()}>
+              <CardHeader className="bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-t-lg">
+                <CardTitle className="text-white flex items-center gap-2">
+                  <span className="text-2xl">💬</span>
+                  <span>Öneri / Şikayet</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="grid grid-cols-1 gap-3">
+                  <div>
+                    <Label>Ad Soyad</Label>
+                    <Input value={fbName} onChange={e => setFbName(e.target.value)} placeholder="Ad Soyad" />
+                  </div>
+                  <div>
+                    <Label>E‑posta</Label>
+                    <Input value={fbEmail} onChange={e => setFbEmail(e.target.value)} placeholder="ornek@eposta.com" />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Label className="whitespace-nowrap">Tür</Label>
+                    <Select value={fbType} onValueChange={(v) => setFbType(v as any)}>
+                      <SelectTrigger className="w-[160px]"><SelectValue placeholder="Tür seç" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="oneri">Öneri</SelectItem>
+                        <SelectItem value="sikayet">Şikayet</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Mesaj</Label>
+                    <textarea className="w-full border rounded-md p-2 text-sm min-h-28" value={fbMessage} onChange={e => setFbMessage(e.target.value)} placeholder="Mesajınızı yazın..." />
+                  </div>
+                </div>
+                <div className="flex justify-end gap-2 pt-1">
+                  <Button variant="outline" onClick={() => setFeedbackOpen(false)}>Kapat</Button>
+                  <Button onClick={async () => {
+                    const payload = { name: fbName.trim(), email: fbEmail.trim(), type: fbType, message: fbMessage.trim() } as any;
+                    if (!payload.name || !payload.email || payload.message.length < 10) { toast("Lütfen ad, e‑posta ve en az 10 karakterlik mesaj girin."); return; }
+                    try {
+                      const res = await fetch("/api/feedback", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+                      if (res.ok) { toast("Gönderildi. Teşekkür ederiz!"); setFeedbackOpen(false); setFbName(""); setFbEmail(""); setFbMessage(""); setFbType("oneri"); }
+                      else { const j = await res.json().catch(() => ({})); toast("Gönderilemedi: " + (j?.error || res.statusText)); }
+                    } catch { toast("Ağ hatası: Gönderilemedi"); }
+                  }}>Gönder</Button>
+                </div>
+                <div className="text-[11px] text-muted-foreground">Gönderimler <strong>ataafurkan@gmail.com</strong> adresine iletilir.</div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {/* Settings Modal */}
-      {settingsOpen && (
-        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50" onClick={() => setSettingsOpen(false)}>
-          <Card className="w-[600px] max-h-[90vh] overflow-y-auto shadow-2xl border-0" onClick={(e) => e.stopPropagation()}>
-            <CardHeader className="bg-gradient-to-r from-emerald-600 to-emerald-700 text-white rounded-t-lg sticky top-0 z-10">
-              <CardTitle className="text-white flex items-center gap-2">
-                <span className="text-2xl">⚙️</span>
-                <span>Ayarlar</span>
-              </CardTitle>
-              {/* Tab Navigation */}
-              <div className="flex gap-2 mt-4">
-                <Button
-                  variant={settingsTab === "general" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setSettingsTab("general")}
-                  className="bg-white/20 hover:bg-white/30 text-white border-white/30"
-                >
-                  Genel
-                </Button>
-                <Button
-                  variant={settingsTab === "theme" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setSettingsTab("theme")}
-                  className="bg-white/20 hover:bg-white/30 text-white border-white/30"
-                >
-                  🎨 Tema
-                </Button>
-                <Button
-                  variant={settingsTab === "widgets" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setSettingsTab("widgets")}
-                  className="bg-white/20 hover:bg-white/30 text-white border-white/30"
-                >
-                  📊 Widget'lar
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {settingsTab === "general" && (
-                <>
-              <div>
-                <Label className="text-slate-900 font-semibold">Günlük Limit (öğretmen başına)</Label>
-                <Input type="number" value={settings.dailyLimit} onChange={e => setSettings({ ...settings, dailyLimit: Math.max(1, Number(e.target.value) || 0) })} />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label className="text-slate-900 font-semibold">Test Puanı</Label>
-                  <Input type="number" value={settings.scoreTest} onChange={e => setSettings({ ...settings, scoreTest: Number(e.target.value) || 0 })} />
+        {settingsOpen && (
+          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50" onClick={() => setSettingsOpen(false)}>
+            <Card className="w-[600px] max-h-[90vh] overflow-y-auto shadow-2xl border-0" onClick={(e) => e.stopPropagation()}>
+              <CardHeader className="bg-gradient-to-r from-emerald-600 to-emerald-700 text-white rounded-t-lg sticky top-0 z-10">
+                <CardTitle className="text-white flex items-center gap-2">
+                  <span className="text-2xl">⚙️</span>
+                  <span>Ayarlar</span>
+                </CardTitle>
+                {/* Tab Navigation */}
+                <div className="flex gap-2 mt-4">
+                  <Button
+                    variant={settingsTab === "general" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setSettingsTab("general")}
+                    className="bg-white/20 hover:bg-white/30 text-white border-white/30"
+                  >
+                    Genel
+                  </Button>
+                  <Button
+                    variant={settingsTab === "theme" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setSettingsTab("theme")}
+                    className="bg-white/20 hover:bg-white/30 text-white border-white/30"
+                  >
+                    🎨 Tema
+                  </Button>
+                  <Button
+                    variant={settingsTab === "widgets" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setSettingsTab("widgets")}
+                    className="bg-white/20 hover:bg-white/30 text-white border-white/30"
+                  >
+                    📊 Widget'lar
+                  </Button>
                 </div>
-                <div>
-                  <Label className="text-slate-900 font-semibold">Yeni Bonus</Label>
-                  <Input type="number" value={settings.scoreNewBonus} onChange={e => setSettings({ ...settings, scoreNewBonus: Number(e.target.value) || 0 })} />
-                </div>
-                <div>
-                  <Label className="text-slate-900 font-semibold">Yönlendirme</Label>
-                  <Input type="number" value={settings.scoreTypeY} onChange={e => setSettings({ ...settings, scoreTypeY: Number(e.target.value) || 0 })} />
-                </div>
-                <div>
-                  <Label className="text-slate-900 font-semibold">Destek</Label>
-                  <Input type="number" value={settings.scoreTypeD} onChange={e => setSettings({ ...settings, scoreTypeD: Number(e.target.value) || 0 })} />
-                </div>
-                <div className="col-span-2">
-                  <Label className="text-slate-900 font-semibold">İkisi</Label>
-                  <Input type="number" value={settings.scoreTypeI} onChange={e => setSettings({ ...settings, scoreTypeI: Number(e.target.value) || 0 })} />
-                </div>
-              </div>
-              {/* Yedek Başkan Bonus Ayarları */}
-              <div className="border-t border-slate-200 pt-4 mt-4">
-                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-3">
-                  <Label className="text-sm font-semibold mb-2 block text-amber-900 flex items-center gap-2">
-                    <span>👑</span>
-                    <span>Yedek Başkan Bonus Ayarları</span>
-                  </Label>
-                <div>
-                  <Label className="text-xs text-slate-900 font-semibold">Bonus Miktarı (En Yüksek + X)</Label>
-                  <Input type="number" min={0} value={settings.backupBonusAmount} onChange={e => setSettings({ ...settings, backupBonusAmount: Math.max(0, Number(e.target.value) || 0) })} />
-                </div>
-                  <p className="text-[11px] text-amber-700 mt-1">
-                    Yedek başkan: O günün en yüksek puanına +{settings.backupBonusAmount} eklenir.
-                  </p>
-                </div>
-              </div>
-              {/* Devamsızlık Cezası Ayarları */}
-              <div className="border-t border-slate-200 pt-4 mt-4">
-                <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-3">
-                  <Label className="text-sm font-semibold mb-2 block text-red-900 flex items-center gap-2">
-                    <span>🚫</span>
-                    <span>Devamsızlık Cezası Ayarları</span>
-                  </Label>
-                <div>
-                  <Label className="text-xs text-slate-900 font-semibold">Puan Farkı (En Düşük - X)</Label>
-                  <Input type="number" min={0} value={settings.absencePenaltyAmount} onChange={e => setSettings({ ...settings, absencePenaltyAmount: Math.max(0, Number(e.target.value) || 0) })} />
-                </div>
-                  <p className="text-[11px] text-red-700 mt-1">
-                    Devamsız öğretmen: O günün en düşük puanından -{settings.absencePenaltyAmount} çıkarılır.
-                  </p>
-                </div>
-              </div>
-              <div className="flex justify-end gap-2 pt-1">
-                <Button variant="outline" onClick={() => setSettings(DEFAULT_SETTINGS)}>Varsayılanlara Dön</Button>
-                <Button onClick={() => setSettingsOpen(false)}>Kapat</Button>
-              </div>
-                </>
-              )}
-              
-              {settingsTab === "theme" && (
-                <div className="space-y-4">
-                  <ThemeSettings />
-                  <div className="flex justify-end gap-2 pt-1">
-                    <Button onClick={() => setSettingsOpen(false)}>Kapat</Button>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {settingsTab === "general" && (
+                  <>
+                    <div>
+                      <Label className="text-slate-900 font-semibold">Günlük Limit (öğretmen başına)</Label>
+                      <Input type="number" value={settings.dailyLimit} onChange={e => setSettings({ ...settings, dailyLimit: Math.max(1, Number(e.target.value) || 0) })} />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <Label className="text-slate-900 font-semibold">Test Puanı</Label>
+                        <Input type="number" value={settings.scoreTest} onChange={e => setSettings({ ...settings, scoreTest: Number(e.target.value) || 0 })} />
+                      </div>
+                      <div>
+                        <Label className="text-slate-900 font-semibold">Yeni Bonus</Label>
+                        <Input type="number" value={settings.scoreNewBonus} onChange={e => setSettings({ ...settings, scoreNewBonus: Number(e.target.value) || 0 })} />
+                      </div>
+                      <div>
+                        <Label className="text-slate-900 font-semibold">Yönlendirme</Label>
+                        <Input type="number" value={settings.scoreTypeY} onChange={e => setSettings({ ...settings, scoreTypeY: Number(e.target.value) || 0 })} />
+                      </div>
+                      <div>
+                        <Label className="text-slate-900 font-semibold">Destek</Label>
+                        <Input type="number" value={settings.scoreTypeD} onChange={e => setSettings({ ...settings, scoreTypeD: Number(e.target.value) || 0 })} />
+                      </div>
+                      <div className="col-span-2">
+                        <Label className="text-slate-900 font-semibold">İkisi</Label>
+                        <Input type="number" value={settings.scoreTypeI} onChange={e => setSettings({ ...settings, scoreTypeI: Number(e.target.value) || 0 })} />
+                      </div>
+                    </div>
+                    {/* Yedek Başkan Bonus Ayarları */}
+                    <div className="border-t border-slate-200 pt-4 mt-4">
+                      <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-3">
+                        <Label className="text-sm font-semibold mb-2 block text-amber-900 flex items-center gap-2">
+                          <span>👑</span>
+                          <span>Yedek Başkan Bonus Ayarları</span>
+                        </Label>
+                        <div>
+                          <Label className="text-xs text-slate-900 font-semibold">Bonus Miktarı (En Yüksek + X)</Label>
+                          <Input type="number" min={0} value={settings.backupBonusAmount} onChange={e => setSettings({ ...settings, backupBonusAmount: Math.max(0, Number(e.target.value) || 0) })} />
+                        </div>
+                        <p className="text-[11px] text-amber-700 mt-1">
+                          Yedek başkan: O günün en yüksek puanına +{settings.backupBonusAmount} eklenir.
+                        </p>
+                      </div>
+                    </div>
+                    {/* Devamsızlık Cezası Ayarları */}
+                    <div className="border-t border-slate-200 pt-4 mt-4">
+                      <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-3">
+                        <Label className="text-sm font-semibold mb-2 block text-red-900 flex items-center gap-2">
+                          <span>🚫</span>
+                          <span>Devamsızlık Cezası Ayarları</span>
+                        </Label>
+                        <div>
+                          <Label className="text-xs text-slate-900 font-semibold">Puan Farkı (En Düşük - X)</Label>
+                          <Input type="number" min={0} value={settings.absencePenaltyAmount} onChange={e => setSettings({ ...settings, absencePenaltyAmount: Math.max(0, Number(e.target.value) || 0) })} />
+                        </div>
+                        <p className="text-[11px] text-red-700 mt-1">
+                          Devamsız öğretmen: O günün en düşük puanından -{settings.absencePenaltyAmount} çıkarılır.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex justify-end gap-2 pt-1">
+                      <Button variant="outline" onClick={() => setSettings(DEFAULT_SETTINGS)}>Varsayılanlara Dön</Button>
+                      <Button onClick={() => setSettingsOpen(false)}>Kapat</Button>
+                    </div>
+                  </>
+                )}
+
+                {settingsTab === "theme" && (
+                  <div className="space-y-4">
+                    <ThemeSettings />
+                    <div className="flex justify-end gap-2 pt-1">
+                      <Button onClick={() => setSettingsOpen(false)}>Kapat</Button>
+                    </div>
                   </div>
-                </div>
-              )}
-              
-              {settingsTab === "widgets" && (
-                <div className="space-y-4">
-                  <DashboardWidgets />
-                  <div className="flex justify-end gap-2 pt-1">
-                    <Button onClick={() => setSettingsOpen(false)}>Kapat</Button>
+                )}
+
+                {settingsTab === "widgets" && (
+                  <div className="space-y-4">
+                    <DashboardWidgets />
+                    <div className="flex justify-end gap-2 pt-1">
+                      <Button onClick={() => setSettingsOpen(false)}>Kapat</Button>
+                    </div>
                   </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )}
+        {/* Login Modal */}
+        {loginOpen && (
+          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
+            <Card className="w-[400px] shadow-2xl border-0">
+              <CardHeader className="bg-gradient-to-r from-slate-700 to-slate-800 text-white rounded-t-lg">
+                <CardTitle className="text-white flex items-center gap-2">
+                  <span className="text-2xl">🔐</span>
+                  <span>Admin Girişi</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="space-y-1">
+                  <Label>E-posta</Label>
+                  <Input value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} placeholder="admin@example.com" />
                 </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      )}
-  {/* Login Modal */}
-      {loginOpen && (
-        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
-          <Card className="w-[400px] shadow-2xl border-0">
-            <CardHeader className="bg-gradient-to-r from-slate-700 to-slate-800 text-white rounded-t-lg">
-              <CardTitle className="text-white flex items-center gap-2">
-                <span className="text-2xl">🔐</span>
-                <span>Admin Girişi</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="space-y-1">
-                <Label>E-posta</Label>
-                <Input value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} placeholder="admin@example.com" />
+                <div className="space-y-1">
+                  <Label>Parola</Label>
+                  <Input type="password" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} />
+                </div>
+                <div className="flex items-center gap-2 pt-1">
+                  <Checkbox id="remember" checked={loginRemember} onCheckedChange={(v) => setLoginRemember(Boolean(v))} />
+                  <Label htmlFor="remember" className="text-sm font-normal">Beni Hatırla</Label>
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={() => setLoginOpen(false)}>İptal</Button>
+                  <Button onClick={doLogin}>Giriş Yap</Button>
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  Sadece yetkili admin işlem yapabilir; diğer kullanıcılar raporları görüntüler.
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+        {/* Dosya Atama Bildirimi - Büyük Animasyonlu Popup */}
+        {assignmentPopup && (
+          <div className="fixed inset-0 flex items-center justify-center z-[200] pointer-events-none">
+            <div className="animate-assignment-popup bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-600 text-white rounded-3xl shadow-2xl p-8 max-w-md mx-4 text-center transform">
+              <div className="text-6xl mb-4 animate-bounce">📁</div>
+              <div className="text-lg font-medium opacity-90 mb-2">Dosya Atandı!</div>
+              <div className="text-3xl font-bold mb-3">{assignmentPopup.teacherName}</div>
+              <div className="bg-white/20 rounded-xl px-4 py-2 mb-3">
+                <div className="text-sm opacity-80">Öğrenci</div>
+                <div className="font-semibold truncate">{assignmentPopup.studentName}</div>
               </div>
-              <div className="space-y-1">
-                <Label>Parola</Label>
-                <Input type="password" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} />
+              <div className="inline-flex items-center gap-2 bg-white/20 rounded-full px-4 py-1">
+                <span className="text-sm">Puan:</span>
+                <span className="text-xl font-bold">+{assignmentPopup.score}</span>
               </div>
-              <div className="flex items-center gap-2 pt-1">
-                <Checkbox id="remember" checked={loginRemember} onCheckedChange={(v) => setLoginRemember(Boolean(v))} />
-                <Label htmlFor="remember" className="text-sm font-normal">Beni Hatırla</Label>
-              </div>
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setLoginOpen(false)}>İptal</Button>
-                <Button onClick={doLogin}>Giriş Yap</Button>
-              </div>
-              <div className="text-xs text-muted-foreground">
-                Sadece yetkili admin işlem yapabilir; diğer kullanıcılar raporları görüntüler.
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-      {/* Dosya Atama Bildirimi - Büyük Animasyonlu Popup */}
-      {assignmentPopup && (
-        <div className="fixed inset-0 flex items-center justify-center z-[200] pointer-events-none">
-          <div className="animate-assignment-popup bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-600 text-white rounded-3xl shadow-2xl p-8 max-w-md mx-4 text-center transform">
-            <div className="text-6xl mb-4 animate-bounce">📁</div>
-            <div className="text-lg font-medium opacity-90 mb-2">Dosya Atandı!</div>
-            <div className="text-3xl font-bold mb-3">{assignmentPopup.teacherName}</div>
-            <div className="bg-white/20 rounded-xl px-4 py-2 mb-3">
-              <div className="text-sm opacity-80">Öğrenci</div>
-              <div className="font-semibold truncate">{assignmentPopup.studentName}</div>
-            </div>
-            <div className="inline-flex items-center gap-2 bg-white/20 rounded-full px-4 py-1">
-              <span className="text-sm">Puan:</span>
-              <span className="text-xl font-bold">+{assignmentPopup.score}</span>
             </div>
           </div>
-        </div>
-      )}
-      {/* Versiyon Güncelleme Bildirimi - Admin olmayan kullanıcılar için */}
-      {showVersionPopup && !isAdmin && (
-        <div className="fixed top-3 right-3 z-[150] max-w-md animate-slide-in-right">
-          <div className="bg-gradient-to-br from-teal-500 to-teal-600 text-white rounded-xl shadow-2xl border border-teal-400/30 overflow-hidden">
-            <div className="flex items-start justify-between p-4">
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-2xl">✨</span>
-                  <h3 className="font-bold text-lg">Uygulama Güncellendi</h3>
+        )}
+        {/* Versiyon Güncelleme Bildirimi - Admin olmayan kullanıcılar için */}
+        {showVersionPopup && !isAdmin && (
+          <div className="fixed top-3 right-3 z-[150] max-w-md animate-slide-in-right">
+            <div className="bg-gradient-to-br from-teal-500 to-teal-600 text-white rounded-xl shadow-2xl border border-teal-400/30 overflow-hidden">
+              <div className="flex items-start justify-between p-4">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-2xl">✨</span>
+                    <h3 className="font-bold text-lg">Uygulama Güncellendi</h3>
+                  </div>
+                  <div className="text-sm font-semibold mb-3 opacity-90">
+                    Versiyon {APP_VERSION}
+                  </div>
+                  <div className="text-sm space-y-1 mb-3">
+                    <div className="font-medium mb-1">Yapılan Değişiklikler:</div>
+                    <ul className="list-disc list-inside space-y-0.5 text-xs opacity-90">
+                      {CHANGELOG[APP_VERSION]?.map((change, idx) => (
+                        <li key={idx}>{change}</li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div className="text-xs font-medium bg-white/20 rounded px-2 py-1 inline-block mt-2">
+                    🔄 Sayfayı yenileyin
+                  </div>
                 </div>
-                <div className="text-sm font-semibold mb-3 opacity-90">
-                  Versiyon {APP_VERSION}
-                </div>
-                <div className="text-sm space-y-1 mb-3">
-                  <div className="font-medium mb-1">Yapılan Değişiklikler:</div>
-                  <ul className="list-disc list-inside space-y-0.5 text-xs opacity-90">
-                    {CHANGELOG[APP_VERSION]?.map((change, idx) => (
-                      <li key={idx}>{change}</li>
-                    ))}
-                  </ul>
-                </div>
-                <div className="text-xs font-medium bg-white/20 rounded px-2 py-1 inline-block mt-2">
-                  🔄 Sayfayı yenileyin
-                </div>
+                <button
+                  onClick={() => {
+                    setShowVersionPopup(false);
+                    try {
+                      localStorage.setItem(LS_LAST_SEEN_VERSION, APP_VERSION);
+                    } catch { }
+                  }}
+                  className="ml-3 text-white/80 hover:text-white hover:bg-white/20 rounded p-1 transition-colors"
+                  aria-label="Kapat"
+                >
+                  <X className="w-5 h-5" />
+                </button>
               </div>
-              <button
-                onClick={() => {
-                  setShowVersionPopup(false);
-                  try {
-                    localStorage.setItem(LS_LAST_SEEN_VERSION, APP_VERSION);
-                  } catch {}
-                }}
-                className="ml-3 text-white/80 hover:text-white hover:bg-white/20 rounded p-1 transition-colors"
-                aria-label="Kapat"
-              >
-                <X className="w-5 h-5" />
-              </button>
             </div>
           </div>
-        </div>
-      )}
-      {/* Toast Container - Renkli */}
-      {toasts.length > 0 && (
-        <div className="fixed top-3 right-3 z-[100] space-y-2">
-          {toasts.map(t => {
-            const isError = t.text.toLowerCase().includes('hata') || t.text.toLowerCase().includes('error');
-            const isSuccess = t.text.toLowerCase().includes('başarı') || t.text.toLowerCase().includes('eklendi') || t.text.toLowerCase().includes('silindi');
-            return (
-              <div 
-                key={t.id} 
-                className={`rounded-xl text-white text-sm px-4 py-3 shadow-xl flex items-center gap-2 animate-slide-in-right ${
-                  isError ? 'bg-gradient-to-r from-red-500 to-red-600' :
-                  isSuccess ? 'bg-gradient-to-r from-emerald-500 to-emerald-600' :
-                  'bg-gradient-to-r from-slate-700 to-slate-800'
-                }`}
-              >
-                <span>{isError ? '❌' : isSuccess ? '✅' : '💬'}</span>
-                <span>{t.text}</span>
-              </div>
-            );
-          })}
-        </div>
-      )}
-      {/* Yazdırma için özel stil */}
-      <style jsx global>{`
+        )}
+        {/* Toast Container - Renkli */}
+        {toasts.length > 0 && (
+          <div className="fixed top-3 right-3 z-[100] space-y-2">
+            {toasts.map(t => {
+              const isError = t.text.toLowerCase().includes('hata') || t.text.toLowerCase().includes('error');
+              const isSuccess = t.text.toLowerCase().includes('başarı') || t.text.toLowerCase().includes('eklendi') || t.text.toLowerCase().includes('silindi');
+              return (
+                <div
+                  key={t.id}
+                  className={`rounded-xl text-white text-sm px-4 py-3 shadow-xl flex items-center gap-2 animate-slide-in-right ${isError ? 'bg-gradient-to-r from-red-500 to-red-600' :
+                    isSuccess ? 'bg-gradient-to-r from-emerald-500 to-emerald-600' :
+                      'bg-gradient-to-r from-slate-700 to-slate-800'
+                    }`}
+                >
+                  <span>{isError ? '❌' : isSuccess ? '✅' : '💬'}</span>
+                  <span>{t.text}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+        {/* Yazdırma için özel stil */}
+        <style jsx global>{`
         @media print {
           body.print-pdf-list .printable-pdf-list {
             display: block !important;
@@ -4479,10 +4483,10 @@ function AssignedArchiveSingleDay() {
           }
         }
       `}</style>
-    </div>
-    {(showPdfPanel || showRules) && (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
-        <div className="relative w-full max-w-5xl max-h-[90vh] overflow-y-auto bg-white rounded-3xl shadow-2xl border border-emerald-100 p-6 space-y-5">
+      </div>
+      {(showPdfPanel || showRules) && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+          <div className="relative w-full max-w-5xl max-h-[90vh] overflow-y-auto bg-white rounded-3xl shadow-2xl border border-emerald-100 p-6 space-y-5">
             <button
               className="absolute top-4 right-4 text-slate-600 hover:text-slate-900 z-10"
               onClick={() => { setShowPdfPanel(false); setShowRules(false); }}
@@ -4499,11 +4503,10 @@ function AssignedArchiveSingleDay() {
                   <CardContent className="space-y-3">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                       <label
-                        className={`sm:flex-1 flex flex-col items-center justify-center p-6 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${
-                          isDragging
-                            ? "border-emerald-500 bg-emerald-50"
-                            : "border-emerald-300 hover:bg-emerald-50/50"
-                        }`}
+                        className={`sm:flex-1 flex flex-col items-center justify-center p-6 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${isDragging
+                          ? "border-emerald-500 bg-emerald-50"
+                          : "border-emerald-300 hover:bg-emerald-50/50"
+                          }`}
                         onDragEnter={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
@@ -4533,7 +4536,7 @@ function AssignedArchiveSingleDay() {
                           ref={pdfInputRef}
                           onChange={(e) => handlePdfFileChange(e.target.files?.[0] || null)}
                           className="hidden"
-                        />                        
+                        />
                         <div className="text-center text-slate-600">
                           {pdfFile ? <span className="font-semibold text-emerald-800">{pdfFile.name}</span> : "PDF dosyasını buraya sürükleyin veya tıklayıp seçin"}
                         </div>
@@ -4543,7 +4546,7 @@ function AssignedArchiveSingleDay() {
                       </Button>
                     </div>
                     <p className="text-xs text-slate-600">
-                  Sistem, PDF başlığındaki tarihi (örn: "21.11.2025 Tarihli Randevu Listesi") otomatik olarak okur. Yükleme, o tarihe ait mevcut listeyi siler ve yenisiyle değiştirir.
+                      Sistem, PDF başlığındaki tarihi (örn: "21.11.2025 Tarihli Randevu Listesi") otomatik olarak okur. Yükleme, o tarihe ait mevcut listeyi siler ve yenisiyle değiştirir.
                     </p>
                     {pdfUploadError && <p className="text-sm text-red-600">{pdfUploadError}</p>}
                     {!pdfUploadError && pdfEntries.length > 0 && (
