@@ -4032,6 +4032,9 @@ export default function DosyaAtamaApp() {
                     <Button variant={reportMode === "monthly" ? "default" : "outline"} onClick={() => setReportMode("monthly")}>
                       📊 Aylık Rapor
                     </Button>
+                    <Button variant={reportMode === "calendar" ? "default" : "outline"} onClick={() => setReportMode("calendar")}>
+                      🗓️ Takvim
+                    </Button>
                     <Button variant={reportMode === "e-archive" ? "default" : "outline"} onClick={() => setReportMode("e-archive")}>
                       🗄️ E-Arşiv
                     </Button>
