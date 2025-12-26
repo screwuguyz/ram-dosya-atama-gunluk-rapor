@@ -13,6 +13,10 @@ function ymdLocal(d: Date) {
   return `${y}-${m}-${day}`;
 }
 
+// ... (imports remain same)
+import { Input } from "@/components/ui/input";
+import { Check, X, Pencil } from "lucide-react";
+
 type Settings = {
   dailyLimit: number;
   scoreTest: number;
@@ -31,6 +35,7 @@ export default function AssignedArchive({
   caseDesc,
   settings,
   onRemove,
+  onUpdate,
 }: {
   history: Record<string, CaseFile[]>;
   cases: CaseFile[];
@@ -38,6 +43,7 @@ export default function AssignedArchive({
   caseDesc: (c: CaseFile) => string;
   settings: Settings;
   onRemove?: (id: string, date: string) => void;
+  onUpdate?: (id: string, date: string, newScore: number) => void;
 }) {
   const days = useMemo(() => {
     const set = new Set<string>(Object.keys(history));
@@ -51,6 +57,10 @@ export default function AssignedArchive({
     if (days.length === 0) return today;
     return days.includes(today) ? today : days[days.length - 1];
   });
+
+  // Editing state
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editScore, setEditScore] = useState<string>("");
 
   useEffect(() => {
     if (days.length === 0) return;
@@ -67,6 +77,27 @@ export default function AssignedArchive({
   const idx = days.indexOf(day);
   const prevDisabled = idx <= 0;
   const nextDisabled = idx === -1 || idx >= days.length - 1;
+
+  const handleStartEdit = (c: CaseFile) => {
+    setEditingId(c.id);
+    setEditScore(c.score.toString());
+  };
+
+  const handleSaveEdit = () => {
+    if (editingId && onUpdate) {
+      const num = parseInt(editScore, 10);
+      if (!isNaN(num)) {
+        onUpdate(editingId, day, num);
+      }
+      setEditingId(null);
+      setEditScore("");
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingId(null);
+    setEditScore("");
+  };
 
   if (days.length === 0) {
     return (
@@ -127,14 +158,30 @@ export default function AssignedArchive({
                 <th className="p-2 text-left">Atanan</th>
                 <th className="p-2 text-left">Test</th>
                 <th className="p-2 text-left">Açıklama</th>
-                {onRemove && <th className="p-2 text-center w-10">Sil</th>}
+                {(onRemove || onUpdate) && <th className="p-2 text-center w-24">İşlem</th>}
               </tr>
             </thead>
             <tbody>
               {list.map((c) => (
                 <tr key={c.id} className="border-t hover:bg-slate-50 transition-colors duration-150">
                   <td className="p-2">{c.fileNo ? `${c.fileNo} - ${c.student}` : c.student}</td>
-                  <td className="p-2 text-right">{c.score}</td>
+
+                  {/* Score Cell with Edit Mode */}
+                  <td className="p-2 text-right">
+                    {editingId === c.id ? (
+                      <div className="flex items-center justify-end gap-1">
+                        <Input
+                          type="number"
+                          value={editScore}
+                          onChange={(e) => setEditScore(e.target.value)}
+                          className="w-16 h-7 px-1 py-0 text-right"
+                        />
+                      </div>
+                    ) : (
+                      c.score
+                    )}
+                  </td>
+
                   <td className="p-2">
                     {new Date(c.createdAt).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}
                   </td>
@@ -143,27 +190,56 @@ export default function AssignedArchive({
                     {c.absencePenalty ? "Hayır (Denge)" : c.isTest ? `Evet (+${settings.scoreTest})` : "Hayır"}
                   </td>
                   <td className="p-2 text-sm text-muted-foreground">{caseDesc(c)}</td>
-                  {onRemove && (
+
+                  {/* Action Buttons */}
+                  {(onRemove || onUpdate) && (
                     <td className="p-2 text-center">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50"
-                        onClick={() => {
-                          if (confirm("Bu arşiv kaydını silmek istediğinize emin misiniz?")) {
-                            onRemove(c.id, day);
-                          }
-                        }}
-                      >
-                        🗑️
-                      </Button>
+                      <div className="flex items-center justify-center gap-1">
+                        {editingId === c.id ? (
+                          <>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-green-600 hover:text-green-700 hover:bg-green-50" onClick={handleSaveEdit}>
+                              <Check className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-500 hover:text-slate-700 hover:bg-slate-50" onClick={handleCancelEdit}>
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </>
+                        ) : (
+                          <>
+                            {onUpdate && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-blue-500 hover:text-blue-700 hover:bg-blue-50"
+                                onClick={() => handleStartEdit(c)}
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
+                            {onRemove && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-red-500 hover:text-red-700 hover:bg-red-50"
+                                onClick={() => {
+                                  if (confirm("Bu arşiv kaydını silmek istediğinize emin misiniz?")) {
+                                    onRemove(c.id, day);
+                                  }
+                                }}
+                              >
+                                🗑️
+                              </Button>
+                            )}
+                          </>
+                        )}
+                      </div>
                     </td>
                   )}
                 </tr>
               ))}
               {list.length === 0 && (
                 <tr>
-                  <td className="p-8 text-center" colSpan={onRemove ? 7 : 6}>
+                  <td className="p-8 text-center" colSpan={(onRemove || onUpdate) ? 7 : 6}>
                     <div className="flex flex-col items-center justify-center text-muted-foreground">
                       <Inbox className="h-10 w-10 mb-2 text-slate-400" />
                       <p className="text-sm font-medium">Bu günde kayıt yok</p>

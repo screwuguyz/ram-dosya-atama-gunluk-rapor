@@ -4649,6 +4649,31 @@ export default function DosyaAtamaApp() {
 
                       toast("✅ Arşiv kaydı silindi.");
                     }}
+                    onUpdate={(id, date, newScore) => {
+                      setHistory(prev => {
+                        const dayCases = prev[date];
+                        if (!dayCases) return prev;
+
+                        const updated = dayCases.map(c =>
+                          c.id === id ? { ...c, score: newScore } : c
+                        );
+
+                        return {
+                          ...prev,
+                          [date]: updated
+                        };
+                      });
+
+                      // Eğer o günün cases'i içindeyse (bugün)
+                      const todayYmd = new Date().toISOString().slice(0, 10);
+                      if (date === todayYmd) {
+                        setCases(prev => prev.map(c =>
+                          c.id === id ? { ...c, score: newScore } : c
+                        ));
+                      }
+
+                      toast("✅ Puan güncellendi.");
+                    }}
                   />
                 </div>
               )}
