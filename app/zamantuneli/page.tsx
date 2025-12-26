@@ -5,10 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { toast } from "sonner"; // If you use sonner or regular toast
-import { uid } from "@/lib/utils"; // Assuming utils or helper exists, otherwise define locally
+// Local toast - just use alert for simplicity
+// Local uid function
 import AssignedArchiveView from "@/components/archive/AssignedArchive";
-import { CaseFile, Teacher, Settings, Announcement, EArchiveEntry } from "@/app/page"; // Import types if possible or redefine
+// Types are defined locally below
 
 // Types (Redefined to ensure standalone works if exports are missing)
 // If you can export them from page.tsx, do so. But simpler to redefine or import types.
@@ -435,7 +435,7 @@ export default function TimeMachinePage() {
                         <AssignedArchiveView
                             history={history}
                             cases={[]} // Passing empty cases because archive view uses history[date] mostly
-                            teacherName=""
+                            teacherName={(id) => teachers.find(t => t.id === id)?.name || "—"}
                             caseDesc={caseDesc}
                             settings={settings}
                             onRemove={async (id, date) => {
