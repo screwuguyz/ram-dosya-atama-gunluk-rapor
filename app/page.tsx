@@ -448,6 +448,7 @@ export default function DosyaAtamaApp() {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [announcementText, setAnnouncementText] = useState("");
   const [pdfEntries, setPdfEntries] = useState<PdfAppointment[]>([]);
+
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [pdfUploading, setPdfUploading] = useState(false);
   const [pdfUploadError, setPdfUploadError] = useState<string | null>(null);
@@ -3628,7 +3629,7 @@ export default function DosyaAtamaApp() {
                         </div>
                       </div>
                     )}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label>👤 Öğrenci Adı</Label>
                         <Input
@@ -3644,15 +3645,6 @@ export default function DosyaAtamaApp() {
                       <div className="space-y-2">
                         <Label>🔢 Dosya No</Label>
                         <Input value={fileNo} onChange={(e) => setFileNo(e.target.value)} placeholder="Örn. 2025-001" />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>📅 Tarih <span className="text-muted-foreground text-xs">(geçmiş tarih için)</span></Label>
-                        <Input
-                          type="date"
-                          value={customDate}
-                          onChange={(e) => setCustomDate(e.target.value)}
-                          max={new Date().toISOString().split('T')[0]}
-                        />
                       </div>
                     </div>
 
@@ -4253,7 +4245,7 @@ export default function DosyaAtamaApp() {
           />
         )}
         {reportMode === "weekly" && <WeeklyReport teachers={teachers} cases={cases} history={history} />}
-        {reportMode === "monthly" && <MonthlyReport teachers={teachers} />}
+        {reportMode === "monthly" && <MonthlyReport teachers={teachers} cases={cases} history={history} />}
         {reportMode === "yearly" && <YearlyReport teachers={teachers} cases={cases} history={history} />}
         {reportMode === "teacher-performance" && <TeacherPerformanceReport teachers={teachers} cases={cases} history={history} />}
         {reportMode === "file-type-analysis" && <FileTypeAnalysis teachers={teachers} cases={cases} history={history} />}

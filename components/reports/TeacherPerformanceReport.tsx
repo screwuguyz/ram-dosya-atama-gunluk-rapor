@@ -39,7 +39,8 @@ export default function TeacherPerformanceReport({ teachers, cases, history }: P
   // Tüm dosyaları birleştir
   const allCases = useMemo(() => {
     const fromHistory = Object.values(history).flat();
-    return [...cases, ...fromHistory].filter(c => !c.absencePenalty && !c.backupBonus);
+    // Backup bonuslar da artık dahil ediliyor (kurtarılan veriler için)
+    return [...cases, ...fromHistory].filter(c => !c.absencePenalty);
   }, [cases, history]);
 
   // Filtrelenmiş dosyalar
@@ -135,10 +136,10 @@ export default function TeacherPerformanceReport({ teachers, cases, history }: P
 
     // Ortalamaları hesapla
     teacherMap.forEach(teacher => {
-      teacher.avgPoints = teacher.totalFiles > 0 
-        ? teacher.totalPoints / teacher.totalFiles 
+      teacher.avgPoints = teacher.totalFiles > 0
+        ? teacher.totalPoints / teacher.totalFiles
         : 0;
-      
+
       // Haftalık ortalama (yıl için)
       if (selectedMonth === null) {
         teacher.weeklyAvg = teacher.totalFiles / 52;
@@ -183,7 +184,7 @@ export default function TeacherPerformanceReport({ teachers, cases, history }: P
     }
   };
 
-  const periodLabel = selectedMonth 
+  const periodLabel = selectedMonth
     ? `${MONTHS_TR[selectedMonth - 1]} ${selectedYear}`
     : `${selectedYear} Yılı`;
 
@@ -327,11 +328,10 @@ export default function TeacherPerformanceReport({ teachers, cases, history }: P
                   </thead>
                   <tbody>
                     {teacherPerformance.map((t, idx) => (
-                      <tr 
-                        key={t.id} 
-                        className={`border-t hover:bg-slate-50 cursor-pointer ${
-                          selectedTeacherId === t.id ? "bg-blue-50" : ""
-                        }`}
+                      <tr
+                        key={t.id}
+                        className={`border-t hover:bg-slate-50 cursor-pointer ${selectedTeacherId === t.id ? "bg-blue-50" : ""
+                          }`}
                         onClick={() => setSelectedTeacherId(t.id === selectedTeacherId ? null : t.id)}
                       >
                         <td className="p-2 text-center font-bold">

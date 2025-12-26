@@ -286,3 +286,4 @@ e2e/
 - Coverage raporu `coverage/` klasöründe oluşturulur
 
 
+

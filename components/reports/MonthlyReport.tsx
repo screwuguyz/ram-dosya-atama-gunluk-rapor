@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import type { Teacher } from "@/lib/types";
 
 function getMonths() {
-  return ["01","02","03","04","05","06","07","08","09","10","11","12"];
+  return ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"];
 }
 
 export default function MonthlyReport({ teachers }: { teachers: Teacher[] }) {

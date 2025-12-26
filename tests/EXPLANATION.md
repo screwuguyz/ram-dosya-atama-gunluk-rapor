@@ -362,3 +362,4 @@ test('tema değiştirme çalışıyor', () => {
 - **Fayda**: Hataları erken bulur, güven verir, hızlandırır
 
 
+

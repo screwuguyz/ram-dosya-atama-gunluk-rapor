@@ -36,7 +36,8 @@ export default function YearlyReport({ teachers, cases, history }: Props) {
   // Tüm dosyaları birleştir
   const allCases = useMemo(() => {
     const fromHistory = Object.values(history).flat();
-    return [...cases, ...fromHistory].filter(c => !c.absencePenalty && !c.backupBonus);
+    // Backup bonuslar dahil ediliyor
+    return [...cases, ...fromHistory].filter(c => !c.absencePenalty);
   }, [cases, history]);
 
   // Yıllık veriler
@@ -54,8 +55,8 @@ export default function YearlyReport({ teachers, cases, history }: Props) {
         monthName,
         count: monthCases.length,
         totalPoints: monthCases.reduce((sum, c) => sum + c.score, 0),
-        avgPoints: monthCases.length > 0 
-          ? monthCases.reduce((sum, c) => sum + c.score, 0) / monthCases.length 
+        avgPoints: monthCases.length > 0
+          ? monthCases.reduce((sum, c) => sum + c.score, 0) / monthCases.length
           : 0,
         byType: {
           YONLENDIRME: monthCases.filter(c => c.type === "YONLENDIRME" && !c.isTest).length,
@@ -70,7 +71,7 @@ export default function YearlyReport({ teachers, cases, history }: Props) {
   // Karşılaştırma yılı verileri
   const compareYearlyData = useMemo(() => {
     if (!compareYear) return null;
-    
+
     return MONTHS_TR.map((monthName, monthIdx) => {
       const month = monthIdx + 1;
       const monthDates = getMonthDates(compareYear, month);
@@ -110,13 +111,13 @@ export default function YearlyReport({ teachers, cases, history }: Props) {
           const caseDate = c.createdAt.slice(0, 4);
           return caseDate === String(year) && c.assignedTo === t.id;
         });
-        
+
         const totalPoints = teacherCases.reduce((sum, c) => sum + c.score, 0);
         const fileCount = teacherCases.length;
         const byMonth = MONTHS_TR.map((_, monthIdx) => {
           const month = monthIdx + 1;
           const monthDates = getMonthDates(year, month);
-          const monthCases = teacherCases.filter(c => 
+          const monthCases = teacherCases.filter(c =>
             monthDates.includes(c.createdAt.slice(0, 10))
           );
           return {
@@ -275,8 +276,8 @@ export default function YearlyReport({ teachers, cases, history }: Props) {
                   <tbody>
                     {yearlyData.map((month, idx) => {
                       const compareMonth = compareYearlyData?.[idx];
-                      const change = compareMonth 
-                        ? month.count - compareMonth.count 
+                      const change = compareMonth
+                        ? month.count - compareMonth.count
                         : null;
                       const changePercent = compareMonth && compareMonth.count > 0
                         ? ((change! / compareMonth.count) * 100).toFixed(1)
@@ -292,12 +293,11 @@ export default function YearlyReport({ teachers, cases, history }: Props) {
                             </td>
                           )}
                           {compareYear && (
-                            <td className={`p-2 text-right font-medium ${
-                              change && change > 0 ? "text-green-600" : 
-                              change && change < 0 ? "text-red-600" : 
-                              "text-slate-600"
-                            }`}>
-                              {change !== null 
+                            <td className={`p-2 text-right font-medium ${change && change > 0 ? "text-green-600" :
+                                change && change < 0 ? "text-red-600" :
+                                  "text-slate-600"
+                              }`}>
+                              {change !== null
                                 ? `${change > 0 ? "+" : ""}${change} (${changePercent}%)`
                                 : "-"
                               }
