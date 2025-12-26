@@ -61,6 +61,7 @@ export default function SiraAlPage() {
                 const newTicket = data.ticket as QueueTicket;
                 setQueue([...queue, newTicket]);
                 setPrintTicket(newTicket);
+                setLoading(false); // Reset loading after successful ticket creation
 
                 setTimeout(() => {
                     fetchCentralState();
