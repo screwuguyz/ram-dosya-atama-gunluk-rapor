@@ -4521,7 +4521,7 @@ export default function DosyaAtamaApp() {
                               setTeachers(nextTeachers);
 
                               // 5. OTOMATİK YEDEK AL (ŞİMDİ)
-                              toast("💾 Otomatik yedek alınıyor...", { duration: 2000 });
+                              toast("💾 Otomatik yedek alınıyor...");
                               try {
                                 await fetch("/api/backup", {
                                   method: "POST",
@@ -5416,3 +5416,4 @@ export default function DosyaAtamaApp() {
     </>
   );
 }
+
