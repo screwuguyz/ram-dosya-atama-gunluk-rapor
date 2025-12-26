@@ -4400,17 +4400,30 @@ export default function DosyaAtamaApp() {
                               // 2. Yedek bonusu uygula
                               const backupTeacher = teachers.find(t => t.backupDay === currentSimDate);
                               if (backupTeacher) {
-                                // Bugünün en yüksek puanını hesapla
-                                let maxScoreToday = 0;
-                                teachers.forEach(t => {
-                                  if (t.id === backupTeacher.id) return; // Kendisini hariç tut
-                                  const score = todayCases
-                                    .filter(c => c.assignedTo === t.id)
-                                    .reduce((acc, c) => acc + c.score, 0);
-                                  if (score > maxScoreToday) maxScoreToday = score;
+                                // O günün en yüksek puan alan öğretmenini bul
+                                const todaysFileScores: Record<string, number> = {};
+                                // Sadece o günün dosyalarına bak (cases zaten filtrelenip history'e taşındıysa history'den bakmalıydık, ama şu anki akışta önce history'e atıyoruz)
+                                // "3. Devamsızlık cezası uygula" kısmında cases temizleniyor ama burada history güncellenmiş oluyor.
+                                // O yüzden history'deki o günün dosyalarına bakmalıyız.
+                                const todayHistory = history[currentSimDate] || [];
+                                // Eğer henüz history güncellenmediyse (React state update batching yüzünden), "todayCases" değişkenini kullanalım.
+                                // Yukarıda "todayCases" değişkeni var ama o sadece o anki cases state'inden gelenler.
+                                // En garantisi: "todayCases" (silinecek olanlar) + (varsa) history'deki o günün dosyaları.
+
+                                const allTodayCases = [...todayCases, ...(history[currentSimDate] || [])];
+
+                                allTodayCases.forEach(c => {
+                                  if (c.assignedTo) {
+                                    todaysFileScores[c.assignedTo] = (todaysFileScores[c.assignedTo] || 0) + c.score;
+                                  }
                                 });
 
-                                const bonusAmount = maxScoreToday + settings.backupBonusAmount;
+                                let maxScore = 0;
+                                Object.values(todaysFileScores).forEach(score => {
+                                  if (score > maxScore) maxScore = score;
+                                });
+
+                                const bonusAmount = maxScore + settings.backupBonusAmount;
 
                                 const bonusCase: CaseFile = {
                                   id: uid(),
@@ -4423,7 +4436,7 @@ export default function DosyaAtamaApp() {
                                   diagCount: 0,
                                   isTest: false,
                                   backupBonus: true,
-                                  assignReason: `Yedek başkan bonusu (En yüksek ${maxScoreToday} + ${settings.backupBonusAmount})`
+                                  assignReason: `Yedek başkan bonusu (En yüksek: ${maxScore} + ${settings.backupBonusAmount})`
                                 };
                                 setHistory(prev => ({
                                   ...prev,
