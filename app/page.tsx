@@ -4446,24 +4446,58 @@ export default function DosyaAtamaApp() {
 
                               // 3. Devamsızlık cezası uygula
                               const absentTeachers = teachers.filter(t => t.isAbsent && t.active);
-                              for (const t of absentTeachers) {
-                                const penaltyCase: CaseFile = {
-                                  id: uid(),
-                                  student: `${t.name} - Devamsızlık Cezası`,
-                                  score: -settings.absencePenaltyAmount,
-                                  createdAt: currentSimDate + "T23:59:00.000Z",
-                                  assignedTo: t.id,
-                                  type: "DESTEK",
-                                  isNew: false,
-                                  diagCount: 0,
-                                  isTest: false,
-                                  absencePenalty: true,
-                                  assignReason: "Devamsızlık sonrası ceza"
-                                };
-                                setHistory(prev => ({
-                                  ...prev,
-                                  [currentSimDate]: [...(prev[currentSimDate] || []), penaltyCase]
-                                }));
+                              if (absentTeachers.length > 0) {
+                                // O günün puan tablosunu yeniden hesapla (veya yukarıda hesaplanan allTodayCases üzerinden git)
+                                // Yukarıdaki todaysFileScores değişkeni sadece 'yedek' öğretmeni varsa hesaplanıyordu block kapsamında.
+                                // Kapsamı genişletmek yerine burada clean şekilde tekrar hesaplayalım, performans kaybı minimal.
+
+                                const todaysFileScoresForAbsence: Record<string, number> = {};
+                                const allTodayCasesForAbsence = [...todayCases, ...(history[currentSimDate] || [])];
+
+                                allTodayCasesForAbsence.forEach(c => {
+                                  if (c.assignedTo) {
+                                    todaysFileScoresForAbsence[c.assignedTo] = (todaysFileScoresForAbsence[c.assignedTo] || 0) + c.score;
+                                  }
+                                });
+
+                                // O gün dosya alan AKTİF öğretmenler arasında en düşük puanı bul
+                                let minScore = Infinity;
+                                let anyActiveTeacherWithScore = false;
+
+                                teachers.forEach(t => {
+                                  if (t.active && !t.isAbsent && todaysFileScoresForAbsence[t.id] !== undefined) {
+                                    const score = todaysFileScoresForAbsence[t.id];
+                                    if (score < minScore) {
+                                      minScore = score;
+                                      anyActiveTeacherWithScore = true;
+                                    }
+                                  }
+                                });
+
+                                // Eğer hiç dosya alan aktif öğretmen yoksa (sıfır iş günü), minScore 0 kabul edilsin
+                                if (!anyActiveTeacherWithScore) minScore = 0;
+
+                                const penaltyScore = minScore - settings.absencePenaltyAmount;
+
+                                for (const t of absentTeachers) {
+                                  const penaltyCase: CaseFile = {
+                                    id: uid(),
+                                    student: `${t.name} - Devamsızlık Cezası`,
+                                    score: penaltyScore, // Eksi puan değil, "En düşük - X" puanı
+                                    createdAt: currentSimDate + "T23:59:00.000Z",
+                                    assignedTo: t.id,
+                                    type: "DESTEK",
+                                    isNew: false,
+                                    diagCount: 0,
+                                    isTest: false,
+                                    absencePenalty: true,
+                                    assignReason: `Devamsızlık cezası (En düşük: ${minScore} - ${settings.absencePenaltyAmount})`
+                                  };
+                                  setHistory(prev => ({
+                                    ...prev,
+                                    [currentSimDate]: [...(prev[currentSimDate] || []), penaltyCase]
+                                  }));
+                                }
                               }
 
                               // 4. Sonraki güne geç
