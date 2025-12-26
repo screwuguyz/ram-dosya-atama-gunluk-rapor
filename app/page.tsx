@@ -981,7 +981,7 @@ export default function DosyaAtamaApp() {
   // Versiyon bildirimi (admin olmayan kullanıcılar için)
   const [showVersionPopup, setShowVersionPopup] = useState(false);
   // Admin panel tab sistemi
-  const [adminTab, setAdminTab] = useState<"files" | "teachers" | "reports" | "announcements" | "backup">("files");
+  const [adminTab, setAdminTab] = useState<"files" | "teachers" | "reports" | "announcements" | "backup" | "timemachine">("files");
 
   // ---- LS'den yükleme (migration alanları)
   useEffect(() => {
@@ -3584,6 +3584,14 @@ export default function DosyaAtamaApp() {
                 >
                   💾 Yedekleme
                 </Button>
+                <Button
+                  variant={adminTab === "timemachine" ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setAdminTab("timemachine")}
+                  className="min-h-9 bg-purple-100 hover:bg-purple-200 text-purple-800"
+                >
+                  ⏰ Zaman Makinesi
+                </Button>
               </div>
             </div>
 
@@ -4226,6 +4234,242 @@ export default function DosyaAtamaApp() {
                     if (state.eArchive) setEArchive(state.eArchive);
                   }}
                 />
+              )}
+
+              {adminTab === "timemachine" && (
+                <div className="space-y-4">
+                  <Card className="border-2 border-purple-300 bg-purple-50">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2 text-purple-800">
+                        <span className="text-2xl">⏰</span>
+                        Zaman Makinesi - Geçmişe Dönük Düzenleme
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-800">
+                        <strong>⚠️ Dikkat:</strong> Bu özellik ile geçmiş bir tarihe gidebilir, o gün için dosya atayabilir, izinli/testör/yedek işaretleyebilir ve günü sonlandırarak bonus/ceza uygulayabilirsiniz.
+                      </div>
+
+                      {/* Mevcut Simüle Edilen Tarih */}
+                      {(() => {
+                        const params = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : new URLSearchParams();
+                        const currentSimDate = params.get("simDate");
+                        const today = new Date();
+                        const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+
+                        return (
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="p-4 bg-white rounded-lg border">
+                              <Label className="text-purple-700">📅 Simüle Edilen Tarih</Label>
+                              <div className="mt-2 text-2xl font-bold text-purple-800">
+                                {currentSimDate ? (
+                                  <>
+                                    {new Date(currentSimDate + "T12:00:00").toLocaleDateString("tr-TR", {
+                                      weekday: "long",
+                                      year: "numeric",
+                                      month: "long",
+                                      day: "numeric"
+                                    })}
+                                    <span className="ml-2 text-sm font-normal text-purple-600">(Simülasyon)</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    {today.toLocaleDateString("tr-TR", {
+                                      weekday: "long",
+                                      year: "numeric",
+                                      month: "long",
+                                      day: "numeric"
+                                    })}
+                                    <span className="ml-2 text-sm font-normal text-green-600">(Gerçek)</span>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="p-4 bg-white rounded-lg border">
+                              <Label className="text-purple-700">🎯 Tarihe Git</Label>
+                              <div className="mt-2 flex gap-2">
+                                <Input
+                                  type="date"
+                                  defaultValue={currentSimDate || todayStr}
+                                  max={todayStr}
+                                  onChange={(e) => {
+                                    const newDate = e.target.value;
+                                    if (newDate === todayStr) {
+                                      // Bugüne dön - simülasyonu kapat
+                                      window.location.href = window.location.pathname;
+                                    } else if (newDate) {
+                                      window.location.href = `${window.location.pathname}?simDate=${newDate}`;
+                                    }
+                                  }}
+                                  className="flex-1"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })()}
+
+                      {/* Hızlı Tarih Navigasyonu */}
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            const params = new URLSearchParams(window.location.search);
+                            const currentSimDate = params.get("simDate");
+                            if (currentSimDate) {
+                              const d = new Date(currentSimDate + "T12:00:00");
+                              d.setDate(d.getDate() - 1);
+                              const newDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+                              window.location.href = `${window.location.pathname}?simDate=${newDate}`;
+                            }
+                          }}
+                        >
+                          ← Önceki Gün
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={() => window.location.href = `${window.location.pathname}?simDate=2025-12-19`}
+                        >
+                          19 Aralık'a Git
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            const params = new URLSearchParams(window.location.search);
+                            const currentSimDate = params.get("simDate");
+                            const today = new Date();
+                            const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+
+                            if (currentSimDate && currentSimDate < todayStr) {
+                              const d = new Date(currentSimDate + "T12:00:00");
+                              d.setDate(d.getDate() + 1);
+                              const newDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+                              if (newDate <= todayStr) {
+                                window.location.href = `${window.location.pathname}?simDate=${newDate}`;
+                              } else {
+                                window.location.href = window.location.pathname;
+                              }
+                            }
+                          }}
+                        >
+                          Sonraki Gün →
+                        </Button>
+                        <Button
+                          variant="outline"
+                          className="bg-green-50 hover:bg-green-100 text-green-700"
+                          onClick={() => window.location.href = window.location.pathname}
+                        >
+                          🏠 Bugüne Dön
+                        </Button>
+                      </div>
+
+                      {/* Günü Sonlandır Butonu */}
+                      <Card className="border-2 border-red-200 bg-red-50">
+                        <CardHeader>
+                          <CardTitle className="text-red-700">🔚 Günü Sonlandır</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-3">
+                          <p className="text-sm text-red-700">
+                            Bu butona basınca:
+                          </p>
+                          <ul className="list-disc pl-5 text-sm text-red-700 space-y-1">
+                            <li>Bugünkü dosyalar history'e taşınır</li>
+                            <li>Yedek öğretmene +{settings.backupBonusAmount} bonus verilir</li>
+                            <li>Devamsız öğretmenlere -{settings.absencePenaltyAmount} ceza verilir</li>
+                            <li>Tarih bir sonraki güne ilerler</li>
+                          </ul>
+                          <Button
+                            className="w-full bg-red-600 hover:bg-red-700 text-white"
+                            onClick={async () => {
+                              if (!confirm("Günü sonlandırmak istediğinize emin misiniz? Bu işlem geri alınamaz.")) return;
+
+                              const params = new URLSearchParams(window.location.search);
+                              const currentSimDate = params.get("simDate") || getTodayYmd();
+
+                              // 1. Mevcut günün dosyalarını history'e taşı
+                              const todayCases = cases.filter(c => c.createdAt.slice(0, 10) === currentSimDate);
+                              if (todayCases.length > 0) {
+                                setHistory(prev => ({
+                                  ...prev,
+                                  [currentSimDate]: [...(prev[currentSimDate] || []), ...todayCases]
+                                }));
+                                setCases(prev => prev.filter(c => c.createdAt.slice(0, 10) !== currentSimDate));
+                              }
+
+                              // 2. Yedek bonusu uygula
+                              const backupTeacher = teachers.find(t => t.backupDay === currentSimDate);
+                              if (backupTeacher) {
+                                const bonusCase: CaseFile = {
+                                  id: uid(),
+                                  student: `${backupTeacher.name} - Yedek Bonus`,
+                                  score: settings.backupBonusAmount,
+                                  createdAt: currentSimDate + "T23:59:00.000Z",
+                                  assignedTo: backupTeacher.id,
+                                  type: "DESTEK",
+                                  isNew: false,
+                                  diagCount: 0,
+                                  isTest: false,
+                                  backupBonus: true,
+                                  assignReason: "Yedek başkan bonusu"
+                                };
+                                setHistory(prev => ({
+                                  ...prev,
+                                  [currentSimDate]: [...(prev[currentSimDate] || []), bonusCase]
+                                }));
+                              }
+
+                              // 3. Devamsızlık cezası uygula
+                              const absentTeachers = teachers.filter(t => t.isAbsent && t.active);
+                              for (const t of absentTeachers) {
+                                const penaltyCase: CaseFile = {
+                                  id: uid(),
+                                  student: `${t.name} - Devamsızlık Cezası`,
+                                  score: -settings.absencePenaltyAmount,
+                                  createdAt: currentSimDate + "T23:59:00.000Z",
+                                  assignedTo: t.id,
+                                  type: "DESTEK",
+                                  isNew: false,
+                                  diagCount: 0,
+                                  isTest: false,
+                                  absencePenalty: true,
+                                  assignReason: "Devamsızlık sonrası ceza"
+                                };
+                                setHistory(prev => ({
+                                  ...prev,
+                                  [currentSimDate]: [...(prev[currentSimDate] || []), penaltyCase]
+                                }));
+                              }
+
+                              // 4. Sonraki güne geç
+                              const nextDay = new Date(currentSimDate + "T12:00:00");
+                              nextDay.setDate(nextDay.getDate() + 1);
+                              const nextDayStr = `${nextDay.getFullYear()}-${String(nextDay.getMonth() + 1).padStart(2, "0")}-${String(nextDay.getDate()).padStart(2, "0")}`;
+
+                              const today = new Date();
+                              const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+
+                              // İzinlileri sıfırla (yeni güne geçiş)
+                              setTeachers(prev => prev.map(t => ({ ...t, isAbsent: false, backupDay: undefined })));
+
+                              toast(`✅ ${currentSimDate} günü sonlandırıldı!`);
+
+                              setTimeout(() => {
+                                if (nextDayStr <= todayStr) {
+                                  window.location.href = `${window.location.pathname}?simDate=${nextDayStr}`;
+                                } else {
+                                  window.location.href = window.location.pathname;
+                                }
+                              }, 1000);
+                            }}
+                          >
+                            🔚 Günü Sonlandır ve Sonraki Güne Geç
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    </CardContent>
+                  </Card>
+                </div>
               )}
             </div>
           </Card>
