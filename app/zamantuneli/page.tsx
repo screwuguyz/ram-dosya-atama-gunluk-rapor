@@ -96,6 +96,7 @@ export default function TimeMachinePage() {
     const [manualTeacherId, setManualTeacherId] = useState("");
     const [manualScore, setManualScore] = useState("");
     const [manualDesc, setManualDesc] = useState("");
+    const [isFileEntry, setIsFileEntry] = useState(true); // true = dosya, false = puan düzeltme
 
     // Sync State
     const fetchCentralState = async () => {
@@ -472,6 +473,29 @@ export default function TimeMachinePage() {
                                     onChange={(e) => setManualDesc(e.target.value)}
                                 />
                             </div>
+                            <div>
+                                <Label className="text-green-700">Kayıt Türü</Label>
+                                <div className="flex gap-2 mt-1">
+                                    <Button
+                                        type="button"
+                                        variant={isFileEntry ? "default" : "outline"}
+                                        size="sm"
+                                        onClick={() => setIsFileEntry(true)}
+                                        className={isFileEntry ? "bg-blue-600" : ""}
+                                    >
+                                        📁 Dosya
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        variant={!isFileEntry ? "default" : "outline"}
+                                        size="sm"
+                                        onClick={() => setIsFileEntry(false)}
+                                        className={!isFileEntry ? "bg-orange-600" : ""}
+                                    >
+                                        ⚖️ Puan
+                                    </Button>
+                                </div>
+                            </div>
                             <div className="flex items-end">
                                 <Button
                                     variant="default"
@@ -499,7 +523,8 @@ export default function TimeMachinePage() {
                                             isNew: false,
                                             diagCount: 0,
                                             isTest: false,
-                                            assignReason: desc
+                                            assignReason: desc,
+                                            absencePenalty: !isFileEntry // Dosya değilse true (sayılmaz)
                                         };
 
                                         const newHistory = {
@@ -521,6 +546,7 @@ export default function TimeMachinePage() {
                                             setManualTeacherId("");
                                             setManualScore("");
                                             setManualDesc("");
+                                            setIsFileEntry(true);
 
                                             alert("✅ Kayıt eklendi!");
                                         } catch (err) {
