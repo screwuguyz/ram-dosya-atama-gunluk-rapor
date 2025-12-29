@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useAppStore } from "@/stores/useAppStore";
-import { useSupabaseSync } from "@/hooks/useSupabaseSync";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Printer, Ticket } from "lucide-react";
@@ -10,19 +9,14 @@ import { QueueTicket } from "@/types";
 
 export default function SiraAlPage() {
     const { queue, setQueue } = useAppStore();
-    const { fetchCentralState } = useSupabaseSync();
+    // NOT: fetchCentralState ve polling kaldırıldı!
+    // Bu sayfa sadece bilet OLUŞTURUR, okumaya ihtiyacı YOK.
+    // Polling eski veriyi getirip queue'yu siliyordu.
 
     const [name, setName] = useState("");
     const [loading, setLoading] = useState(false);
     const [printTicket, setPrintTicket] = useState<QueueTicket | null>(null);
     const printRef = useRef<HTMLDivElement>(null);
-
-    // Initial fetch
-    useEffect(() => {
-        fetchCentralState();
-        const interval = setInterval(fetchCentralState, 10000);
-        return () => clearInterval(interval);
-    }, [fetchCentralState]);
 
     // Enter tuşu ile sıra alma (kiosk modu için)
     useEffect(() => {
