@@ -92,6 +92,11 @@ export default function TimeMachinePage() {
     });
     const [loading, setLoading] = useState(true);
 
+    // Manuel kayıt ekleme için state
+    const [manualTeacherId, setManualTeacherId] = useState("");
+    const [manualScore, setManualScore] = useState("");
+    const [manualDesc, setManualDesc] = useState("");
+
     // Sync State
     const fetchCentralState = async () => {
         try {
@@ -437,9 +442,9 @@ export default function TimeMachinePage() {
                             <div>
                                 <Label className="text-green-700">Öğretmen</Label>
                                 <select
-                                    id="manualTeacher"
                                     className="w-full p-2 border rounded mt-1"
-                                    defaultValue=""
+                                    value={manualTeacherId}
+                                    onChange={(e) => setManualTeacherId(e.target.value)}
                                 >
                                     <option value="">Seçiniz...</option>
                                     {teachers.filter(t => t.active).map(t => (
@@ -450,19 +455,21 @@ export default function TimeMachinePage() {
                             <div>
                                 <Label className="text-green-700">Puan</Label>
                                 <Input
-                                    id="manualScore"
                                     type="number"
                                     placeholder="Örn: 5 veya -3"
                                     className="mt-1"
+                                    value={manualScore}
+                                    onChange={(e) => setManualScore(e.target.value)}
                                 />
                             </div>
                             <div>
                                 <Label className="text-green-700">Açıklama</Label>
                                 <Input
-                                    id="manualDesc"
                                     type="text"
                                     placeholder="Örn: Manuel düzeltme"
                                     className="mt-1"
+                                    value={manualDesc}
+                                    onChange={(e) => setManualDesc(e.target.value)}
                                 />
                             </div>
                             <div className="flex items-end">
@@ -470,30 +477,24 @@ export default function TimeMachinePage() {
                                     variant="default"
                                     className="w-full bg-green-600 hover:bg-green-700"
                                     onClick={async () => {
-                                        const teacherSelect = document.getElementById("manualTeacher") as HTMLSelectElement;
-                                        const scoreInput = document.getElementById("manualScore") as HTMLInputElement;
-                                        const descInput = document.getElementById("manualDesc") as HTMLInputElement;
-
-                                        const teacherId = teacherSelect?.value;
-                                        const score = Number(scoreInput?.value);
-                                        const desc = descInput?.value || "Manuel ekleme";
-
-                                        if (!teacherId) {
+                                        if (!manualTeacherId) {
                                             alert("Lütfen öğretmen seçin!");
                                             return;
                                         }
+                                        const score = Number(manualScore);
                                         if (isNaN(score) || score === 0) {
                                             alert("Geçerli bir puan girin!");
                                             return;
                                         }
 
-                                        const teacher = teachers.find(t => t.id === teacherId);
+                                        const teacher = teachers.find(t => t.id === manualTeacherId);
+                                        const desc = manualDesc || "Manuel ekleme";
                                         const newEntry: CaseFile = {
                                             id: uid_local(),
                                             student: `${teacher?.name || "?"} - ${desc}`,
                                             score: score,
                                             createdAt: currentSimDate + "T12:00:00.000Z",
-                                            assignedTo: teacherId,
+                                            assignedTo: manualTeacherId,
                                             type: "DESTEK",
                                             isNew: false,
                                             diagCount: 0,
@@ -508,18 +509,24 @@ export default function TimeMachinePage() {
                                         setHistory(newHistory);
 
                                         // Save to backend
-                                        await fetch("/api/state", {
-                                            method: "POST",
-                                            headers: { "Content-Type": "application/json" },
-                                            body: JSON.stringify({ history: newHistory })
-                                        });
+                                        try {
+                                            const res = await fetch("/api/state", {
+                                                method: "POST",
+                                                headers: { "Content-Type": "application/json" },
+                                                body: JSON.stringify({ history: newHistory })
+                                            });
+                                            if (!res.ok) throw new Error("API error");
 
-                                        // Reset form
-                                        teacherSelect.value = "";
-                                        scoreInput.value = "";
-                                        descInput.value = "";
+                                            // Reset form
+                                            setManualTeacherId("");
+                                            setManualScore("");
+                                            setManualDesc("");
 
-                                        alert("✅ Kayıt eklendi!");
+                                            alert("✅ Kayıt eklendi!");
+                                        } catch (err) {
+                                            console.error(err);
+                                            alert("❌ Kayıt eklenemedi!");
+                                        }
                                     }}
                                 >
                                     Ekle
