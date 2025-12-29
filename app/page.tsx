@@ -1353,6 +1353,33 @@ export default function DosyaAtamaApp() {
     }
     return n;
   }
+
+  // Gerçek yıllık yükü hesapla (cases + history'den)
+  function getRealYearlyLoad(tid: string): number {
+    const currentYear = new Date().getFullYear();
+    let total = 0;
+
+    // History'den bu yılın puanlarını topla
+    Object.entries(history).forEach(([date, dayCases]) => {
+      if (date.startsWith(String(currentYear))) {
+        dayCases.forEach(c => {
+          if (c.assignedTo === tid) {
+            total += c.score;
+          }
+        });
+      }
+    });
+
+    // Bugünün cases'lerinden de topla
+    cases.forEach(c => {
+      if (c.assignedTo === tid && c.createdAt.startsWith(String(currentYear))) {
+        total += c.score;
+      }
+    });
+
+    return total;
+  }
+
   // Günlük atama sınırı: bir öğretmene bir günde verilebilecek maksimum dosya
   const MAX_DAILY_CASES = 4;
   // Bugün en son kime atama yapıldı? (liste en yeni başta olduğundan ilk uygun kaydı alır)
@@ -1395,7 +1422,7 @@ export default function DosyaAtamaApp() {
 
       // Sıralama: 1) Yıllık yük en az, 2) Bugün en az dosya alan, 3) Rastgele
       testers.sort((a, b) => {
-        const byLoad = a.yearlyLoad - b.yearlyLoad;
+        const byLoad = getRealYearlyLoad(a.id) - getRealYearlyLoad(b.id);
         if (byLoad !== 0) return byLoad;
         const byCount = countCasesToday(a.id) - countCasesToday(b.id);
         if (byCount !== 0) return byCount;
@@ -1435,7 +1462,7 @@ export default function DosyaAtamaApp() {
 
     // Sıralama: 1) Yıllık yük en az, 2) Bugün en az dosya alan, 3) Rastgele
     available.sort((a, b) => {
-      const byLoad = a.yearlyLoad - b.yearlyLoad;
+      const byLoad = getRealYearlyLoad(a.id) - getRealYearlyLoad(b.id);
       if (byLoad !== 0) return byLoad;
       const byCount = countCasesToday(a.id) - countCasesToday(b.id);
       if (byCount !== 0) return byCount;
