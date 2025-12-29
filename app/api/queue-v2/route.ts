@@ -46,16 +46,27 @@ export async function POST(req: NextRequest) {
         const { name } = await req.json();
         const supabase = getSupabaseAdmin();
 
-        // Get max ticket number for today
-        const today = new Date().toISOString().slice(0, 10);
-        const { data: existing } = await supabase
+        // Türkiye saatine göre bugünün başlangıcını hesapla (UTC+3)
+        const now = new Date();
+        const turkeyTime = new Date(now.getTime() + 3 * 60 * 60 * 1000);
+        const todayStart = turkeyTime.toISOString().slice(0, 10) + "T00:00:00+03:00";
+
+        console.log("[queue-v2 POST] Today start (Turkey):", todayStart);
+
+        // Bugün oluşturulan TÜM biletlerin (done dahil) en yüksek numarasını al
+        const { data: existing, error: fetchError } = await supabase
             .from("queue_tickets")
             .select("no")
-            .gte("created_at", today)
+            .gte("created_at", todayStart)
             .order("no", { ascending: false })
             .limit(1);
 
+        if (fetchError) {
+            console.error("[queue-v2 POST] Fetch error:", fetchError);
+        }
+
         const maxNo = existing && existing.length > 0 ? existing[0].no : 0;
+        console.log("[queue-v2 POST] Max ticket no today:", maxNo, "Next will be:", maxNo + 1);
 
         // Insert new ticket
         const { data, error } = await supabase
@@ -129,23 +140,24 @@ export async function DELETE(req: NextRequest) {
         const supabase = getSupabaseAdmin();
 
         if (clearAll) {
-            // Delete all tickets
+            // Bugünün biletlerini SİLME - waiting olanları done yap
+            // Böylece numaralama korunur
             const { error } = await supabase
                 .from("queue_tickets")
-                .delete()
-                .neq("id", "00000000-0000-0000-0000-000000000000"); // Delete all
+                .update({ status: "done", updated_at: new Date().toISOString() })
+                .eq("status", "waiting");
 
             if (error) throw error;
-            console.log("[queue-v2 DELETE] Cleared all tickets");
+            console.log("[queue-v2 DELETE] Marked all waiting tickets as done");
         } else if (id) {
-            // Delete single ticket
+            // Tek bilet için: done olarak işaretle
             const { error } = await supabase
                 .from("queue_tickets")
-                .delete()
+                .update({ status: "done", updated_at: new Date().toISOString() })
                 .eq("id", id);
 
             if (error) throw error;
-            console.log("[queue-v2 DELETE] Deleted ticket:", id);
+            console.log("[queue-v2 DELETE] Marked ticket as done:", id);
         }
 
         return NextResponse.json({ ok: true });
