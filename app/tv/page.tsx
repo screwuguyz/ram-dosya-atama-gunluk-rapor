@@ -11,7 +11,7 @@ import { Maximize2, Minimize2 } from "lucide-react";
 export default function TvDisplayPage() {
     const queue = useAppStore(s => s.queue);
     const { playDingDong } = useAudioFeedback();
-    
+
     // Sync hook'unu aktif et (data fetch + realtime sub)
     const { fetchCentralState } = useSupabaseSync();
 
@@ -20,15 +20,15 @@ export default function TvDisplayPage() {
     const [isFullscreen, setIsFullscreen] = useState(false);
     const hasInteractedRef = useRef(false);
 
-    // Periyodik olarak queue'yu güncelle (backup for realtime) - daha uzun interval
+    // Periyodik olarak queue'yu güncelle (backup for realtime) - hızlı interval
     useEffect(() => {
         // İlk yükleme
         fetchCentralState();
-        
-        // Periyodik güncelleme - 5 saniyede bir (realtime backup)
+
+        // Periyodik güncelleme - 2 saniyede bir (hızlı sync için)
         const interval = setInterval(() => {
             fetchCentralState();
-        }, 5000); // Her 5 saniyede bir güncelle
+        }, 2000); // Her 2 saniyede bir güncelle
         return () => clearInterval(interval);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []); // Only run once on mount
@@ -37,14 +37,14 @@ export default function TvDisplayPage() {
     useEffect(() => {
         console.log("[TV] Queue state changed, total tickets:", queue.length);
         console.log("[TV] Full queue:", JSON.stringify(queue, null, 2));
-        
+
         // En son update edilen ve called olanı bul - güvenli array check
         if (!Array.isArray(queue)) {
             console.warn("[TV] Queue is not an array:", queue);
             setCurrentTicket(null);
             return;
         }
-        
+
         const calledTickets = queue
             .filter(t => t && t.status === 'called')
             .sort((a, b) => {
@@ -60,12 +60,12 @@ export default function TvDisplayPage() {
             calledTickets: calledTickets.length,
             waitingTickets: queue.filter(t => t.status === 'waiting').length,
             doneTickets: queue.filter(t => t.status === 'done').length,
-            latestTicket: latest ? { 
-                no: latest.no, 
-                name: latest.name, 
-                id: latest.id, 
+            latestTicket: latest ? {
+                no: latest.no,
+                name: latest.name,
+                id: latest.id,
                 status: latest.status,
-                updatedAt: latest.updatedAt 
+                updatedAt: latest.updatedAt
             } : null,
             lastAnnouncedId,
             allCalledTickets: calledTickets.map(t => ({ no: t.no, name: t.name, id: t.id }))
