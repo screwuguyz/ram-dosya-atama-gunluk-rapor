@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useCallback } from "react";
+import { useMemo, useCallback, useEffect } from "react";
 import { useAppStore } from "@/stores/useAppStore";
 import { useSupabaseSync } from "@/hooks/useSupabaseSync";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,7 +15,15 @@ export default function QueueWidget() {
     const callQueueTicket = useAppStore(s => s.callQueueTicket);
     const updateQueueTicketStatus = useAppStore(s => s.updateQueueTicketStatus);
     const resetQueue = useAppStore(s => s.resetQueue);
-    const { syncToServer } = useSupabaseSync();
+    const { syncToServer, fetchCentralState } = useSupabaseSync();
+
+    // Polling interval - her 3 saniyede sırayı güncelle (realtime backup)
+    useEffect(() => {
+        const interval = setInterval(() => {
+            fetchCentralState();
+        }, 3000);
+        return () => clearInterval(interval);
+    }, [fetchCentralState]);
 
     // Aktif Bilet (En son çağrılan ve henüz tamamlanmayan) - Memoize et
     const calledTickets = useMemo(() => {
@@ -42,22 +50,22 @@ export default function QueueWidget() {
     const handleCall = useCallback(async (id: string) => {
         const currentQueue = useAppStore.getState().queue;
         const ticket = currentQueue.find(t => t.id === id);
-        
+
         if (!ticket) {
             console.warn("[QueueWidget] Ticket not found:", id);
             return;
         }
-        
+
         if (ticket.status === 'called') {
             console.log("[QueueWidget] Ticket already called:", id);
             return;
         }
-        
+
         console.log("[QueueWidget] Calling ticket:", ticket);
-        
+
         // State'i güncelle - optimistic update
         callQueueTicket(id, "admin");
-        
+
         // Hemen sync et - await ile bekle
         try {
             console.log("[QueueWidget] Syncing to server...");
@@ -79,7 +87,7 @@ export default function QueueWidget() {
                 const bTime = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
                 return bTime - aTime;
             })[0];
-        
+
         if (currentActiveTicket) {
             callQueueTicket(currentActiveTicket.id, currentActiveTicket.calledBy);
             await syncToServer();
