@@ -177,45 +177,53 @@ export default function SiraAlPage() {
             {/* PRINT RECEIPT - Küçük fiş için */}
             {printTicket && (
                 <>
-                    {/* Print Styles */}
+                    {/* Print Styles - A4'te bile küçük kalacak */}
                     <style jsx global>{`
                         @media print {
                             @page {
-                                size: 105mm 148mm; /* A6 boyutu - küçük fiş */
-                                margin: 5mm;
+                                size: A4;
+                                margin: 10mm;
                             }
                             body {
                                 -webkit-print-color-adjust: exact !important;
                                 print-color-adjust: exact !important;
                             }
+                            .print-ticket {
+                                width: 80mm !important;
+                                max-width: 80mm !important;
+                                margin: 0 !important;
+                                padding: 5mm !important;
+                                border: 1px dashed #000 !important;
+                                page-break-after: avoid !important;
+                            }
                         }
                     `}</style>
 
                     <div ref={printRef} className="hidden print:block">
-                        <div className="text-center p-4" style={{ maxWidth: "100mm" }}>
+                        <div className="print-ticket text-center" style={{ width: "80mm", maxWidth: "80mm", padding: "5mm", border: "1px dashed #000" }}>
                             {/* Header */}
-                            <div className="border-b-2 border-dashed border-black pb-2 mb-4">
-                                <h1 className="text-xl font-black">RAM</h1>
-                                <p className="text-xs">Karşıyaka Özel Eğitim</p>
+                            <div style={{ borderBottom: "2px dashed #000", paddingBottom: "3mm", marginBottom: "4mm" }}>
+                                <h1 style={{ fontSize: "18pt", fontWeight: "900", margin: 0 }}>RAM</h1>
+                                <p style={{ fontSize: "8pt", margin: "2mm 0 0 0" }}>Karşıyaka Özel Eğitim</p>
                             </div>
 
                             {/* Sıra No - Büyük */}
-                            <div className="py-4">
-                                <p className="text-sm font-bold uppercase mb-1">Sıra No</p>
-                                <div className="text-7xl font-black leading-none">
+                            <div style={{ padding: "5mm 0" }}>
+                                <p style={{ fontSize: "10pt", fontWeight: "bold", margin: "0 0 2mm 0" }}>SIRA NO</p>
+                                <div style={{ fontSize: "48pt", fontWeight: "900", lineHeight: 1 }}>
                                     {printTicket.no}
                                 </div>
                             </div>
 
                             {/* İsim */}
                             {printTicket.name && printTicket.name !== "Misafir" && (
-                                <div className="border-t border-dashed border-black pt-2 mt-2">
-                                    <p className="text-xs text-gray-600">{printTicket.name}</p>
+                                <div style={{ borderTop: "1px dashed #000", paddingTop: "3mm", marginTop: "3mm" }}>
+                                    <p style={{ fontSize: "9pt", margin: 0 }}>{printTicket.name}</p>
                                 </div>
                             )}
 
                             {/* Tarih/Saat */}
-                            <div className="border-t border-dashed border-black pt-2 mt-3 text-xs">
+                            <div style={{ borderTop: "1px dashed #000", paddingTop: "3mm", marginTop: "3mm", fontSize: "8pt" }}>
                                 {new Date(printTicket.createdAt).toLocaleString('tr-TR', {
                                     day: '2-digit',
                                     month: '2-digit',
@@ -226,8 +234,8 @@ export default function SiraAlPage() {
                             </div>
 
                             {/* Alt Bilgi */}
-                            <div className="border-t-2 border-dashed border-black pt-2 mt-3 text-xs">
-                                <p>Lütfen sıranızı bekleyiniz</p>
+                            <div style={{ borderTop: "2px dashed #000", paddingTop: "3mm", marginTop: "3mm", fontSize: "8pt" }}>
+                                <p style={{ margin: 0 }}>Lütfen sıranızı bekleyiniz</p>
                             </div>
                         </div>
                     </div>
