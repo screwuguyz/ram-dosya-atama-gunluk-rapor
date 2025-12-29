@@ -24,6 +24,17 @@ export default function SiraAlPage() {
         return () => clearInterval(interval);
     }, [fetchCentralState]);
 
+    // Enter tuşu ile sıra alma (kiosk modu için)
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === "Enter" && !loading && !printTicket) {
+                handleSiraAl();
+            }
+        };
+        window.addEventListener("keydown", handleKeyDown);
+        return () => window.removeEventListener("keydown", handleKeyDown);
+    }, [loading, printTicket]);
+
     // Auto-print and reset when ticket is created
     useEffect(() => {
         if (printTicket) {
@@ -163,46 +174,64 @@ export default function SiraAlPage() {
                 </div>
             </div>
 
-            {/* PRINT RECEIPT */}
+            {/* PRINT RECEIPT - Küçük fiş için */}
             {printTicket && (
-                <div ref={printRef} className="hidden print:block print:p-8">
-                    <div className="text-center space-y-6 max-w-sm mx-auto">
-                        {/* Logo */}
-                        <div className="border-b-4 border-dashed border-slate-300 pb-6">
-                            <h1 className="text-3xl font-black text-slate-900">RAM</h1>
-                            <p className="text-sm text-slate-600 mt-1">Karşıyaka RAM Özel Eğitim Bölümü</p>
-                        </div>
+                <>
+                    {/* Print Styles */}
+                    <style jsx global>{`
+                        @media print {
+                            @page {
+                                size: 105mm 148mm; /* A6 boyutu - küçük fiş */
+                                margin: 5mm;
+                            }
+                            body {
+                                -webkit-print-color-adjust: exact !important;
+                                print-color-adjust: exact !important;
+                            }
+                        }
+                    `}</style>
 
-                        {/* Ticket Number */}
-                        <div className="py-8">
-                            <p className="text-lg font-bold text-slate-600 uppercase tracking-wider mb-3">
-                                Sıra Numaranız
-                            </p>
-                            <div className="text-9xl font-black text-slate-900 leading-none">
-                                {printTicket.no}
+                    <div ref={printRef} className="hidden print:block">
+                        <div className="text-center p-4" style={{ maxWidth: "100mm" }}>
+                            {/* Header */}
+                            <div className="border-b-2 border-dashed border-black pb-2 mb-4">
+                                <h1 className="text-xl font-black">RAM</h1>
+                                <p className="text-xs">Karşıyaka Özel Eğitim</p>
                             </div>
-                        </div>
 
-                        {/* Name */}
-                        {printTicket.name && printTicket.name !== "Misafir" && (
-                            <div className="border-t border-dashed border-slate-300 pt-4">
-                                <p className="text-sm text-slate-500 uppercase tracking-wider mb-1">İsim</p>
-                                <p className="text-xl font-bold text-slate-800">{printTicket.name}</p>
+                            {/* Sıra No - Büyük */}
+                            <div className="py-4">
+                                <p className="text-sm font-bold uppercase mb-1">Sıra No</p>
+                                <div className="text-7xl font-black leading-none">
+                                    {printTicket.no}
+                                </div>
                             </div>
-                        )}
 
-                        {/* Timestamp */}
-                        <div className="border-t border-dashed border-slate-300 pt-4 text-sm text-slate-500">
-                            {new Date(printTicket.createdAt).toLocaleString('tr-TR')}
-                        </div>
+                            {/* İsim */}
+                            {printTicket.name && printTicket.name !== "Misafir" && (
+                                <div className="border-t border-dashed border-black pt-2 mt-2">
+                                    <p className="text-xs text-gray-600">{printTicket.name}</p>
+                                </div>
+                            )}
 
-                        {/* Footer */}
-                        <div className="border-t-4 border-dashed border-slate-300 pt-6 text-xs text-slate-400">
-                            <p>Lütfen sıranızı bekleyiniz</p>
-                            <p className="mt-1">Ekranda numaranız göründüğünde içeri giriniz</p>
+                            {/* Tarih/Saat */}
+                            <div className="border-t border-dashed border-black pt-2 mt-3 text-xs">
+                                {new Date(printTicket.createdAt).toLocaleString('tr-TR', {
+                                    day: '2-digit',
+                                    month: '2-digit',
+                                    year: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                })}
+                            </div>
+
+                            {/* Alt Bilgi */}
+                            <div className="border-t-2 border-dashed border-black pt-2 mt-3 text-xs">
+                                <p>Lütfen sıranızı bekleyiniz</p>
+                            </div>
                         </div>
                     </div>
-                </div>
+                </>
             )}
         </>
     );
