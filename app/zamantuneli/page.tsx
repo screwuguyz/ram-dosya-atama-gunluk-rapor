@@ -119,10 +119,7 @@ export default function TimeMachinePage() {
     useEffect(() => {
         if (isAuthenticated) {
             fetchCentralState();
-            // Optional: Polling setup if needed, but for manual admin tool, fetch on load is usually enough.
-            // Or set up interval.
-            const interval = setInterval(fetchCentralState, 5000);
-            return () => clearInterval(interval);
+            // Polling kaldırıldı - manuel admin aracı için gereksiz ve silme/güncelleme ile çakışıyor
         }
     }, [isAuthenticated]);
 
