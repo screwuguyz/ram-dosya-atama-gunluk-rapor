@@ -176,8 +176,8 @@ export default function TvDisplayPage() {
             </div>
 
             {/* Sağ: Gerekli Evraklar Bilgisi */}
-            <div className="absolute right-6 top-20 bottom-16 hidden xl:flex flex-col w-[380px] z-10">
-                <h3 className="text-amber-300 font-bold mb-3 uppercase tracking-wider text-base border-b border-amber-500/30 pb-2 flex items-center gap-2">
+            <div className="absolute right-6 top-20 bottom-16 hidden xl:flex flex-col w-[450px] z-10">
+                <h3 className="text-amber-300 font-bold mb-4 uppercase tracking-wider text-lg border-b border-amber-500/30 pb-2 flex items-center gap-2">
                     <span>📋</span>
                     <span>RANDEVUSU BULUNAN BİREYLER İÇİN GEREKLİ EVRAKLAR</span>
                 </h3>
@@ -192,13 +192,13 @@ export default function TvDisplayPage() {
                     ].map((item, idx) => (
                         <div
                             key={item.no}
-                            className="bg-white/5 p-2.5 rounded-lg border border-amber-500/20 flex items-start gap-3 animate-in slide-in-from-right duration-500"
+                            className="bg-white/5 p-3 rounded-lg border border-amber-500/20 flex items-start gap-3 animate-in slide-in-from-right duration-500"
                             style={{ animationDelay: `${idx * 100}ms` }}
                         >
-                            <div className="bg-amber-500/20 text-amber-300 font-bold w-7 h-7 flex-shrink-0 flex items-center justify-center rounded-full text-sm border border-amber-400/30">
+                            <div className="bg-amber-500/20 text-amber-300 font-bold w-8 h-8 flex-shrink-0 flex items-center justify-center rounded-full text-base border border-amber-400/30">
                                 {item.no}
                             </div>
-                            <span className="text-sm font-medium text-white/90 leading-snug">{item.text}</span>
+                            <span className="text-base font-medium text-white/90 leading-snug">{item.text}</span>
                         </div>
                     ))}
                 </div>
