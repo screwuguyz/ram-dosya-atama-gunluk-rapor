@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { useQueueSync } from "@/hooks/useQueueSync";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,8 +16,42 @@ export default function QueueWidget() {
         callTicket,
         completeTicket,
         clearAll,
-        refresh
     } = useQueueSync();
+
+    // Sesli bildirim (Hook içinde tanımlı değilse basit bir ses çal)
+    const playNotificationSound = useCallback(() => {
+        const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(880, ctx.currentTime); // A5
+        osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.5);
+        gain.gain.setValueAtTime(0.3, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.5);
+    }, []);
+
+    // Yeni bilet gelince ses çal
+    const prevCountRef = useRef(waitingTickets.length);
+    const mountedRef = useRef(false);
+
+    useEffect(() => {
+        if (!mountedRef.current) {
+            mountedRef.current = true;
+            prevCountRef.current = waitingTickets.length;
+            return;
+        }
+
+        if (waitingTickets.length > prevCountRef.current) {
+            // Yeni bilet eklendi
+            console.log("[QueueWidget] New ticket detected, playing sound");
+            playNotificationSound();
+        }
+        prevCountRef.current = waitingTickets.length;
+    }, [waitingTickets.length, playNotificationSound]);
 
     // Bilet çağırma
     const handleCall = useCallback(async (id: string) => {
