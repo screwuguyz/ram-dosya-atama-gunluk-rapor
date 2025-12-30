@@ -16,10 +16,11 @@ export default function SiraAlPage() {
     const [printTicket, setPrintTicket] = useState<QueueTicket | null>(null);
     const printRef = useRef<HTMLDivElement>(null);
 
-    // Enter tuşu ile sıra alma (kiosk modu için)
+    // Enter veya Space tuşu ile sıra alma (kiosk modu için)
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.key === "Enter" && !loading && !printTicket) {
+            if ((e.key === "Enter" || e.key === " ") && !loading && !printTicket) {
+                e.preventDefault(); // Space'in sayfayı kaydırmasını engelle
                 handleSiraAl();
             }
         };
