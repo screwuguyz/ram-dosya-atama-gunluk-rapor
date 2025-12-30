@@ -15,7 +15,7 @@ export function useQueueSync() {
     // Fetch all tickets from API
     const fetchTickets = useCallback(async () => {
         try {
-            const res = await fetch("/api/queue-v2");
+            const res = await fetch("/api/queue-v2", { cache: "no-store", headers: { "Pragma": "no-cache" } });
             const data = await res.json();
 
             if (data.ok && Array.isArray(data.tickets)) {
