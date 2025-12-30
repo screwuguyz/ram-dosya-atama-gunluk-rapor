@@ -41,6 +41,58 @@ export default function BackupManager({ currentState, onRestore }: Props) {
     fetchBackups();
   }, [fetchBackups]);
 
+  // Fail-safe: Otomatik yedekleme kontrolü (Client-side trigger)
+  // Eğer saat 18:00'i geçtiyse ve bugün için otomatik yedek YOKSA, tetikle.
+  useEffect(() => {
+    if (backups.length === 0 && loading) return; // Henüz yükleniyor veya hiç yok (yükleniyor durumu önemli)
+
+    const checkAndTriggerAutoBackup = async () => {
+      const now = new Date();
+      // Türkiye saati kontrolü (basitçe yerel saat varsayıyoruz, kullanıcı TR'de)
+      const hour = now.getHours();
+
+      // Saat 18:00'den önceyse işlem yapma
+      if (hour < 18) return;
+
+      const todayStr = now.toLocaleDateString("tr-TR"); // format: "DD.MM.YYYY" veya benzeri locale göre
+
+      // Bugünün otomatik yedeği var mı?
+      const hasAutoBackupToday = backups.some(b => {
+        const bDate = new Date(b.created_at);
+        const bDateStr = bDate.toLocaleDateString("tr-TR");
+        return bDateStr === todayStr && b.backup_type === "auto";
+      });
+
+      if (!hasAutoBackupToday) {
+        console.log("[BackupManager] Bugünün otomatik yedeği eksik. Fail-safe tetikleniyor...");
+        // Otomatik yedek oluştur
+        // createBackup fonksiyonunu doğrudan çağırmıyoruz çünkü o loading state'ini etkiliyor ve UI'ı blokluyor.
+        // Arkaplanda sessizce halledelim.
+        try {
+          await fetch("/api/backup", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              state: currentState, // Prop'tan gelen state
+              backupType: "auto",
+              description: "Otomatik Günlük Yedek (Client-Trigger)",
+            }),
+          });
+          console.log("[BackupManager] Fail-safe yedekleme başarılı.");
+          // Listeyi yenile
+          fetchBackups();
+        } catch (err) {
+          console.error("[BackupManager] Fail-safe yedekleme hatası:", err);
+        }
+      }
+    };
+
+    // Yedekler yüklendikten sonra kontrol et
+    if (!loading && backups) {
+      checkAndTriggerAutoBackup();
+    }
+  }, [backups, loading, currentState, fetchBackups]);
+
   const createBackup = async (type: "manual" | "auto" = "manual") => {
     setLoading(true);
     setMessage(null);
@@ -142,7 +194,7 @@ export default function BackupManager({ currentState, onRestore }: Props) {
               Supabase dashboard'dan aşağıdaki SQL ile tablo oluşturun:
             </p>
             <pre className="text-xs bg-slate-800 text-green-400 p-3 rounded overflow-x-auto">
-{`CREATE TABLE app_backups (
+              {`CREATE TABLE app_backups (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   backup_type TEXT DEFAULT 'manual',

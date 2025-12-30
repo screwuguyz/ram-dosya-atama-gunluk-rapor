@@ -51,14 +51,14 @@ export async function GET(request: Request) {
             return NextResponse.json({ error: "Failed to create backup" }, { status: 500 });
         }
 
-        // 3. Delete backups older than 3 days
-        const threeDaysAgo = new Date();
-        threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+        // 3. Delete backups older than 30 days (updated from 3)
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
         const { data: deletedData, error: deleteError } = await client
             .from("app_backups")
             .delete()
-            .lt("created_at", threeDaysAgo.toISOString())
+            .lt("created_at", thirtyDaysAgo.toISOString())
             .select();
 
         const deletedCount = deletedData?.length || 0;
