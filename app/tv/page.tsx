@@ -85,14 +85,14 @@ export default function TvDisplayPage() {
 
     return (
         <div
-            className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-800 to-fuchsia-900 text-white overflow-hidden cursor-pointer"
+            className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-950 text-white overflow-hidden cursor-pointer"
             onClick={handleInteract}
         >
-            {/* Background Pattern */}
-            <div className="absolute inset-0 opacity-10">
+            {/* Background Pattern - subtle */}
+            <div className="absolute inset-0 opacity-5">
                 <div className="absolute inset-0" style={{
-                    backgroundImage: `radial-gradient(circle at 2px 2px, cyan 1px, transparent 0)`,
-                    backgroundSize: '40px 40px'
+                    backgroundImage: `radial-gradient(circle at 2px 2px, white 1px, transparent 0)`,
+                    backgroundSize: '50px 50px'
                 }}></div>
             </div>
 
@@ -125,10 +125,10 @@ export default function TvDisplayPage() {
             <div className="h-screen pt-20 pb-4 px-4 grid grid-cols-1 xl:grid-cols-12 gap-4">
 
                 {/* SOL SÜTUN - Bekleyen Sıralar */}
-                <div className="hidden xl:flex xl:col-span-3 flex-col bg-gradient-to-b from-cyan-900/30 to-blue-900/20 backdrop-blur-sm rounded-2xl border border-cyan-500/30 p-4 overflow-hidden">
-                    <h3 className="text-cyan-300 font-bold uppercase tracking-wider text-lg border-b border-cyan-500/40 pb-3 mb-4 flex items-center justify-between">
+                <div className="hidden xl:flex xl:col-span-3 flex-col bg-slate-800/80 backdrop-blur-sm rounded-2xl border border-blue-500/30 p-4 overflow-hidden">
+                    <h3 className="text-blue-300 font-bold uppercase tracking-wider text-lg border-b border-blue-500/40 pb-3 mb-4 flex items-center justify-between">
                         <span>BEKLEYEN SIRALAR</span>
-                        <span className="bg-cyan-500/30 px-3 py-1 rounded-lg text-xl font-black text-cyan-200">{waitingTickets.length}</span>
+                        <span className="bg-blue-600 px-3 py-1 rounded-lg text-xl font-black text-white">{waitingTickets.length}</span>
                     </h3>
                     <div className="flex-1 space-y-2 overflow-y-auto">
                         {waitingTickets.length === 0 ? (
@@ -140,7 +140,7 @@ export default function TvDisplayPage() {
                                     className="bg-white/5 p-3 rounded-xl border border-white/10 flex items-center gap-3 transition-all animate-in slide-in-from-left duration-300"
                                     style={{ animationDelay: `${idx * 50}ms` }}
                                 >
-                                    <div className="bg-cyan-500/30 text-cyan-100 font-black w-12 h-12 flex items-center justify-center rounded-full text-xl border-2 border-cyan-400/60">
+                                    <div className="bg-blue-600 text-white font-black w-12 h-12 flex items-center justify-center rounded-full text-xl border-2 border-blue-400">
                                         {String(t.no || '')}
                                     </div>
                                     <span className="text-lg font-medium truncate flex-1 text-white">{String(t.name || "Misafir")}</span>
@@ -152,14 +152,14 @@ export default function TvDisplayPage() {
                 </div>
 
                 {/* ORTA SÜTUN - Sıradaki Numara */}
-                <div className="xl:col-span-5 flex flex-col items-center justify-center bg-gradient-to-b from-fuchsia-900/40 to-purple-900/30 backdrop-blur-sm rounded-2xl border border-fuchsia-500/30 p-8">
-                    <h1 className="text-3xl lg:text-4xl font-light tracking-[0.15em] text-fuchsia-300 uppercase mb-4">
+                <div className="xl:col-span-5 flex flex-col items-center justify-center bg-slate-800/60 backdrop-blur-sm rounded-2xl border border-purple-500/40 p-8">
+                    <h1 className="text-3xl lg:text-4xl font-bold tracking-[0.15em] text-purple-300 uppercase mb-4">
                         SIRADAKİ NUMARA
                     </h1>
 
                     {currentTicket ? (
                         <div className="text-center animate-in zoom-in duration-500">
-                            <div className="text-[10rem] lg:text-[14rem] font-black leading-none tracking-tighter bg-clip-text text-transparent bg-gradient-to-br from-white via-fuchsia-200 to-cyan-200 drop-shadow-[0_0_50px_rgba(236,72,153,0.7)]">
+                            <div className="text-[10rem] lg:text-[14rem] font-black leading-none tracking-tighter text-white drop-shadow-[0_0_30px_rgba(168,85,247,0.8)]">
                                 {String(currentTicket.no || '')}
                             </div>
                             {currentTicket.name && currentTicket.name !== "Misafir" && (
@@ -167,7 +167,7 @@ export default function TvDisplayPage() {
                                     {String(currentTicket.name || '')}
                                 </div>
                             )}
-                            <div className="mt-6 inline-block px-8 py-3 bg-lime-500/20 text-lime-300 rounded-full text-xl font-bold border border-lime-500/40 animate-pulse shadow-lg shadow-lime-500/20">
+                            <div className="mt-6 inline-block px-8 py-3 bg-green-600 text-white rounded-full text-xl font-bold border-2 border-green-400 animate-pulse shadow-lg shadow-green-500/30">
                                 ✓ GÖRÜŞME ODASINA GEÇİNİZ
                             </div>
                         </div>
@@ -180,8 +180,8 @@ export default function TvDisplayPage() {
                 </div>
 
                 {/* SAĞ SÜTUN - Gerekli Evraklar */}
-                <div className="hidden xl:flex xl:col-span-4 flex-col bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 p-4 overflow-hidden">
-                    <h3 className="text-amber-300 font-bold uppercase tracking-wider text-base border-b border-amber-500/30 pb-3 mb-3 flex items-center gap-2">
+                <div className="hidden xl:flex xl:col-span-4 flex-col bg-slate-800/80 backdrop-blur-sm rounded-2xl border border-orange-500/30 p-4 overflow-hidden">
+                    <h3 className="text-orange-300 font-bold uppercase tracking-wider text-base border-b border-orange-500/40 pb-3 mb-3 flex items-center gap-2">
                         <span>📋</span>
                         <span>RANDEVUSU BULUNAN BİREYLER İÇİN GEREKLİ EVRAKLAR</span>
                     </h3>
@@ -189,13 +189,13 @@ export default function TvDisplayPage() {
                         {documents.map((item, idx) => (
                             <div
                                 key={item.no}
-                                className="bg-white/5 p-3 rounded-xl border border-amber-500/20 flex items-start gap-3 animate-in slide-in-from-right duration-500"
+                                className="bg-slate-700/50 p-3 rounded-xl border border-orange-500/20 flex items-start gap-3 animate-in slide-in-from-right duration-500"
                                 style={{ animationDelay: `${idx * 100}ms` }}
                             >
-                                <div className="bg-amber-500/20 text-amber-300 font-bold w-8 h-8 flex-shrink-0 flex items-center justify-center rounded-full text-sm border border-amber-400/30">
+                                <div className="bg-orange-600 text-white font-bold w-8 h-8 flex-shrink-0 flex items-center justify-center rounded-full text-sm">
                                     {item.no}
                                 </div>
-                                <span className="text-sm font-medium text-white/90 leading-snug">{item.text}</span>
+                                <span className="text-sm font-semibold text-white leading-snug">{item.text}</span>
                             </div>
                         ))}
                     </div>
