@@ -32,51 +32,35 @@ export default function TvDisplayPage() {
 
     // Ayarlar paneli state
     const [showSettings, setShowSettings] = useState(false);
-    const [fontScale, setFontScale] = useState<number>(() => {
-        if (typeof window !== 'undefined') {
-            const saved = localStorage.getItem('tv_font_scale');
-            return saved ? parseFloat(saved) : 1;
-        }
-        return 1;
-    });
+    const [fontScale, setFontScale] = useState(1);
+    const [musicVolume, setMusicVolume] = useState(0.5);
+    const [announcementVolume, setAnnouncementVolume] = useState(1.0);
+    const [settingsLoaded, setSettingsLoaded] = useState(false);
 
-    // Font ölçeğini kaydet
+    // Client-side'da localStorage'dan ayarları yükle
     useEffect(() => {
         if (typeof window !== 'undefined') {
+            const savedFontScale = localStorage.getItem('tv_font_scale');
+            const savedMusicVolume = localStorage.getItem('tv_music_volume');
+            const savedAnnouncementVolume = localStorage.getItem('tv_announcement_volume');
+
+            if (savedFontScale) setFontScale(parseFloat(savedFontScale));
+            if (savedMusicVolume) setMusicVolume(parseFloat(savedMusicVolume));
+            if (savedAnnouncementVolume) setAnnouncementVolume(parseFloat(savedAnnouncementVolume));
+
+            setSettingsLoaded(true);
+        }
+    }, []);
+
+    // Ayarlar değişince localStorage'a kaydet
+    useEffect(() => {
+        if (settingsLoaded && typeof window !== 'undefined') {
             localStorage.setItem('tv_font_scale', String(fontScale));
-        }
-    }, [fontScale]);
-
-    // Müzik ses seviyesi (0-1 arası)
-    const [musicVolume, setMusicVolume] = useState<number>(() => {
-        if (typeof window !== 'undefined') {
-            const saved = localStorage.getItem('tv_music_volume');
-            return saved ? parseFloat(saved) : 0.5; // Müzik varsayılan %50
-        }
-        return 0.5;
-    });
-
-    // Anons ses seviyesi (0-1 arası)
-    const [announcementVolume, setAnnouncementVolume] = useState<number>(() => {
-        if (typeof window !== 'undefined') {
-            const saved = localStorage.getItem('tv_announcement_volume');
-            return saved ? parseFloat(saved) : 1.0; // Anons varsayılan %100
-        }
-        return 1.0;
-    });
-
-    // Ses seviyelerini kaydet
-    useEffect(() => {
-        if (typeof window !== 'undefined') {
             localStorage.setItem('tv_music_volume', String(musicVolume));
-        }
-    }, [musicVolume]);
-
-    useEffect(() => {
-        if (typeof window !== 'undefined') {
             localStorage.setItem('tv_announcement_volume', String(announcementVolume));
         }
-    }, [announcementVolume]);
+    }, [fontScale, musicVolume, announcementVolume, settingsLoaded]);
+
 
 
 
@@ -140,6 +124,8 @@ export default function TvDisplayPage() {
                     },
                     events: {
                         onReady: (event: any) => {
+                            // Başlangıçta ses seviyesini ayarla
+                            event.target.setVolume(Math.round(musicVolume * 100));
                             if (musicPlaying && !isAnnouncingRef.current) {
                                 event.target.playVideo();
                             }
