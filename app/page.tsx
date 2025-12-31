@@ -1595,8 +1595,15 @@ export default function DosyaAtamaApp() {
     const name = newTeacherName.trim();
     if (!name) return;
     const birthDate = newTeacherBirthDate.trim() || undefined;
+
+    // En düşük puanlı aktif öğretmenin puanını bul
+    const activeTeachers = teachers.filter(t => t.active);
+    const minLoad = activeTeachers.length > 0
+      ? Math.min(...activeTeachers.map(t => t.yearlyLoad))
+      : 0;
+
     setTeachers(prev => [
-      { id: uid(), name, isAbsent: false, yearlyLoad: 0, monthly: {}, active: true, isTester: false, birthDate },
+      { id: uid(), name, isAbsent: false, yearlyLoad: minLoad, monthly: {}, active: true, isTester: false, birthDate },
       ...prev,
     ]);
     setNewTeacherName("");
