@@ -11,7 +11,7 @@ function daysInMonth(year: number, month: number) {
 }
 
 function getMonths() {
-  return ["01","02","03","04","05","06","07","08","09","10","11","12"];
+  return ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"];
 }
 
 function getTodayYmd() {
@@ -25,7 +25,7 @@ function getTodayYmd() {
 // Türkiye'nin sabit resmi tatilleri
 function getFixedHolidays(year: number): string[] {
   const holidays: string[] = [];
-  
+
   // Sabit tarihler (her yıl aynı)
   holidays.push(`${year}-01-01`); // Yılbaşı
   holidays.push(`${year}-04-23`); // Ulusal Egemenlik ve Çocuk Bayramı
@@ -34,14 +34,14 @@ function getFixedHolidays(year: number): string[] {
   holidays.push(`${year}-07-15`); // Demokrasi ve Milli Birlik Günü
   holidays.push(`${year}-08-30`); // Zafer Bayramı
   holidays.push(`${year}-10-29`); // Cumhuriyet Bayramı
-  
+
   return holidays;
 }
 
 // Dini bayramlar (Diyanet İşleri Başkanlığı resmi takvimine göre)
 function getReligiousHolidays(year: number): string[] {
   const holidays: string[] = [];
-  
+
   // 2024
   if (year === 2024) {
     // Ramazan Bayramı (10-12 Nisan)
@@ -54,7 +54,7 @@ function getReligiousHolidays(year: number): string[] {
     holidays.push("2024-06-19");
     holidays.push("2024-06-20");
   }
-  
+
   // 2025
   if (year === 2025) {
     // Ramazan Bayramı (30 Mart - 1 Nisan)
@@ -67,7 +67,7 @@ function getReligiousHolidays(year: number): string[] {
     holidays.push("2025-06-08");
     holidays.push("2025-06-09");
   }
-  
+
   // 2026
   if (year === 2026) {
     // Ramazan Bayramı (20-22 Mart)
@@ -80,7 +80,7 @@ function getReligiousHolidays(year: number): string[] {
     holidays.push("2026-05-29");
     holidays.push("2026-05-30");
   }
-  
+
   // 2027 (tahmini - Hicri takvime göre hesaplanmış)
   if (year === 2027) {
     // Ramazan Bayramı (9-11 Mart)
@@ -93,7 +93,7 @@ function getReligiousHolidays(year: number): string[] {
     holidays.push("2027-05-18");
     holidays.push("2027-05-19");
   }
-  
+
   // 2028 (tahmini)
   if (year === 2028) {
     // Ramazan Bayramı (26-28 Şubat)
@@ -106,20 +106,20 @@ function getReligiousHolidays(year: number): string[] {
     holidays.push("2028-05-06");
     holidays.push("2028-05-07");
   }
-  
+
   return holidays;
 }
 
 // Tüm resmi tatilleri getir (sabit + dini + localStorage'dan eklenenler)
 function getAllHolidays(year: number): Set<string> {
   const holidays = new Set<string>();
-  
+
   // Sabit tatiller
   getFixedHolidays(year).forEach(h => holidays.add(h));
-  
+
   // Dini bayramlar
   getReligiousHolidays(year).forEach(h => holidays.add(h));
-  
+
   // localStorage'dan ek tatiller (admin tarafından eklenebilir)
   try {
     const customHolidays = localStorage.getItem(`custom_holidays_${year}`);
@@ -127,8 +127,8 @@ function getAllHolidays(year: number): Set<string> {
       const parsed = JSON.parse(customHolidays) as string[];
       parsed.forEach(h => holidays.add(h));
     }
-  } catch {}
-  
+  } catch { }
+
   return holidays;
 }
 
@@ -177,7 +177,7 @@ export default function DailyReportView({
   const todayInfo = new Date();
   const isCurrentMonth = year === todayInfo.getFullYear() && month === (todayInfo.getMonth() + 1);
   const currentDayIndex = isCurrentMonth ? (todayInfo.getDate() - 1) : -1; // 0-based index
-  
+
   // Resmi tatilleri yükle
   const holidays = useMemo(() => getAllHolidays(year), [year]);
 
@@ -207,18 +207,18 @@ export default function DailyReportView({
   }, [data, monthKey]);
 
   const todayYmd = getTodayYmd();
-  
+
   const rows = teachers.map((t) => {
     const perDay: DayAgg[] = dayKeys.map((d) => agg.get(`${t.id}|${d}`) || { points: 0, count: 0 });
     const totalPoints = perDay.reduce((a, d) => a + d.points, 0);
     const totalCount = perDay.reduce((a, d) => a + d.count, 0);
-    
+
     // Canlı puan hesaplama (bugün için)
     const isBackupToday = t.backupDay === todayYmd;
     const isAbsentToday = t.isAbsent && t.active;
     let liveScore: number | null = null;
     let liveType: 'backup' | 'absent' | null = null;
-    
+
     if (liveScores && isCurrentMonth && currentDayIndex >= 0) {
       if (isBackupToday) {
         liveScore = liveScores.backupBonus;
@@ -228,7 +228,7 @@ export default function DailyReportView({
         liveType = 'absent';
       }
     }
-    
+
     return { id: t.id, name: t.name, perDay, totalPoints, totalCount, liveScore, liveType, isBackupToday, isAbsentToday };
   });
 
@@ -248,11 +248,21 @@ export default function DailyReportView({
         <CardTitle>📅 Günlük Rapor (Puan · Adet)</CardTitle>
         <div className="flex items-center gap-2">
           <Label>Yıl</Label>
-          <Input
-            className="w-24"
-            value={year}
-            onChange={(e) => setYear(Number(String(e.target.value).replace(/[^0-9]/g, "").slice(0, 4)) || year)}
-          />
+          <div className="flex items-center border rounded-md">
+            <button
+              className="px-2 py-1 hover:bg-slate-100 rounded-l-md"
+              onClick={() => setYear(prev => Math.max(2020, prev - 1))}
+            >
+              ◀
+            </button>
+            <span className="px-3 py-1 font-medium min-w-[60px] text-center">{year}</span>
+            <button
+              className="px-2 py-1 hover:bg-slate-100 rounded-r-md"
+              onClick={() => setYear(prev => Math.min(2100, prev + 1))}
+            >
+              ▶
+            </button>
+          </div>
           <Label>Ay</Label>
           <Select value={String(month)} onValueChange={(v) => setMonth(Number(v))}>
             <SelectTrigger className="w-[120px]"><SelectValue placeholder="Ay" /></SelectTrigger>
@@ -274,16 +284,16 @@ export default function DailyReportView({
                   const isWeekendDay = isWeekend(d);
                   const isHoliday = holidays.has(d);
                   const isToday = i === currentDayIndex;
-                  
+
                   let className = "p-2 text-right ";
                   if (isToday) className += "text-red-600 font-semibold ";
                   else if (isHoliday) className += "text-purple-600 font-semibold bg-purple-50 ";
                   else if (isWeekendDay) className += "text-blue-600 font-semibold bg-blue-50 ";
-                  
+
                   return (
                     <th key={d} className={className} title={isHoliday ? "Resmi Tatil" : isWeekendDay ? "Hafta Sonu" : ""}>
-                    {String(i + 1).padStart(2, "0")}
-                  </th>
+                      {String(i + 1).padStart(2, "0")}
+                    </th>
                   );
                 })}
                 <th className="p-2 text-right">Aylık Puan</th>
@@ -304,7 +314,7 @@ export default function DailyReportView({
                     const isWeekendDay = isWeekend(dayKey);
                     const isHoliday = holidays.has(dayKey);
                     const showLiveScore = isToday && r.liveScore !== null;
-                    
+
                     let className = "p-2 text-right ";
                     if (showLiveScore && r.liveType === 'backup') {
                       className += "text-amber-600 bg-amber-50 dark:bg-amber-950 font-semibold ";
@@ -317,20 +327,20 @@ export default function DailyReportView({
                     } else if (isWeekendDay) {
                       className += "text-blue-600 bg-blue-50 font-semibold ";
                     }
-                    
-                    const title = showLiveScore 
-                      ? (r.liveType === 'backup' 
-                          ? `👑 Yedek Başkan - Tahmini: ${r.liveScore} puan (max+${settings?.backupBonusAmount})`
-                          : `🚫 Devamsız - Tahmini: ${r.liveScore} puan (min-${settings?.absencePenaltyAmount})`)
-                      : isHoliday 
+
+                    const title = showLiveScore
+                      ? (r.liveType === 'backup'
+                        ? `👑 Yedek Başkan - Tahmini: ${r.liveScore} puan (max+${settings?.backupBonusAmount})`
+                        : `🚫 Devamsız - Tahmini: ${r.liveScore} puan (min-${settings?.absencePenaltyAmount})`)
+                      : isHoliday
                         ? "🎉 Resmi Tatil"
-                        : isWeekendDay 
+                        : isWeekendDay
                           ? "📅 Hafta Sonu"
                           : undefined;
-                    
+
                     return (
-                      <td 
-                        key={i} 
+                      <td
+                        key={i}
                         className={className}
                         title={title}
                       >
@@ -356,16 +366,16 @@ export default function DailyReportView({
                   const isToday = i === currentDayIndex;
                   const isWeekendDay = isWeekend(dayKey);
                   const isHoliday = holidays.has(dayKey);
-                  
+
                   let className = "p-2 text-right ";
                   if (isToday) className += "text-red-600 ";
                   else if (isHoliday) className += "text-purple-600 bg-purple-50 ";
                   else if (isWeekendDay) className += "text-blue-600 bg-blue-50 ";
-                  
+
                   return (
                     <td key={i} className={className}>
-                    {c.points}{c.count ? ` (${c.count})` : ""}
-                  </td>
+                      {c.points}{c.count ? ` (${c.count})` : ""}
+                    </td>
                   );
                 })}
                 <td className="p-2 text-right">{grandPoints}</td>
