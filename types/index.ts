@@ -16,6 +16,7 @@ export interface Teacher {
   pushoverKey?: string;
   isTester: boolean;
   backupDay?: string;
+  birthDate?: string; // Doğum tarihi (MM-DD formatında, örn: "02-15")
 }
 
 /**

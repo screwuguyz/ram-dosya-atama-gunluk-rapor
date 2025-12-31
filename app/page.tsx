@@ -438,6 +438,7 @@ export default function DosyaAtamaApp() {
   const [isTestCase, setIsTestCase] = useState(false); // <-- YENİ: Test dosyası
   const [customDate, setCustomDate] = useState(""); // <-- YENİ: Geçmiş tarih için
   const [newTeacherName, setNewTeacherName] = useState(""); // <-- yeni öğretmen ekleme
+  const [newTeacherBirthDate, setNewTeacherBirthDate] = useState(""); // <-- doğum tarihi (MM-DD)
   // Geçici Pushover User Key girişleri (öğretmen başına)
   const [editPushover, setEditPushover] = useState<Record<string, string>>({});
   // Pushover input görünürlüğü (öğretmen başına)
@@ -1593,11 +1594,13 @@ export default function DosyaAtamaApp() {
   function addTeacher() {
     const name = newTeacherName.trim();
     if (!name) return;
+    const birthDate = newTeacherBirthDate.trim() || undefined;
     setTeachers(prev => [
-      { id: uid(), name, isAbsent: false, yearlyLoad: 0, monthly: {}, active: true, isTester: false },
+      { id: uid(), name, isAbsent: false, yearlyLoad: 0, monthly: {}, active: true, isTester: false, birthDate },
       ...prev,
     ]);
     setNewTeacherName("");
+    setNewTeacherBirthDate("");
   }
 
   // ---- Dosya silme (yükleri geri al)
@@ -3966,6 +3969,15 @@ export default function DosyaAtamaApp() {
                         onChange={(e) => setNewTeacherName(e.target.value)}
                         onKeyDown={(e) => e.key === "Enter" && addTeacher()}
                         placeholder="Ad Soyad"
+                      />
+                    </div>
+                    <div className="w-32">
+                      <Label>🎂 Doğum</Label>
+                      <Input
+                        value={newTeacherBirthDate}
+                        onChange={(e) => setNewTeacherBirthDate(e.target.value)}
+                        placeholder="AA-GG"
+                        maxLength={5}
                       />
                     </div>
                     <Button onClick={addTeacher}>➕ Ekle</Button>

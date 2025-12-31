@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useMemo } from "react";
+import { useAppStore } from "@/stores/useAppStore";
 
 // Türkiye'deki önemli günler ve bayramlar
 interface Holiday {
@@ -43,8 +44,8 @@ const FIXED_HOLIDAYS: Record<string, Holiday> = {
     "10-29": { name: "29 Ekim", emoji: "🇹🇷", colors: ["#E30A17", "#FFFFFF"], particles: ["🇹🇷", "🎆", "🎉", "⭐"], message: "Cumhuriyet Bayramımız Kutlu Olsun! 🇹🇷" },
 };
 
-// Personel Doğum Günleri (ay-gün formatında -> isim listesi)
-const STAFF_BIRTHDAYS: Record<string, string[]> = {
+// Sabit personel doğum günleri (mevcut kadro)
+const STATIC_BIRTHDAYS: Record<string, string[]> = {
     "02-15": ["Sabahattin KURU"],
     "06-14": ["Özlem DEDE"],
     "03-27": ["Ahmet ÖZERGİNER"],
@@ -65,41 +66,6 @@ const STAFF_BIRTHDAYS: Record<string, string[]> = {
     "05-25": ["Nuray KIZILGÜNEŞ"],
 };
 
-// O gündeki doğum günlerini getir
-function getBirthdaysForDate(monthDay: string): string[] {
-    return STAFF_BIRTHDAYS[monthDay] || [];
-}
-
-function getHolidayForDate(date: Date): Holiday | null {
-    const fullDate = date.toISOString().slice(0, 10);
-    const monthDay = `${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-
-    // Önce İslami bayramları kontrol et
-    if (ISLAMIC_HOLIDAYS[fullDate]) {
-        return ISLAMIC_HOLIDAYS[fullDate];
-    }
-
-    // Sonra sabit tarihli bayramları kontrol et
-    if (FIXED_HOLIDAYS[monthDay]) {
-        return FIXED_HOLIDAYS[monthDay];
-    }
-
-    // Son olarak doğum günlerini kontrol et
-    const birthdays = getBirthdaysForDate(monthDay);
-    if (birthdays.length > 0) {
-        const names = birthdays.join(" ve ");
-        return {
-            name: "Doğum Günü",
-            emoji: "🎂",
-            colors: ["#FF69B4", "#9B59B6"],
-            particles: ["🎂", "🎁", "🎈", "🎉", "✨", "💐"],
-            message: `🎂 İyi ki Doğdun ${names}! 🎉`
-        };
-    }
-
-    return null;
-}
-
 interface Particle {
     id: number;
     x: number;
@@ -115,7 +81,56 @@ export default function HolidayAnimation() {
     const [particles, setParticles] = useState<Particle[]>([]);
     const [showMessage, setShowMessage] = useState(true);
 
-    const holiday = useMemo(() => getHolidayForDate(new Date()), []);
+    // Teachers store'dan doğum günlerini dinamik olarak oku
+    const teachers = useAppStore((state) => state.teachers);
+
+    // Bugünkü doğum günlerini hesapla (store + sabit liste)
+    const holiday = useMemo(() => {
+        const now = new Date();
+        const fullDate = now.toISOString().slice(0, 10);
+        const monthDay = `${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+        // Önce İslami bayramları kontrol et
+        if (ISLAMIC_HOLIDAYS[fullDate]) {
+            return ISLAMIC_HOLIDAYS[fullDate];
+        }
+
+        // Sonra sabit tarihli bayramları kontrol et
+        if (FIXED_HOLIDAYS[monthDay]) {
+            return FIXED_HOLIDAYS[monthDay];
+        }
+
+        // Doğum günlerini kontrol et (dinamik + sabit)
+        const birthdayNames: string[] = [];
+
+        // Sabit listeden
+        if (STATIC_BIRTHDAYS[monthDay]) {
+            birthdayNames.push(...STATIC_BIRTHDAYS[monthDay]);
+        }
+
+        // Teachers store'dan (yeni eklenenler)
+        teachers.forEach(t => {
+            if (t.birthDate === monthDay && t.active) {
+                // Sabit listede yoksa ekle
+                if (!birthdayNames.includes(t.name)) {
+                    birthdayNames.push(t.name);
+                }
+            }
+        });
+
+        if (birthdayNames.length > 0) {
+            const names = birthdayNames.join(" ve ");
+            return {
+                name: "Doğum Günü",
+                emoji: "🎂",
+                colors: ["#FF69B4", "#9B59B6"],
+                particles: ["🎂", "🎁", "🎈", "🎉", "✨", "💐"],
+                message: `🎂 İyi ki Doğdun ${names}! 🎉`
+            };
+        }
+
+        return null;
+    }, [teachers]);
 
     useEffect(() => {
         if (!holiday) return;
