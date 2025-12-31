@@ -50,7 +50,7 @@ const STAFF_BIRTHDAYS: Record<string, string[]> = {
     "03-27": ["Ahmet ÖZERGİNER"],
     "11-02": ["Arman GÖKDAĞ"],
     "12-01": ["Aslıhan ÖZDEMİR"],
-    "02-21": ["Birkan BAYINDIR", "Uygar KULKUL"], // Aynı gün
+    "02-21": ["Uygar KULKUL"],
     "11-11": ["Aygün ÇELİK"],
     "03-30": ["Çiğdem KAYMAZ"],
     "06-13": ["Elif BOZHAN"],
