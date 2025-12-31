@@ -153,11 +153,14 @@ export function useQueueSync() {
                                 createdAt: payload.new.created_at,
                                 updatedAt: payload.new.updated_at,
                             };
-                            setTickets(prev => {
-                                // Avoid duplicates
-                                if (prev.some(t => t.id === newTicket.id)) return prev;
-                                return [...prev, newTicket];
-                            });
+                            // 3 saniye gecikme - yazıcının fişi basması için zaman tanı
+                            setTimeout(() => {
+                                setTickets(prev => {
+                                    // Avoid duplicates
+                                    if (prev.some(t => t.id === newTicket.id)) return prev;
+                                    return [...prev, newTicket];
+                                });
+                            }, 3000);
                         }
                         else if (payload.eventType === "UPDATE") {
                             setTickets(prev => prev.map(t =>
