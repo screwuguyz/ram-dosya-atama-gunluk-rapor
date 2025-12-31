@@ -18,20 +18,35 @@ export default function QueueWidget() {
         clearAll,
     } = useQueueSync();
 
-    // Sesli bildirim (Hook içinde tanımlı değilse basit bir ses çal)
+    // Sesli bildirim - Uzun ding-dong sesi (kapı zili tarzı)
     const playNotificationSound = useCallback(() => {
         const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.type = "sine";
-        osc.frequency.setValueAtTime(880, ctx.currentTime); // A5
-        osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.5);
-        gain.gain.setValueAtTime(0.3, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
-        osc.start();
-        osc.stop(ctx.currentTime + 0.5);
+
+        // DING (yüksek nota)
+        const playTone = (freq: number, startTime: number, duration: number, volume: number) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.type = "sine";
+            osc.frequency.setValueAtTime(freq, ctx.currentTime + startTime);
+            gain.gain.setValueAtTime(0, ctx.currentTime + startTime);
+            gain.gain.linearRampToValueAtTime(volume, ctx.currentTime + startTime + 0.05);
+            gain.gain.setValueAtTime(volume, ctx.currentTime + startTime + duration - 0.1);
+            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + startTime + duration);
+            osc.start(ctx.currentTime + startTime);
+            osc.stop(ctx.currentTime + startTime + duration);
+        };
+
+        // Ding-Dong pattern (2 kez tekrarla)
+        // İlk ding-dong
+        playTone(830, 0, 0.4, 0.4);      // DING (yüksek)
+        playTone(622, 0.4, 0.5, 0.35);   // DONG (düşük)
+
+        // İkinci ding-dong (biraz daha geç)
+        playTone(830, 1.0, 0.4, 0.35);   // DING
+        playTone(622, 1.4, 0.6, 0.3);    // DONG (daha uzun)
+
     }, []);
 
     // Yeni bilet gelince ses çal
