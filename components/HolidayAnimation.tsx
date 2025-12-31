@@ -43,6 +43,33 @@ const FIXED_HOLIDAYS: Record<string, Holiday> = {
     "10-29": { name: "29 Ekim", emoji: "🇹🇷", colors: ["#E30A17", "#FFFFFF"], particles: ["🇹🇷", "🎆", "🎉", "⭐"], message: "Cumhuriyet Bayramımız Kutlu Olsun! 🇹🇷" },
 };
 
+// Personel Doğum Günleri (ay-gün formatında -> isim listesi)
+const STAFF_BIRTHDAYS: Record<string, string[]> = {
+    "02-15": ["Sabahattin KURU"],
+    "06-14": ["Özlem DEDE"],
+    "03-27": ["Ahmet ÖZERGİNER"],
+    "11-02": ["Arman GÖKDAĞ"],
+    "12-01": ["Aslıhan ÖZDEMİR"],
+    "02-21": ["Birkan BAYINDIR", "Uygar KULKUL"], // Aynı gün
+    "11-11": ["Aygün ÇELİK"],
+    "03-30": ["Çiğdem KAYMAZ"],
+    "06-13": ["Elif BOZHAN"],
+    "02-28": ["Eray Ahmet TAŞKIN"],
+    "03-17": ["Bektaş ÇETİN"],
+    "07-01": ["Furkan Ata ADIYAMAN"],
+    "10-06": ["Lütfiye AKINCI"],
+    "12-12": ["Pınar KIRLANGIÇ"],
+    "10-03": ["Anıl Deniz ÖZGÜL"],
+    "11-23": ["Volkan CİVELEK"],
+    "10-01": ["Neslihan ŞAHİNER"],
+    "05-25": ["Nuray KIZILGÜNEŞ"],
+};
+
+// O gündeki doğum günlerini getir
+function getBirthdaysForDate(monthDay: string): string[] {
+    return STAFF_BIRTHDAYS[monthDay] || [];
+}
+
 function getHolidayForDate(date: Date): Holiday | null {
     const fullDate = date.toISOString().slice(0, 10);
     const monthDay = `${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
@@ -55,6 +82,19 @@ function getHolidayForDate(date: Date): Holiday | null {
     // Sonra sabit tarihli bayramları kontrol et
     if (FIXED_HOLIDAYS[monthDay]) {
         return FIXED_HOLIDAYS[monthDay];
+    }
+
+    // Son olarak doğum günlerini kontrol et
+    const birthdays = getBirthdaysForDate(monthDay);
+    if (birthdays.length > 0) {
+        const names = birthdays.join(" ve ");
+        return {
+            name: "Doğum Günü",
+            emoji: "🎂",
+            colors: ["#FF69B4", "#9B59B6"],
+            particles: ["🎂", "🎁", "🎈", "🎉", "✨", "💐"],
+            message: `🎂 İyi ki Doğdun ${names}! 🎉`
+        };
     }
 
     return null;
