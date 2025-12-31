@@ -297,6 +297,16 @@ export default function TvDisplayPage() {
                 <div className="flex items-center gap-3">
                     <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
                     <span className="font-bold tracking-wider">KARŞIYAKA RAM - DİJİTAL SIRAMATIK</span>
+
+                    {/* Müzik Görselleştirici */}
+                    {musicPlaying && (
+                        <div className="hidden md:flex ml-4 items-end gap-1 h-5 pb-1">
+                            <div className="w-1 bg-purple-400 rounded-t animate-[bounce_1s_infinite] h-[60%]"></div>
+                            <div className="w-1 bg-purple-400 rounded-t animate-[bounce_1.2s_infinite] h-[100%]"></div>
+                            <div className="w-1 bg-purple-400 rounded-t animate-[bounce_0.8s_infinite] h-[40%]"></div>
+                            <div className="w-1 bg-purple-400 rounded-t animate-[bounce_1.1s_infinite] h-[80%]"></div>
+                        </div>
+                    )}
                 </div>
                 <div className="flex items-center gap-4">
                     <span className="text-2xl font-light">{format(new Date(), "HH:mm")}</span>
@@ -399,14 +409,17 @@ export default function TvDisplayPage() {
             <div className="h-screen pt-20 pb-4 px-4 grid grid-cols-1 xl:grid-cols-12 gap-4">
 
                 {/* SOL SÜTUN - Bekleyen Sıralar */}
-                <div className="hidden xl:flex xl:col-span-3 flex-col bg-slate-800/80 backdrop-blur-sm rounded-2xl border border-blue-500/30 p-4 overflow-hidden">
+                <div className="hidden lg:flex lg:col-span-3 flex-col bg-slate-800/80 backdrop-blur-sm rounded-2xl border border-blue-500/30 p-4 overflow-hidden">
                     <h3 className="text-blue-300 font-bold uppercase tracking-wider text-2xl border-b border-blue-500/40 pb-3 mb-4 flex items-center justify-between">
                         <span>BEKLEYEN SIRALAR</span>
                         <span className="bg-blue-600 px-4 py-2 rounded-lg text-2xl font-black text-white">{waitingTickets.length}</span>
                     </h3>
                     <div className="flex-1 space-y-2 overflow-y-auto">
                         {waitingTickets.length === 0 ? (
-                            <div className="text-slate-500 text-lg text-center py-8">Sırada kimse yok</div>
+                            <div className="flex flex-col items-center justify-center h-full text-slate-500 opacity-50">
+                                <div className="text-4xl mb-2">💤</div>
+                                <div className="text-lg text-center">Sırada kimse yok</div>
+                            </div>
                         ) : (
                             waitingTickets.map((t, idx) => (
                                 <div
@@ -426,7 +439,7 @@ export default function TvDisplayPage() {
                 </div>
 
                 {/* ORTA SÜTUN - Sıradaki Numara */}
-                <div className="xl:col-span-5 flex flex-col items-center justify-center bg-slate-800/60 backdrop-blur-sm rounded-2xl border border-purple-500/40 p-8">
+                <div className="lg:col-span-5 flex flex-col items-center justify-center bg-slate-800/60 backdrop-blur-sm rounded-2xl border border-purple-500/40 p-8">
                     <h1 className="text-3xl lg:text-4xl font-bold tracking-[0.15em] text-purple-300 uppercase mb-4">
                         SIRADAKİ NUMARA
                     </h1>
