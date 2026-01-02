@@ -1711,11 +1711,11 @@ export default function DosyaAtamaApp() {
   // ---- E-Arşiv için CSV dışa aktarma
   function exportEArchiveCSV() {
     const headers = ['Öğrenci Adı', 'Dosya No', 'Atanan Öğretmen', 'Atama Tarihi'];
-    const rows = eArchive.map((entry) => [
-      entry.studentName,
+    const rows = eArchive.map((entry: any) => [
+      entry.studentName || entry.student || '',
       entry.fileNo || '',
-      entry.teacherName,
-      new Date(entry.date).toLocaleString("tr-TR", { dateStyle: "short", timeStyle: "short" }),
+      entry.teacherName || entry.assignedToName || '',
+      new Date(entry.date || entry.createdAt).toLocaleString("tr-TR", { dateStyle: "short", timeStyle: "short" }),
     ]);
     const csv = [headers, ...rows].map((r) => r.map(csvEscape).join(',')).join('\r\n');
     const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
@@ -1737,7 +1737,16 @@ export default function DosyaAtamaApp() {
 
     // Filtrelenmiş liste
     const filteredArchive = useMemo(() => {
-      let filtered = [...eArchive];
+      // Normalize data to handle both old and new formats
+      const normalized = (eArchive as any[]).map(e => ({
+        ...e,
+        studentName: e.studentName || e.student || "",
+        teacherName: e.teacherName || e.assignedToName || "",
+        date: e.date || e.createdAt || "",
+        fileNo: e.fileNo || ""
+      }));
+
+      let filtered = [...normalized];
 
       // Öğrenci adına göre filtrele
       if (searchStudent.trim()) {
@@ -1765,6 +1774,7 @@ export default function DosyaAtamaApp() {
         const fromDate = new Date(dateFrom);
         fromDate.setHours(0, 0, 0, 0);
         filtered = filtered.filter(e => {
+          if (!e.date) return false;
           const entryDate = new Date(e.date);
           entryDate.setHours(0, 0, 0, 0);
           return entryDate >= fromDate;
@@ -1775,20 +1785,24 @@ export default function DosyaAtamaApp() {
         const toDate = new Date(dateTo);
         toDate.setHours(23, 59, 59, 999);
         filtered = filtered.filter(e => {
+          if (!e.date) return false;
           const entryDate = new Date(e.date);
           return entryDate <= toDate;
         });
       }
 
       // Tarihe göre sırala (en yeni üstte)
-      return filtered.sort((a, b) =>
-        new Date(b.date).getTime() - new Date(a.date).getTime()
-      );
+      return filtered.sort((a, b) => {
+        const dateA = a.date ? new Date(a.date).getTime() : 0;
+        const dateB = b.date ? new Date(b.date).getTime() : 0;
+        return dateB - dateA;
+      });
     }, [eArchive, searchStudent, searchFileNo, filterTeacher, dateFrom, dateTo]);
 
     // Tüm öğretmen isimlerini al (filtreleme için)
     const teacherNames = useMemo(() => {
-      const names = new Set(eArchive.map(e => e.teacherName));
+      // @ts-ignore
+      const names = new Set(eArchive.map(e => e.teacherName || e.assignedToName).filter(Boolean));
       return Array.from(names).sort();
     }, [eArchive]);
 
