@@ -105,7 +105,7 @@ export default function YearlyReport({ teachers, cases, history }: Props) {
   // Öğretmen bazlı yıllık özet
   const teacherYearlySummary = useMemo(() => {
     return teachers
-      .filter(t => t.active)
+      .filter(t => t.active && !t.isPhysiotherapist)
       .map(t => {
         const teacherCases = allCases.filter(c => {
           const caseDate = c.createdAt.slice(0, 4);

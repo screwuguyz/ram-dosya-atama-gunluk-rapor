@@ -92,7 +92,7 @@ export default function Statistics({ teachers, cases, history }: Props) {
 
   // Öğretmen performansı (seçili ay)
   const teacherPerformance = teachers
-    .filter(t => t.active)
+    .filter(t => t.active && !t.isPhysiotherapist)
     .map(t => {
       const teacherCases = selectedMonthCases.filter(c => c.assignedTo === t.id);
       const totalPoints = teacherCases.reduce((sum, c) => sum + c.score, 0);
@@ -164,7 +164,7 @@ export default function Statistics({ teachers, cases, history }: Props) {
             <div className="text-3xl font-bold">{thisMonthCases.length}</div>
             <div className="text-sm opacity-90">Bu Ay Dosya</div>
             <div className="text-xs mt-1 opacity-75">
-              {teachers.filter(t => t.active).length} aktif öğretmen
+              {teachers.filter(t => t.active && !t.isPhysiotherapist).length} aktif öğretmen
             </div>
           </CardContent>
         </Card>
@@ -347,8 +347,8 @@ export default function Statistics({ teachers, cases, history }: Props) {
                     <div className="flex-1 h-6 bg-slate-100 rounded-full overflow-hidden relative">
                       <div
                         className={`h-full rounded-full transition-all duration-500 ${isTopHour
-                            ? "bg-gradient-to-r from-amber-400 to-amber-500"
-                            : "bg-gradient-to-r from-blue-400 to-blue-500"
+                          ? "bg-gradient-to-r from-amber-400 to-amber-500"
+                          : "bg-gradient-to-r from-blue-400 to-blue-500"
                           }`}
                         style={{ width: `${percentage}%`, minWidth: count > 0 ? "8px" : "0" }}
                       />

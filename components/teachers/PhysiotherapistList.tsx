@@ -16,7 +16,7 @@ import { uid } from "@/lib/utils";
 import { getTodayYmd } from "@/lib/date";
 import type { Teacher } from "@/types";
 
-export default function TeacherList() {
+export default function PhysiotherapistList() {
     const {
         teachers,
         addTeacher,
@@ -37,39 +37,29 @@ export default function TeacherList() {
     const [editKeyOpen, setEditKeyOpen] = useState<Record<string, boolean>>({});
     const [editPushover, setEditPushover] = useState<Record<string, string>>({});
 
-    // ---- Helpers
-    function hasTestToday(tid: string) {
-        const today = getTodayYmd();
-        return cases.some(c => c.isTest && !c.absencePenalty && c.assignedTo === tid && c.createdAt.slice(0, 10) === today);
-    }
-
     // ---- Actions
-    function handleAddTeacher() {
+    function handleAddPhysiotherapist() {
         const name = newTeacherName.trim();
         if (!name) return;
         const birthDate = newTeacherBirthDate.trim() || undefined;
 
-        // En düşük puanlı aktif öğretmenin puanını bul
-        const activeTeachers = teachers.filter(t => t.active);
-        const minLoad = activeTeachers.length > 0
-            ? Math.min(...activeTeachers.map(t => t.yearlyLoad))
-            : 0;
-
+        // Fizyoterapist olarak ekle, puan yükü 0 başlayabilir çünkü sıralamaya girmiyorlar
         const newTeacher: Teacher = {
             id: uid(),
             name,
             isAbsent: false,
-            yearlyLoad: minLoad,
+            yearlyLoad: 0,
             monthly: {},
             active: true,
             isTester: false,
-            birthDate
+            birthDate,
+            isPhysiotherapist: true
         };
 
         addTeacher(newTeacher);
         setNewTeacherName("");
         setNewTeacherBirthDate("");
-        addToast(`Öğretmen eklendi: ${name}`);
+        addToast(`Fizyoterapist eklendi: ${name}`);
     }
 
     function handleToggleAbsent(tid: string) {
@@ -102,45 +92,32 @@ export default function TeacherList() {
         if (t) updateTeacher(tid, { active: !t.active });
     }
 
-    function handleToggleTester(tid: string) {
-        const t = teachers.find(x => x.id === tid);
-        if (t) updateTeacher(tid, { isTester: !t.isTester });
-    }
-
-    function handleToggleBackupToday(tid: string) {
-        const today = getTodayYmd();
-        const t = teachers.find(x => x.id === tid);
-        if (t) {
-            const nextBackup = t.backupDay === today ? undefined : today;
-            updateTeacher(tid, { backupDay: nextBackup });
-        }
-    }
-
     function handleDeleteTeacher(tid: string) {
         const t = teachers.find(x => x.id === tid);
         if (!t) return;
 
         const caseCount = cases.filter(c => c.assignedTo === tid).length;
+        // Check historical load just in case
         const hasLoad = t.yearlyLoad > 0 || Object.values(t.monthly || {}).some(v => v > 0);
 
         if (caseCount > 0 || hasLoad) {
-            alert("Bu öğretmenin geçmiş kaydı var. Silmek raporları etkiler; öğretmen arşivlendi.");
+            alert("Bu fizyoterapistin geçmiş kaydı var. Silmek raporları etkiler; arşivlendi.");
             updateTeacher(tid, { active: false });
             return;
         }
 
-        if (!confirm("Bu öğretmeni kalıcı olarak silmek istiyor musunuz?")) return;
+        if (!confirm("Bu kişiyi kalıcı olarak silmek istiyor musunuz?")) return;
 
         removeTeacher(tid);
         // Atanmış dosyaların atamasını kaldır
         const updatedCases = cases.map(c => (c.assignedTo === tid ? { ...c, assignedTo: undefined } : c));
         setCases(updatedCases);
-        addToast("Öğretmen silindi.");
+        addToast("Fizyoterapist silindi.");
     }
 
     async function testNotifyTeacher(t: Teacher) {
         if (!t.pushoverKey) {
-            alert("Bu öğretmenin Pushover User Key’i boş.");
+            alert("Bu kişinin Pushover User Key’i boş.");
             return;
         }
         try {
@@ -167,14 +144,14 @@ export default function TeacherList() {
 
     return (
         <div className="space-y-4">
-            {/* Öğretmen Ekle */}
+            {/* Fizyoterapist Ekle */}
             <div className="flex flex-wrap items-end gap-2 p-4 bg-slate-50 border rounded-lg">
                 <div className="w-48">
                     <Label>Ad Soyad</Label>
                     <Input
                         value={newTeacherName}
                         onChange={(e) => setNewTeacherName(e.target.value)}
-                        onKeyDown={(e) => e.key === "Enter" && handleAddTeacher()}
+                        onKeyDown={(e) => e.key === "Enter" && handleAddPhysiotherapist()}
                         placeholder="Ad Soyad"
                     />
                 </div>
@@ -187,18 +164,16 @@ export default function TeacherList() {
                         maxLength={5}
                     />
                 </div>
-                <Button onClick={handleAddTeacher}>➕ Ekle</Button>
+                <Button onClick={handleAddPhysiotherapist}>➕ Ekle</Button>
             </div>
 
-            {teachers.filter(t => !t.isPhysiotherapist).map((t) => {
-                const locked = hasTestToday(t.id);
+            {teachers.filter(t => t.isPhysiotherapist).map((t) => {
                 return (
                     <div key={t.id} className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:shadow-md hover:border-slate-300 transition-all duration-200">
                         <div className="space-y-1 min-w-0 flex-shrink">
                             <div className="font-medium">{t.name}</div>
                             <div className="text-xs text-muted-foreground">
-                                Yıllık Yük: {t.yearlyLoad} {t.isTester ? " • Testör" : ""} {locked ? " • Bugün test aldı" : ""} {t.backupDay === getTodayYmd() ? " • Yedek" : ""}
-
+                                Fizyoterapist
                                 {/* Pushover Key Yönetimi */}
                                 {!t.pushoverKey && !editKeyOpen[t.id] ? (
                                     <div className="mt-2">
@@ -298,23 +273,10 @@ export default function TeacherList() {
                             <div className="text-xs text-muted-foreground mr-2">
                                 {t.isAbsent ? (
                                     <span className="text-red-600 font-medium">🚫 Devamsız</span>
-                                ) : t.backupDay === getTodayYmd() ? (
-                                    <span className="text-amber-600 font-medium">👑 Yedek</span>
                                 ) : "Uygun"}
                             </div>
                             <Button variant={t.isAbsent ? "default" : "outline"} onClick={() => handleToggleAbsent(t.id)} size="sm">
                                 {t.isAbsent ? "✅ Uygun Yap" : "🚫 Devamsız Yap"}
-                            </Button>
-                            <Button variant={t.isTester ? "default" : "outline"} onClick={() => handleToggleTester(t.id)} size="sm">
-                                {t.isTester ? "🧪 Testör (Açık)" : "🧪 Testör Yap"}
-                            </Button>
-                            <Button
-                                variant={t.backupDay === getTodayYmd() ? "default" : "outline"}
-                                onClick={() => handleToggleBackupToday(t.id)}
-                                size="sm"
-                                title={`Bugün yedek: dosya almaz. Gün sonunda en yüksek puan +${settings.backupBonusAmount} ile başlar.`}
-                            >
-                                {t.backupDay === getTodayYmd() ? "👑 Yedek İptal" : "👑 Başkan Yedek"}
                             </Button>
                             <Button variant="outline" size="sm" onClick={() => handleToggleActive(t.id)}>{t.active ? "📦 Arşivle" : "✨ Aktif Et"}</Button>
                             <Button variant="destructive" size="sm" title="Kalıcı Sil" onClick={() => handleDeleteTeacher(t.id)}>🗑️ Sil</Button>

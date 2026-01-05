@@ -74,7 +74,7 @@ export default function WeeklyReport({ teachers, cases, history }: Props) {
   // Öğretmen bazlı haftalık özet
   const teacherWeeklySummary = useMemo(() => {
     return teachers
-      .filter(t => t.active)
+      .filter(t => t.active && !t.isPhysiotherapist)
       .map(t => {
         const teacherCases = weekCases.filter(c => c.assignedTo === t.id);
         const totalPoints = teacherCases.reduce((sum, c) => sum + c.score, 0);

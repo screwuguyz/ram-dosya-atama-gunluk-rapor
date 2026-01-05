@@ -11,6 +11,7 @@ export type Teacher = {
     isTester: boolean;
     backupDay?: string;
     birthDate?: string;
+    isPhysiotherapist?: boolean;
 };
 
 export type CaseFile = {

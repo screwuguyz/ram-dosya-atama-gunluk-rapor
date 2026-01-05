@@ -208,7 +208,7 @@ export default function DailyReportView({
 
   const todayYmd = getTodayYmd();
 
-  const rows = teachers.map((t) => {
+  const rows = teachers.filter(t => !t.isPhysiotherapist).map((t) => {
     const perDay: DayAgg[] = dayKeys.map((d) => agg.get(`${t.id}|${d}`) || { points: 0, count: 0 });
     const totalPoints = perDay.reduce((a, d) => a + d.points, 0);
     const totalCount = perDay.reduce((a, d) => a + d.count, 0);

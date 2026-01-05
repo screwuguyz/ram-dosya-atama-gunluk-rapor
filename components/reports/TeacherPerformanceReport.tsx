@@ -84,7 +84,7 @@ export default function TeacherPerformanceReport({ teachers, cases, history }: P
     }>();
 
     // Tüm öğretmenleri başlat
-    teachers.filter(t => t.active).forEach(t => {
+    teachers.filter(t => t.active && !t.isPhysiotherapist).forEach(t => {
       teacherMap.set(t.id, {
         id: t.id,
         name: t.name,

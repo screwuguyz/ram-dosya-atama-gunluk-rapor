@@ -47,6 +47,7 @@ import { uid, humanType, csvEscape } from "@/lib/utils";
 import { nowISO, getTodayYmd, ymdLocal, ymOf, daysInMonth } from "@/lib/date";
 import { LS_KEYS, APP_VERSION, CHANGELOG, DEFAULT_SETTINGS } from "@/lib/constants";
 import TeacherList from "@/components/teachers/TeacherList";
+import PhysiotherapistList from "@/components/teachers/PhysiotherapistList";
 import CaseList from "@/components/cases/CaseList";
 import { logger } from "@/lib/logger";
 import { notifyTeacher } from "@/lib/notifications";
@@ -670,7 +671,7 @@ export default function DosyaAtamaApp() {
   // Versiyon bildirimi (Yukarıda tanımlı)
 
   // Admin panel tab sistemi
-  const [adminTab, setAdminTab] = useState<"files" | "teachers" | "reports" | "announcements" | "backup" | "timemachine">("files");
+  const [adminTab, setAdminTab] = useState<"files" | "teachers" | "physiotherapists" | "reports" | "announcements" | "backup" | "timemachine">("files");
 
   // ---- LS'den yükleme (migration alanları)
   useEffect(() => {
@@ -3070,7 +3071,7 @@ export default function DosyaAtamaApp() {
         {/* 📊 DASHBOARD ÖZET KARTLARI */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <div className="bg-gradient-to-br from-teal-500 to-teal-600 rounded-xl p-4 text-white shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200 cursor-default">
-            <div className="text-3xl font-bold">{teachers.filter(t => t.active && !t.isAbsent).length}</div>
+            <div className="text-3xl font-bold">{teachers.filter(t => t.active && !t.isAbsent && !t.isPhysiotherapist).length}</div>
             <div className="text-sm opacity-90">👨‍🏫 Aktif Öğretmen</div>
           </div>
           <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl p-4 text-white shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200 cursor-default">
@@ -3220,6 +3221,14 @@ export default function DosyaAtamaApp() {
                   className="min-h-9"
                 >
                   👨‍🏫 Öğretmenler
+                </Button>
+                <Button
+                  variant={adminTab === "physiotherapists" ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setAdminTab("physiotherapists")}
+                  className="min-h-9"
+                >
+                  🩺 Fizyoterapist
                 </Button>
                 <Button
                   variant={adminTab === "reports" ? "default" : "ghost"}
@@ -3522,6 +3531,7 @@ export default function DosyaAtamaApp() {
               )}
 
               {adminTab === "teachers" && <TeacherList />}
+              {adminTab === "physiotherapists" && <PhysiotherapistList />}
 
               {adminTab === "reports" && (
                 <div className="space-y-4">
