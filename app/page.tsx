@@ -2312,11 +2312,6 @@ export default function DosyaAtamaApp() {
             <Button
               onClick={() => {
                 setViewMode("main");
-                // Check if today is the 5th (demo: force true or use logic)
-                const d = new Date();
-                // Demo için her zaman göster veya sadece ayın 5'inde:
-                // if (d.getDate() === 5) setShowRecap(true);
-                setShowRecap(true);
               }}
               className="group p-6 rounded-xl bg-teal-50 border-2 border-teal-200 hover:border-teal-400 hover:bg-teal-100 transition-all duration-300 hover:scale-110 hover:shadow-lg hover:shadow-teal-200 animate-card-pop h-auto flex flex-col items-center justify-center"
               style={{ animationDelay: '0.5s' }}
