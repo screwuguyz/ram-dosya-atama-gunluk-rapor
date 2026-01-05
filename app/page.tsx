@@ -1952,7 +1952,7 @@ export default function DosyaAtamaApp() {
                 <tbody>
                   {filteredArchive.map(entry => (
                     <tr key={entry.id} className="border-t hover:bg-slate-50">
-                      <td className="p-2 font-medium">{entry.studentName}</td><td className="p-2">{entry.fileNo || '—'}</td><td className="p-2">{entry.teacherName}</td><td className="p-2">{new Date(entry.date).toLocaleString("tr-TR", { dateStyle: "short", timeStyle: "short" })}</td>
+                      <td className="p-2 font-medium">{entry.studentName}</td><td className="p-2">{entry.fileNo || '—'}</td><td className="p-2">{entry.teacherName}</td><td className="p-2">{new Date(entry.date).toLocaleDateString("tr-TR")}</td>
                     </tr>
                   ))}
                 </tbody>
