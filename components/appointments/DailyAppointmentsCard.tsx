@@ -77,7 +77,7 @@ export default function DailyAppointmentsCard({
                     <div className="flex flex-col items-center justify-center py-12 text-slate-500">
                         <Inbox className="h-12 w-12 mb-3 text-slate-400" />
                         <p className="text-sm font-medium">Henüz PDF içe aktarılmadı</p>
-                        <p className="text-xs text-slate-400 mt-1">Randevu listesi boş</p>
+                        <p className="text-xs text-slate-400 mt-1">Randevu listesi boş - Admin panelinden PDF yükleyebilirsiniz</p>
                     </div>
                 ) : (
                     <div className="overflow-auto border rounded-md max-h-64">

@@ -154,6 +154,7 @@ export default function DosyaAtamaApp() {
   const [pdfUploading, setPdfUploading] = useState(false);
   const [pdfUploadError, setPdfUploadError] = useState<string | null>(null);
   const [pdfLoading, setPdfLoading] = useState(false);
+  const [selectedPdfUploadDate, setSelectedPdfUploadDate] = useState<string | null>(null); // Takvimden seçilen tarih için PDF yükleme
   const activePdfEntry = useMemo(() => pdfEntries.find(e => e.id === selectedPdfEntryId) || null, [pdfEntries, selectedPdfEntryId]);
 
   // Pending Appointments Count calculation
@@ -385,7 +386,12 @@ export default function DosyaAtamaApp() {
         setPdfEntries([]);
         setPdfDate(null);
         setPdfDateIso(null);
-        if (date) toast("Seçilen tarih için randevu listesi bulunamadı.");
+        if (date) {
+          // Seçilen tarihte liste yok - bu tarihe PDF yüklenebilir
+          const dateIso = format(date, "yyyy-MM-dd");
+          setSelectedPdfUploadDate(dateIso);
+          toast(`${format(date, "dd.MM.yyyy")} için randevu listesi bulunamadı. PDF yükleyebilirsiniz.`);
+        }
         return;
       }
 
@@ -547,7 +553,12 @@ export default function DosyaAtamaApp() {
     setPdfUploading(true);
     setPdfUploadError(null);
     try {
-      const res = await fetch("/api/pdf-import", {
+      // Eğer takvimden tarih seçilmişse, o tarihe yükle
+      let url = "/api/pdf-import";
+      if (selectedPdfUploadDate) {
+        url += `?overrideDate=${selectedPdfUploadDate}`;
+      }
+      const res = await fetch(url, {
         method: "POST",
         body: formData,
       });
@@ -561,6 +572,7 @@ export default function DosyaAtamaApp() {
       setPdfDateIso(json?.dateIso || null);
       setSelectedPdfEntryId(null);
       setPdfFile(null);
+      setSelectedPdfUploadDate(null); // Yükleme sonrası temizle
       if (pdfInputRef.current) pdfInputRef.current.value = "";
       toast("PDF başarıyla içe aktarıldı");
     } catch (err) {

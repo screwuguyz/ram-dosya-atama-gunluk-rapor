@@ -95,13 +95,13 @@ function parsePdfText(text: string): { entries: PdfEntry[]; dateLabel: string | 
     }
   }
   if (current.length) blocks.push(current);
-  
+
   // DEBUG: Blokları logla
   console.log(`=== ${blocks.length} BLOK BULUNDU ===`);
   blocks.forEach((b, i) => console.log(`Blok ${i}: ${JSON.stringify(b)}`));
 
   const isUpper = (line: string) => /^[A-ZÇĞİÖŞÜ\s']+$/.test(line.replace(/[^A-ZÇĞİÖŞÜ\s']/gi, ""));
-  
+
   // Bilinen engel türleri (birleşik satırları ayırmak için)
   const engelTurleri = [
     "Bedensel Yetersizlik",
@@ -126,7 +126,7 @@ function parsePdfText(text: string): { entries: PdfEntry[]; dateLabel: string | 
       let time = "";
       let fileNo = "";
       const extraParts: string[] = [];
-      
+
       // Birleşik satırı parse et (örn: "URAZ DİNÇBedensel Yetersizlik752589810:00")
       if (rest.trim()) {
         // Önce saat bul (XX:XX formatında, satırın herhangi bir yerinde)
@@ -135,7 +135,7 @@ function parsePdfText(text: string): { entries: PdfEntry[]; dateLabel: string | 
           time = timeInRest[1];
           rest = rest.replace(timeInRest[1], " ");
         }
-        
+
         // Engel türünü bul ve ayır
         let foundEngel = "";
         for (const engel of engelTurleri) {
@@ -146,13 +146,13 @@ function parsePdfText(text: string): { entries: PdfEntry[]; dateLabel: string | 
           }
         }
         if (foundEngel) extraParts.push(foundEngel);
-        
+
         // Kayıt numarasını bul (7 haneli sayı)
         const kayitMatch = rest.match(/(\d{7})/);
         if (kayitMatch) {
           rest = rest.replace(kayitMatch[1], " ");
         }
-        
+
         // Geri kalan büyük harfli kısım isim
         const nameMatch = rest.match(/([A-ZÇĞİÖŞÜ][A-ZÇĞİÖŞÜ\s']+)/);
         if (nameMatch) {
@@ -163,7 +163,7 @@ function parsePdfText(text: string): { entries: PdfEntry[]; dateLabel: string | 
       for (let i = 1; i < lines.length; i++) {
         const line = lines[i].trim();
         if (!line) continue;
-        
+
         // Satırda saat var mı (birleşik olabilir: "406554109:30")
         const timeMatch = line.match(/(\d{1,2}:\d{2})/);
         if (timeMatch && !time) {
@@ -171,7 +171,7 @@ function parsePdfText(text: string): { entries: PdfEntry[]; dateLabel: string | 
           // Saatin öncesinde kayıt no olabilir
           continue;
         }
-        
+
         // Saat satır sonunda (örn: "Normal09:30")
         const timeEndMatch = line.match(/(\d{1,2}:\d{2})$/);
         if (timeEndMatch && !time) {
@@ -182,7 +182,7 @@ function parsePdfText(text: string): { entries: PdfEntry[]; dateLabel: string | 
           }
           continue;
         }
-        
+
         if (!time && isUpper(line)) {
           nameParts.push(line.replace(/^\d{5,}\s+/, "").trim());
           continue;
@@ -278,7 +278,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Geçerli kayıt bulunamadı." }, { status: 400 });
     }
 
-    const appointmentDateIso = parseDateLabelToIso(result.dateLabel) || new Date().toISOString().slice(0, 10);
+    // Eğer overrideDate query parametresi varsa, PDF'deki tarih yerine onu kullan
+    const url = new URL(req.url);
+    const overrideDate = url.searchParams.get("overrideDate"); // örn: "2025-12-31"
+    const appointmentDateIso = overrideDate || parseDateLabelToIso(result.dateLabel) || new Date().toISOString().slice(0, 10);
 
     if (!SUPA_URL || !SUPA_SERVICE_KEY) {
       console.warn("Supabase env missing; skipping persistent storage.");
@@ -331,7 +334,7 @@ export async function DELETE(req: NextRequest) {
   const bypassAuth = url.searchParams.get("bypassAuth") === "true";
   const dateQuery = url.searchParams.get("date"); // Silinecek tarih (opsiyonel)
   const isAdmin = req.cookies.get("ram_admin")?.value === "1";
-  
+
   if (!isAdmin && !bypassAuth) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -340,7 +343,7 @@ export async function DELETE(req: NextRequest) {
   }
   try {
     const admin = createClient(SUPA_URL, SUPA_SERVICE_KEY);
-    
+
     if (dateQuery) {
       // Sadece belirtilen tarihin kayıtlarını sil
       const { error } = await admin
@@ -357,7 +360,7 @@ export async function DELETE(req: NextRequest) {
         .select("appointment_date")
         .order("appointment_date", { ascending: false })
         .limit(1);
-      
+
       const latestDate = latestDates?.[0]?.appointment_date;
       if (latestDate) {
         const { error } = await admin
