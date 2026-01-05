@@ -1118,10 +1118,10 @@ export default function DosyaAtamaApp() {
       return total;
     }
 
-    // Test dosyasıysa: sadece testörler ve bugün test almamış olanlar
+    // Test dosyasıysa: sadece testörler ve bugün test almamış olanlar (Fizyoterapistler hariç)
     if (newCase.isTest) {
       let testers = teachers.filter(
-        (t) => t.isTester && !t.isAbsent && t.active && t.backupDay !== todayYmd && !hasTestToday(t.id) && countCasesToday(t.id) < MAX_DAILY_CASES
+        (t) => !t.isPhysiotherapist && t.isTester && !t.isAbsent && t.active && t.backupDay !== todayYmd && !hasTestToday(t.id) && countCasesToday(t.id) < MAX_DAILY_CASES
       );
       if (!testers.length) return null; // uygun testör yoksa atama yok
 
@@ -1157,9 +1157,9 @@ export default function DosyaAtamaApp() {
       return chosen;
     }
 
-    // Normal dosyada: bugün test almış olsa da normal dosya verilebilir
+    // Normal dosyada: bugün test almış olsa da normal dosya verilebilir (Fizyoterapistler hariç)
     let available = teachers.filter(
-      (t) => !t.isAbsent && t.active && t.backupDay !== todayYmd && countCasesToday(t.id) < settings.dailyLimit
+      (t) => !t.isPhysiotherapist && !t.isAbsent && t.active && t.backupDay !== todayYmd && countCasesToday(t.id) < settings.dailyLimit
     );
     if (!available.length) return null;
 
@@ -1278,60 +1278,54 @@ export default function DosyaAtamaApp() {
     // E-Arşiv senkronizasyonu (Add, Update, Remove for Today)
     const today = getTodayYmd();
 
-    setEArchive(prevArchive => {
-      let nextArchive = [...prevArchive];
-      let changed = false;
+    // Mevcut eArchive durumu (useAppStore'dan gelen)
+    let nextArchive = [...eArchive];
+    let changed = false;
 
-      // 1. Cases'den gelenleri güncelle veya ekle
-      cases.forEach(c => {
-        if (!c.assignedTo || c.absencePenalty || c.backupBonus) return;
+    // 1. Cases'den gelenleri güncelle veya ekle
+    cases.forEach(c => {
+      if (!c.assignedTo || c.absencePenalty || c.backupBonus) return;
 
-        const date = c.createdAt.slice(0, 10);
-        const idx = nextArchive.findIndex(a => a.id === c.id);
-        const tName = teacherName(c.assignedTo);
+      const date = c.createdAt.slice(0, 10);
+      const idx = nextArchive.findIndex(a => a.id === c.id);
+      const tName = teacherName(c.assignedTo);
 
-        if (idx > -1) {
-          // Varsa ve değişiklik gerekiyorsa güncelle
-          const entry = nextArchive[idx];
-          if (entry.teacherName !== tName || entry.studentName !== c.student || entry.fileNo !== c.fileNo) {
-            nextArchive[idx] = { ...entry, teacherName: tName, studentName: c.student, fileNo: c.fileNo || undefined };
-            changed = true;
-          }
-        } else {
-          // Yoksa ekle
-          nextArchive.push({
-            id: c.id,
-            studentName: c.student,
-            fileNo: c.fileNo || undefined,
-            teacherName: tName,
-            date: date
-          });
+      if (idx > -1) {
+        // Varsa ve değişiklik gerekiyorsa güncelle
+        const entry = nextArchive[idx];
+        if (entry.teacherName !== tName || entry.studentName !== c.student || entry.fileNo !== c.fileNo) {
+          nextArchive[idx] = { ...entry, teacherName: tName, studentName: c.student, fileNo: c.fileNo || undefined };
           changed = true;
         }
-      });
-
-      // 2. Bugün oluşturulmuş olup cases'de artık olmayanları temizle (Silinenler)
-      // Sadece 'today' tarihli olup cases içinde ID'si bulunmayanları siliyoruz.
-      // Not: Geçmiş tarihli kayıtlar history'den gelir veya manueldir, dokunmuyoruz.
-      const currentIds = new Set(cases.map(c => c.id));
-      const filtered = nextArchive.filter(a => {
-        if (a.date === today) {
-          // Bugünün kaydı ise, cases içinde olmalı. Yoksa silinmiştir.
-          // Ancak, cases boşsa (günü bitir yapılmışsa)?
-          // Günü bitir yapılınca cases boşalır ama history'e geçer. 
-          // History'dekiler e-arşiv görüntülemesinde history'den okunur.
-          // Dolayısıyla eArchive array'inden silinmesi sorun olmaz, hatta duplication'ı önler.
-          if (!currentIds.has(a.id)) {
-            changed = true;
-            return false; // Sil
-          }
-        }
-        return true; // Kalsın
-      });
-
-      return changed ? filtered : prevArchive;
+      } else {
+        // Yoksa ekle
+        nextArchive.push({
+          id: c.id,
+          studentName: c.student,
+          fileNo: c.fileNo || undefined,
+          teacherName: tName,
+          date: date
+        });
+        changed = true;
+      }
     });
-  }, [cases]);
+
+    // 2. Bugün oluşturulmuş olup cases'de artık olmayanları temizle (Silinenler)
+    const currentIds = new Set(cases.map(c => c.id));
+    const filtered = nextArchive.filter(a => {
+      if (a.date === today) {
+        if (!currentIds.has(a.id)) {
+          changed = true;
+          return false; // Sil
+        }
+      }
+      return true; // Kalsın
+    });
+
+    if (changed) {
+      setEArchive(filtered);
+    }
+  }, [cases, eArchive]);
 
 
 
