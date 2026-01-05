@@ -3244,10 +3244,10 @@ export default function DosyaAtamaApp() {
                   <span className="text-xs text-slate-500">🎵</span>
                   <input
                     type="text"
-                    placeholder="YouTube URL"
+                    placeholder="YouTube URL (Müzik)"
                     value={settings.musicUrl || ""}
                     onChange={(e) => updateSettings({ musicUrl: e.target.value })}
-                    className="h-8 w-48 px-2 text-xs border border-slate-300 rounded-md focus:outline-none focus:ring-1 focus:ring-purple-500"
+                    className="h-8 w-40 px-2 text-xs border border-slate-300 rounded-md focus:outline-none focus:ring-1 focus:ring-purple-500"
                   />
                   <Button
                     size="sm"
@@ -3269,6 +3269,39 @@ export default function DosyaAtamaApp() {
                     className="h-8 min-w-16"
                   >
                     {settings.musicPlaying ? "⏸️" : "▶️"}
+                  </Button>
+                </div>
+
+                {/* Video Kontrolü */}
+                <div className="flex items-center gap-2 ml-2 pl-2 border-l border-slate-300">
+                  <span className="text-xs text-slate-500">🎬</span>
+                  <input
+                    type="text"
+                    placeholder="YouTube URL (Video)"
+                    value={settings.videoUrl || ""}
+                    onChange={(e) => updateSettings({ videoUrl: e.target.value })}
+                    className="h-8 w-40 px-2 text-xs border border-slate-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
+                  <Button
+                    size="sm"
+                    variant={settings.videoPlaying ? "destructive" : "default"}
+                    onClick={async () => {
+                      const newPlaying = !settings.videoPlaying;
+                      updateSettings({ videoPlaying: newPlaying });
+                      try {
+                        const channel = supabase.channel('video_state');
+                        await channel.send({
+                          type: 'broadcast',
+                          event: 'video_update',
+                          payload: { url: settings.videoUrl, playing: newPlaying }
+                        });
+                      } catch (err) {
+                        logger.error("[Admin] Video update error:", err);
+                      }
+                    }}
+                    className="h-8 min-w-16"
+                  >
+                    {settings.videoPlaying ? "⏸️" : "▶️"}
                   </Button>
                 </div>
 

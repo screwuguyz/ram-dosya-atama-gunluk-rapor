@@ -92,6 +92,8 @@ export type Settings = {
     absencePenaltyAmount: number;
     musicUrl: string;
     musicPlaying: boolean;
+    videoUrl: string;
+    videoPlaying: boolean;
 };
 
 export type ThemeMode = "light" | "dark" | "system";

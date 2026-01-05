@@ -72,6 +72,11 @@ export default function TvDisplayPage() {
     const playerRef = useRef<any>(null);
     const isAnnouncingRef = useRef(false);
 
+    // Video state'leri (görünür video)
+    const [videoUrl, setVideoUrl] = useState<string>("");
+    const [videoPlaying, setVideoPlaying] = useState(false);
+    const [videoVideoId, setVideoVideoId] = useState<string | null>(null);
+
 
     // YouTube API yükleme
     useEffect(() => {
@@ -98,6 +103,30 @@ export default function TvDisplayPage() {
                 }
                 if (playing !== undefined) {
                     setMusicPlaying(playing);
+                }
+            })
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, []);
+
+    // Supabase realtime - video durumunu dinle
+    useEffect(() => {
+        const channel = supabase.channel('video_state');
+
+        channel
+            .on('broadcast', { event: 'video_update' }, (payload: any) => {
+                console.log("[TV] Video update received:", payload);
+                const { url, playing } = payload.payload;
+                if (url !== undefined) {
+                    setVideoUrl(url);
+                    const videoId = extractYouTubeId(url);
+                    setVideoVideoId(videoId);
+                }
+                if (playing !== undefined) {
+                    setVideoPlaying(playing);
                 }
             })
             .subscribe();
@@ -489,14 +518,37 @@ export default function TvDisplayPage() {
                 </div>
             </div>
 
-            {/* Hidden YouTube Player */}
+            {/* Hidden YouTube Player (Müzik için) */}
             <div id="youtube-player" className="hidden"></div>
+
+            {/* Görünür Video Player */}
+            {videoPlaying && videoVideoId && (
+                <div className="fixed bottom-20 left-4 z-40 rounded-2xl overflow-hidden shadow-2xl border-2 border-blue-500/50">
+                    <iframe
+                        width="400"
+                        height="225"
+                        src={`https://www.youtube.com/embed/${videoVideoId}?autoplay=1&loop=1&playlist=${videoVideoId}&mute=0&controls=0`}
+                        title="Video Player"
+                        frameBorder="0"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                        className="rounded-2xl"
+                    ></iframe>
+                </div>
+            )}
 
             {/* Müzik Göstergesi */}
             {musicPlaying && (
                 <div className="fixed bottom-4 right-4 z-50 bg-green-600/90 backdrop-blur-sm px-4 py-2 rounded-full flex items-center gap-2 animate-pulse">
                     <Music className="w-4 h-4" />
                     <span className="text-sm font-medium">Müzik çalıyor</span>
+                </div>
+            )}
+
+            {/* Video Göstergesi */}
+            {videoPlaying && (
+                <div className="fixed bottom-4 left-4 z-50 bg-blue-600/90 backdrop-blur-sm px-4 py-2 rounded-full flex items-center gap-2">
+                    <span className="text-sm font-medium">🎬 Video oynatılıyor</span>
                 </div>
             )}
         </div>

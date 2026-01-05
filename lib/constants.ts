@@ -54,6 +54,8 @@ export const DEFAULT_SETTINGS: Settings = {
     absencePenaltyAmount: 3,
     musicUrl: "",
     musicPlaying: false,
+    videoUrl: "",
+    videoPlaying: false,
 };
 
 // ---- Dosya Türü Etiketleri
