@@ -101,6 +101,7 @@ export function findBestTeacher(
         if (!t.active) return false;
         if (t.isAbsent) return false;
         if (t.backupDay === todayYmd) return false; // Yedek günü olanları hariç tut
+        if (t.isPhysiotherapist) return false; // Fizyoterapistleri otomatik atamadan hariç tut
         if (options?.excludeIds?.includes(t.id)) return false;
         if (options?.forTestCase && !t.isTester) return false;
         return true;
