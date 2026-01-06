@@ -1189,6 +1189,12 @@ export default function DosyaAtamaApp() {
     }
 
     const chosen = available[0];
+
+    // DEBUG: Canlı atama analizi (Kullanıcıya göster)
+    const debugInfo = available.slice(0, 3).map(t => `${t.name}: ${t.yearlyLoad} (Gün: ${countCasesToday(t.id)})`).join("\n");
+    const aygunLoad = teachers.find(t => t.name.includes("Aygün"))?.yearlyLoad;
+    alert(`📢 ATAMA YAPILDI!\n\n🏆 KAZANAN: ${chosen.name}\nPuanı: ${chosen.yearlyLoad}\n\n📋 İLK 3 ADAY:\n${debugInfo}\n\n🔍 (Kontrol: Aygün Puan=${aygunLoad})`);
+    console.log(debugInfo);
     const ym = ymOf(newCase.createdAt);
 
     updateTeacher(chosen.id, {
