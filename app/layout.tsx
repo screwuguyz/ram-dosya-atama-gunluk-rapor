@@ -1,7 +1,10 @@
 // app/layout.tsx
 import type { Metadata, Viewport } from "next";
+import { Outfit } from "next/font/google";
 import "./globals.css";
 import ThemeProvider from "@/components/ThemeProvider";
+
+const outfit = Outfit({ subsets: ['latin'], variable: '--font-outfit' });
 
 export const metadata: Metadata = {
   title: "RAM Dosya Atama",
@@ -44,7 +47,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="tr">
+    <html lang="tr" className={outfit.variable} suppressHydrationWarning>
       <head>
         {/* iOS PWA Meta Tags */}
         <meta name="apple-mobile-web-app-capable" content="yes" />

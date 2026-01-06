@@ -5,8 +5,9 @@ import { useQueueSync } from "@/hooks/useQueueSync";
 import { useAudioFeedback } from "@/hooks/useAudioFeedback";
 import { QueueTicket } from "@/types";
 import { format } from "date-fns";
-import { Maximize2, Minimize2, Music, Volume2, VolumeX } from "lucide-react";
+import { Maximize2, Minimize2, Music, Volume2, VolumeX, Clock } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import QRCode from "react-qr-code";
 
 // YouTube video ID çıkarma
 function extractYouTubeId(url: string): string | null {
@@ -76,6 +77,61 @@ export default function TvDisplayPage() {
     const [videoUrl, setVideoUrl] = useState<string>("");
     const [videoPlaying, setVideoPlaying] = useState(false);
     const [videoVideoId, setVideoVideoId] = useState<string | null>(null);
+
+    // Sağ Panel Carousel State
+    const [currentSlide, setCurrentSlide] = useState(0);
+    const [weatherData, setWeatherData] = useState<{ temp: string, condition: string, icon: string } | null>(null);
+    const [currentQuote, setCurrentQuote] = useState({ text: "Eğitim, geleceğe yapılabilecek en büyük yatırımdır.", author: "Benjamin Franklin" });
+
+    // Günün Sözleri
+    const quotes = [
+        { text: "Eğitim, geleceğe yapılabilecek en büyük yatırımdır.", author: "Benjamin Franklin" },
+        { text: "Bir çocuğa balık verirsen bir gün doyar, balık tutmayı öğretirsen ömür boyu doyar.", author: "Atasözü" },
+        { text: "Öğretmenler, toplumun en özverili ve en önemli üyeleridir.", author: "M. Kemal Atatürk" },
+        { text: "Her çocuk bir dahidir. Ama bir balığı ağaca tırmanma yeteneğine göre yargılarsanız, tüm hayatını aptal olduğuna inanarak geçirir.", author: "Albert Einstein" },
+        { text: "Eğitimin amacı, boş bir zihni açık bir zihinle değiştirmektir.", author: "Malcolm Forbes" },
+    ];
+
+    // Hava durumu çek (İzmir/Karşıyaka)
+    useEffect(() => {
+        const fetchWeather = async () => {
+            try {
+                const response = await fetch('https://wttr.in/Karsiyaka,Izmir?format=%t|%C&lang=tr');
+                const text = await response.text();
+                const [temp, condition] = text.split('|');
+
+                // Hava durumuna göre emoji seç
+                let icon = '☀️';
+                const condLower = condition?.toLowerCase() || '';
+                if (condLower.includes('yağmur') || condLower.includes('rain')) icon = '🌧️';
+                else if (condLower.includes('bulut') || condLower.includes('cloud')) icon = '☁️';
+                else if (condLower.includes('kar') || condLower.includes('snow')) icon = '❄️';
+                else if (condLower.includes('sis') || condLower.includes('fog')) icon = '🌫️';
+                else if (condLower.includes('fırtına') || condLower.includes('storm')) icon = '⛈️';
+
+                setWeatherData({ temp: temp?.trim() || '—', condition: condition?.trim() || 'Bilinmiyor', icon });
+            } catch (error) {
+                console.log('[TV] Weather fetch error:', error);
+                setWeatherData({ temp: '—', condition: 'Veri alınamadı', icon: '🌡️' });
+            }
+        };
+
+        fetchWeather();
+        const weatherInterval = setInterval(fetchWeather, 30 * 60 * 1000); // 30 dakikada bir güncelle
+        return () => clearInterval(weatherInterval);
+    }, []);
+
+    // Carousel otomatik döngü (10 saniye)
+    useEffect(() => {
+        const slideInterval = setInterval(() => {
+            setCurrentSlide(prev => (prev + 1) % 4); // 4 slayt
+            // Günün sözünü de döndür
+            if (currentSlide === 2) { // Günün sözü slaytına geçerken yeni söz seç
+                setCurrentQuote(quotes[Math.floor(Math.random() * quotes.length)]);
+            }
+        }, 10000); // 10 saniye
+        return () => clearInterval(slideInterval);
+    }, [currentSlide]);
 
 
     // YouTube API yükleme
@@ -310,16 +366,16 @@ export default function TvDisplayPage() {
 
     return (
         <div
-            className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-950 text-white overflow-hidden cursor-pointer"
+            className="min-h-screen text-white overflow-hidden cursor-pointer relative"
             onClick={handleInteract}
+            style={{
+                background: 'linear-gradient(-45deg, #0f172a, #1e1b4b, #312e81, #1e3a8a, #0f172a)',
+                backgroundSize: '400% 400%',
+                animation: 'aurora-movement 15s ease infinite'
+            }}
         >
-            {/* Background Pattern - subtle */}
-            <div className="absolute inset-0 opacity-5">
-                <div className="absolute inset-0" style={{
-                    backgroundImage: `radial-gradient(circle at 2px 2px, white 1px, transparent 0)`,
-                    backgroundSize: '50px 50px'
-                }}></div>
-            </div>
+            {/* Overlay gradient for depth */}
+            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-purple-950/20 to-transparent pointer-events-none"></div>
 
             {/* Üst Bar */}
             <div className="absolute top-0 left-0 right-0 h-16 bg-black/30 backdrop-blur-md z-50 flex items-center justify-between px-6 border-b border-white/10">
@@ -435,7 +491,7 @@ export default function TvDisplayPage() {
             )}
 
             {/* Ana 3 Sütunlu Grid */}
-            <div className="h-screen pt-20 pb-4 px-4 grid grid-cols-1 xl:grid-cols-12 gap-4">
+            <div className="h-screen pt-20 pb-20 px-4 grid grid-cols-1 xl:grid-cols-12 gap-4">
 
                 {/* SOL SÜTUN - Bekleyen Sıralar */}
                 <div className="hidden lg:flex lg:col-span-3 flex-col bg-slate-800/80 backdrop-blur-sm rounded-2xl border border-blue-500/30 p-4 overflow-hidden">
@@ -465,56 +521,176 @@ export default function TvDisplayPage() {
                             ))
                         )}
                     </div>
+
+                    {/* Tahmini Bekleme Süresi */}
+                    {waitingTickets.length > 0 && (
+                        <div className="mt-4 pt-4 border-t border-blue-500/30">
+                            <div className="flex items-center justify-center gap-2 text-yellow-400">
+                                <Clock className="w-5 h-5" />
+                                <span className="text-lg font-bold">Tahmini Bekleme:</span>
+                                <span className="text-2xl font-black">~{waitingTickets.length * 15} dk</span>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* QR Kod - Mobil Takip */}
+                    <div className="mt-4 pt-4 border-t border-blue-500/30 flex flex-col items-center">
+                        <p className="text-sm text-slate-400 mb-2 text-center">📱 Sıranızı telefonunuzdan takip edin</p>
+                        <div className="bg-white p-2 rounded-xl">
+                            <QRCode
+                                value={typeof window !== 'undefined' ? `${window.location.origin}/sira-al` : 'https://localhost:3000/sira-al'}
+                                size={80}
+                                level="M"
+                            />
+                        </div>
+                    </div>
                 </div>
 
                 {/* ORTA SÜTUN - Sıradaki Numara */}
-                <div className="lg:col-span-5 flex flex-col items-center justify-center bg-slate-800/60 backdrop-blur-sm rounded-2xl border border-purple-500/40 p-8">
-                    <h1 className="text-3xl lg:text-4xl font-bold tracking-[0.15em] text-purple-300 uppercase mb-4">
+                <div className="lg:col-span-5 flex flex-col items-center justify-center bg-slate-800/60 backdrop-blur-sm rounded-2xl border border-purple-500/40 p-8 relative overflow-hidden">
+                    {/* Glow effect background */}
+                    <div className="absolute inset-0 bg-gradient-to-br from-purple-600/10 via-transparent to-blue-600/10 pointer-events-none"></div>
+
+                    <h1 className="text-3xl lg:text-4xl font-bold tracking-[0.15em] text-purple-300 uppercase mb-4 relative z-10">
                         SIRADAKİ NUMARA
                     </h1>
 
                     {currentTicket ? (
-                        <div className="text-center animate-in zoom-in duration-500" style={{ transform: `scale(${fontScale})`, transformOrigin: 'center center' }}>
-                            <div className="text-[12rem] lg:text-[18rem] font-black leading-none tracking-tighter text-white drop-shadow-[0_0_30px_rgba(168,85,247,0.8)]">
+                        <div
+                            key={currentTicket.id}
+                            className="text-center relative z-10"
+                            style={{
+                                transform: `scale(${fontScale})`,
+                                transformOrigin: 'center center',
+                                animation: 'flip-board-enter 1s cubic-bezier(0.34, 1.56, 0.64, 1)'
+                            }}
+                        >
+                            <div
+                                className="font-black leading-none tracking-tighter text-white relative"
+                                style={{
+                                    fontSize: 'clamp(8rem, 18vw, 18rem)',
+                                    fontFamily: 'var(--font-outfit), sans-serif',
+                                    animation: 'text-glow 2s ease-in-out infinite'
+                                }}
+                            >
                                 {String(currentTicket.no || '')}
                             </div>
                             {currentTicket.name && currentTicket.name !== "Misafir" && (
-                                <div className="text-3xl lg:text-5xl font-medium mt-4 text-white/90">
+                                <div className="text-3xl lg:text-5xl font-medium mt-4 text-white/90" style={{ fontFamily: 'var(--font-outfit), sans-serif' }}>
                                     {String(currentTicket.name || '')}
                                 </div>
                             )}
-                            <div className="mt-8 inline-block px-10 py-4 bg-green-600 text-white rounded-full text-2xl font-bold border-2 border-green-400 animate-pulse shadow-lg shadow-green-500/30">
+                            <div className="mt-8 inline-block px-10 py-4 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-full text-2xl font-bold border-2 border-green-400 animate-pulse shadow-lg shadow-green-500/50">
                                 ✓ GÖRÜŞME ODASINA GEÇİNİZ
                             </div>
                         </div>
                     ) : (
-                        <div className="text-center py-8">
-                            <div className="text-8xl lg:text-9xl font-light text-slate-600 mb-4">—</div>
+                        <div className="text-center py-8 relative z-10">
+                            <div className="text-8xl lg:text-9xl font-light text-slate-600 mb-4" style={{ fontFamily: 'var(--font-outfit), sans-serif' }}>—</div>
                             <div className="text-3xl font-light text-slate-500">Bekleniyor...</div>
                         </div>
                     )}
                 </div>
 
-                {/* SAĞ SÜTUN - Gerekli Evraklar */}
-                <div className="hidden xl:flex xl:col-span-4 flex-col bg-slate-800/80 backdrop-blur-sm rounded-2xl border border-orange-500/30 p-4 overflow-hidden">
-                    <h3 className="text-orange-300 font-bold uppercase tracking-wider text-xl border-b border-orange-500/40 pb-3 mb-3 flex items-center gap-2">
-                        <span>📋</span>
-                        <span>RANDEVUSU BULUNAN BİREYLER İÇİN GEREKLİ EVRAKLAR</span>
-                    </h3>
-                    <div className="flex-1 space-y-2">
-                        {documents.map((item, idx) => (
+                {/* SAĞ SÜTUN - Dinamik Carousel */}
+                <div className="hidden xl:flex xl:col-span-4 flex-col bg-slate-800/80 backdrop-blur-sm rounded-2xl border border-orange-500/30 p-4 overflow-hidden relative">
+
+                    {/* Slide Indicators */}
+                    <div className="absolute top-4 right-4 flex gap-2 z-10">
+                        {[0, 1, 2, 3].map((i) => (
                             <div
-                                key={item.no}
-                                className="bg-slate-700/50 p-3 rounded-xl border border-orange-500/20 flex items-start gap-3 animate-in slide-in-from-right duration-500"
-                                style={{ animationDelay: `${idx * 100}ms` }}
-                            >
-                                <div className="bg-orange-600 text-white font-bold w-10 h-10 flex-shrink-0 flex items-center justify-center rounded-full text-base">
-                                    {item.no}
-                                </div>
-                                <span className="text-lg font-semibold text-white leading-snug">{item.text}</span>
-                            </div>
+                                key={i}
+                                className={`w-2 h-2 rounded-full transition-all ${currentSlide === i ? 'bg-orange-400 w-6' : 'bg-white/30'}`}
+                            />
                         ))}
                     </div>
+
+                    {/* Slide 0: Gerekli Evraklar */}
+                    {currentSlide === 0 && (
+                        <div className="flex-1 flex flex-col animate-in fade-in slide-in-from-right duration-500">
+                            <h3 className="text-orange-300 font-bold uppercase tracking-wider text-xl border-b border-orange-500/40 pb-3 mb-3 flex items-center gap-2">
+                                <span>📋</span>
+                                <span>GEREKLİ EVRAKLAR</span>
+                            </h3>
+                            <div className="flex-1 space-y-2">
+                                {documents.map((item, idx) => (
+                                    <div
+                                        key={item.no}
+                                        className="bg-slate-700/50 p-3 rounded-xl border border-orange-500/20 flex items-start gap-3"
+                                    >
+                                        <div className="bg-orange-600 text-white font-bold w-10 h-10 flex-shrink-0 flex items-center justify-center rounded-full text-base">
+                                            {item.no}
+                                        </div>
+                                        <span className="text-lg font-semibold text-white leading-snug">{item.text}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Slide 1: Kurum Duyurusu */}
+                    {currentSlide === 1 && (
+                        <div className="flex-1 flex flex-col items-center justify-center animate-in fade-in slide-in-from-right duration-500">
+                            <h3 className="text-blue-300 font-bold uppercase tracking-wider text-xl border-b border-blue-500/40 pb-3 mb-6 flex items-center gap-2 w-full">
+                                <span>📢</span>
+                                <span>KURUM DUYURUSU</span>
+                            </h3>
+                            <div className="flex-1 flex flex-col items-center justify-center text-center px-4">
+                                <div className="text-6xl mb-6">🏫</div>
+                                <h4 className="text-2xl font-bold text-white mb-4">KARŞIYAKA RAM</h4>
+                                <p className="text-lg text-slate-300 leading-relaxed mb-4">
+                                    Değerli velilerimiz, randevu saatinizden <span className="text-yellow-400 font-bold">15 dakika önce</span> kurumumuzda bulunmanızı rica ederiz.
+                                </p>
+                                <p className="text-lg text-slate-300 leading-relaxed">
+                                    Gerekli evraklarınızı <span className="text-orange-400 font-bold">eksiksiz</span> getirmeniz işlemlerinizin hızlanmasını sağlayacaktır.
+                                </p>
+                                <div className="mt-6 px-6 py-3 bg-blue-600/30 rounded-xl border border-blue-500/50">
+                                    <p className="text-blue-200">📞 İletişim: <span className="font-bold">(0232) 368 89 85</span></p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Slide 2: Hava Durumu */}
+                    {currentSlide === 2 && (
+                        <div className="flex-1 flex flex-col items-center justify-center animate-in fade-in slide-in-from-right duration-500">
+                            <h3 className="text-cyan-300 font-bold uppercase tracking-wider text-xl border-b border-cyan-500/40 pb-3 mb-6 flex items-center gap-2 w-full">
+                                <span>🌤️</span>
+                                <span>HAVA DURUMU - KARŞIYAKA</span>
+                            </h3>
+                            <div className="flex-1 flex flex-col items-center justify-center">
+                                <div className="text-9xl mb-4">{weatherData?.icon || '🌡️'}</div>
+                                <div className="text-7xl font-black text-white mb-2" style={{ fontFamily: 'var(--font-outfit), sans-serif' }}>
+                                    {weatherData?.temp || '—'}
+                                </div>
+                                <div className="text-2xl text-slate-300 capitalize">
+                                    {weatherData?.condition || 'Yükleniyor...'}
+                                </div>
+                                <div className="mt-6 text-slate-500 text-sm">
+                                    İzmir, Karşıyaka
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Slide 3: Günün Sözü */}
+                    {currentSlide === 3 && (
+                        <div className="flex-1 flex flex-col items-center justify-center animate-in fade-in slide-in-from-right duration-500">
+                            <h3 className="text-purple-300 font-bold uppercase tracking-wider text-xl border-b border-purple-500/40 pb-3 mb-6 flex items-center gap-2 w-full">
+                                <span>💬</span>
+                                <span>GÜNÜN SÖZÜ</span>
+                            </h3>
+                            <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
+                                <div className="text-6xl mb-6">📖</div>
+                                <blockquote className="text-2xl text-white leading-relaxed italic mb-6">
+                                    "{currentQuote.text}"
+                                </blockquote>
+                                <cite className="text-lg text-purple-300 not-italic font-semibold">
+                                    — {currentQuote.author}
+                                </cite>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -563,6 +739,23 @@ export default function TvDisplayPage() {
                     <span className="text-sm font-medium">🎬 Video oynatılıyor</span>
                 </div>
             )}
+
+            {/* Marquee Ticker - Announcements */}
+            <div className="fixed bottom-0 left-0 right-0 h-16 bg-gradient-to-r from-orange-600 via-red-600 to-orange-600 z-50 overflow-hidden border-t-2 border-orange-400">
+                <div
+                    className="flex items-center h-full whitespace-nowrap text-white font-black text-xl"
+                    style={{
+                        animation: 'marquee 45s linear infinite'
+                    }}
+                >
+                    <span className="px-8">📋 RANDEVUSU OLAN BİREYLER GEREKLİ EVRAKLARI HAZIR BULUNDURMALARI GEREKMEKTEDİR</span>
+                    <span className="px-8">⏰ ÖĞLE ARASI: 12:30 - 13:30</span>
+                    <span className="px-8">📞 BİLGİ İÇİN: (0232) 368 89 85</span>
+                    <span className="px-8">🏥 KARŞIYAKA REHBERLİK VE ARAŞTIRMA MERKEZİ</span>
+                    <span className="px-8">📋 RANDEVUSU OLAN BİREYLER GEREKLİ EVRAKLARI HAZIR BULUNDURMALARI GEREKMEKTEDİR</span>
+                    <span className="px-8">⏰ ÖĞLE ARASI: 12:30 - 13:30</span>
+                </div>
+            </div>
         </div>
     );
 }
