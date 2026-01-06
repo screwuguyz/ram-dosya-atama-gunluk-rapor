@@ -1364,8 +1364,8 @@ export default function DosyaAtamaApp() {
     // Store'dan sil
     removeCaseAction(id);
 
-    // E-Arşiv'den de sil (EArchive local state mi store mu? Store ise setEArchive ile güncelle)
-    setEArchive(useAppStore.getState().eArchive.filter(e => e.id !== id));
+    // NOT: E-Arşiv'den silme yapmıyoruz çünkü E-Arşiv artık History'den otomatik doluyor
+    // ve tarihsel bir kayıt olarak korunmalı
   }
 
 
@@ -1792,18 +1792,59 @@ export default function DosyaAtamaApp() {
     const [dateFrom, setDateFrom] = useState<string>("");
     const [dateTo, setDateTo] = useState<string>("");
 
+    // Tüm arşiv kayıtlarını oluştur (eArchive + History)
+    const allArchiveEntries = useMemo(() => {
+      const entries: EArchiveEntry[] = [];
+
+      // 1. Manuel E-Arşiv kayıtları
+      eArchive.forEach(entry => {
+        entries.push({
+          ...entry,
+          studentName: entry.studentName || (entry as any).student || "",
+          teacherName: entry.teacherName || (entry as any).assignedToName || "",
+          date: entry.date || (entry as any).createdAt || "",
+          fileNo: entry.fileNo || ""
+        });
+      });
+
+      // 2. History'den kayıtlar
+      const historyCases = Object.values(history).flat();
+      historyCases.forEach(c => {
+        if (c.fileNo) {
+          const t = teachers.find(x => x.id === c.assignedTo);
+          entries.push({
+            id: c.id,
+            studentName: c.student,
+            fileNo: c.fileNo,
+            teacherName: t ? t.name : "Bilinmiyor",
+            date: c.createdAt.slice(0, 10)
+          });
+        }
+      });
+
+      // Aynı dosya numarası için EN YENİ atamanı tut
+      // Önce tarihe göre sırala (en yeni en sonda)
+      entries.sort((a, b) => {
+        const dateA = a.date ? new Date(a.date).getTime() : 0;
+        const dateB = b.date ? new Date(b.date).getTime() : 0;
+        return dateA - dateB;
+      });
+
+      // Dosya numarasına göre grupla ve en sonuncuyu (en yeni) tut
+      const fileNoMap = new Map<string, EArchiveEntry>();
+      entries.forEach(entry => {
+        if (entry.fileNo) {
+          fileNoMap.set(entry.fileNo, entry);
+        }
+      });
+
+      // Map'teki benzersiz kayıtları al
+      return Array.from(fileNoMap.values());
+    }, [eArchive, history, teachers]);
+
     // Filtrelenmiş liste
     const filteredArchive = useMemo(() => {
-      // Normalize data to handle both old and new formats
-      const normalized = (eArchive as any[]).map(e => ({
-        ...e,
-        studentName: e.studentName || e.student || "",
-        teacherName: e.teacherName || e.assignedToName || "",
-        date: e.date || e.createdAt || "",
-        fileNo: e.fileNo || ""
-      }));
-
-      let filtered = [...normalized];
+      let filtered = [...allArchiveEntries];
 
       // Öğrenci adına göre filtrele
       if (searchStudent.trim()) {
@@ -1854,14 +1895,13 @@ export default function DosyaAtamaApp() {
         const dateB = b.date ? new Date(b.date).getTime() : 0;
         return dateB - dateA;
       });
-    }, [eArchive, searchStudent, searchFileNo, filterTeacher, dateFrom, dateTo]);
+    }, [allArchiveEntries, searchStudent, searchFileNo, filterTeacher, dateFrom, dateTo]);
 
     // Tüm öğretmen isimlerini al (filtreleme için)
     const teacherNames = useMemo(() => {
-      // @ts-ignore
-      const names = new Set(eArchive.map(e => e.teacherName || e.assignedToName).filter(Boolean));
+      const names = new Set(allArchiveEntries.map(e => e.teacherName).filter(Boolean));
       return Array.from(names).sort();
-    }, [eArchive]);
+    }, [allArchiveEntries]);
 
     return (
       <Card>
@@ -2798,7 +2838,6 @@ export default function DosyaAtamaApp() {
     }));
 
     // E-Archive'den mevcut dosyaları al
-    // E-Archive'den mevcut dosyaları al
     const existingFiles = new Map<string, EArchiveEntry>();
 
     // 1. Manuel E-Arşiv kayıtları
@@ -2809,7 +2848,14 @@ export default function DosyaAtamaApp() {
     });
 
     // 2. Otomatik Atanan Geçmiş (History) kayıtları
-    Object.values(history).flat().forEach(c => {
+    // ÖNEMLİ: Aynı dosya numarası için EN YENİ atamanın görünmesi için
+    // tüm history kayıtlarını tarihe göre sıralıyoruz (eskiden yeniye)
+    const allHistoryCases = Object.values(history).flat();
+    const sortedHistoryCases = allHistoryCases.sort((a, b) => {
+      return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+    });
+
+    sortedHistoryCases.forEach(c => {
       if (c.fileNo) {
         const t = teachers.find(x => x.id === c.assignedTo);
         existingFiles.set(c.fileNo, {
