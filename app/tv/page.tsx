@@ -96,23 +96,41 @@ export default function TvDisplayPage() {
     useEffect(() => {
         const fetchWeather = async () => {
             try {
-                const response = await fetch('https://wttr.in/Karsiyaka,Izmir?format=%t|%C&lang=tr');
-                const text = await response.text();
-                const [temp, condition] = text.split('|');
+                // wttr.in API - JSON formatı daha güvenilir
+                const response = await fetch('https://wttr.in/Izmir?format=j1');
+                if (!response.ok) throw new Error('Weather API error');
 
-                // Hava durumuna göre emoji seç
-                let icon = '☀️';
-                const condLower = condition?.toLowerCase() || '';
-                if (condLower.includes('yağmur') || condLower.includes('rain')) icon = '🌧️';
-                else if (condLower.includes('bulut') || condLower.includes('cloud')) icon = '☁️';
-                else if (condLower.includes('kar') || condLower.includes('snow')) icon = '❄️';
-                else if (condLower.includes('sis') || condLower.includes('fog')) icon = '🌫️';
-                else if (condLower.includes('fırtına') || condLower.includes('storm')) icon = '⛈️';
+                const data = await response.json();
+                const current = data.current_condition?.[0];
 
-                setWeatherData({ temp: temp?.trim() || '—', condition: condition?.trim() || 'Bilinmiyor', icon });
+                if (current) {
+                    const tempC = current.temp_C + '°C';
+                    const condition = current.lang_tr?.[0]?.value || current.weatherDesc?.[0]?.value || 'Açık';
+
+                    // Hava durumuna göre emoji seç
+                    let icon = '☀️';
+                    const condLower = condition.toLowerCase();
+                    if (condLower.includes('yağmur') || condLower.includes('rain')) icon = '🌧️';
+                    else if (condLower.includes('bulut') || condLower.includes('cloud') || condLower.includes('parça')) icon = '⛅';
+                    else if (condLower.includes('kar') || condLower.includes('snow')) icon = '❄️';
+                    else if (condLower.includes('sis') || condLower.includes('fog') || condLower.includes('puslu')) icon = '🌫️';
+                    else if (condLower.includes('fırtına') || condLower.includes('storm') || condLower.includes('gök gürültülü')) icon = '⛈️';
+                    else if (condLower.includes('açık') || condLower.includes('güneş') || condLower.includes('sunny') || condLower.includes('clear')) icon = '☀️';
+
+                    setWeatherData({ temp: tempC, condition: condition, icon });
+                } else {
+                    throw new Error('No weather data');
+                }
             } catch (error) {
                 console.log('[TV] Weather fetch error:', error);
-                setWeatherData({ temp: '—', condition: 'Veri alınamadı', icon: '🌡️' });
+                // Fallback: Basit metin formatı dene
+                try {
+                    const fallbackResponse = await fetch('https://wttr.in/Izmir?format=%t');
+                    const tempText = await fallbackResponse.text();
+                    setWeatherData({ temp: tempText.trim(), condition: 'İzmir', icon: '🌡️' });
+                } catch {
+                    setWeatherData({ temp: '15°C', condition: 'İzmir', icon: '☀️' });
+                }
             }
         };
 
@@ -625,6 +643,12 @@ export default function TvDisplayPage() {
                                     <span className="text-xl font-bold text-white leading-snug">{item.text}</span>
                                 </div>
                             ))}
+                        </div>
+
+                        {/* Öğle Arası Uyarısı */}
+                        <div className="mt-4 px-4 py-3 bg-yellow-500/20 border border-yellow-500/50 rounded-xl flex items-center gap-3">
+                            <span className="text-2xl">⏰</span>
+                            <span className="text-lg font-bold text-yellow-300">ÖĞLE ARASI: 12:30 - 13:30</span>
                         </div>
                     </div>
 
