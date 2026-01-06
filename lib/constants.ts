@@ -56,6 +56,7 @@ export const DEFAULT_SETTINGS: Settings = {
     musicPlaying: false,
     videoUrl: "",
     videoPlaying: false,
+    debugMode: false,
 };
 
 // ---- Dosya Türü Etiketleri

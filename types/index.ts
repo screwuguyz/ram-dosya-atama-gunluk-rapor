@@ -95,6 +95,7 @@ export type Settings = {
     musicPlaying: boolean;
     videoUrl: string;
     videoPlaying: boolean;
+    debugMode: boolean;
 };
 
 export type ThemeMode = "light" | "dark" | "system";

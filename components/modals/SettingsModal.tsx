@@ -29,7 +29,7 @@ export default function SettingsModal({
 
     if (!isOpen) return null;
 
-    const handleChange = (key: keyof SettingsType, value: number) => {
+    const handleChange = (key: keyof SettingsType, value: number | boolean | string) => {
         setLocalSettings((prev) => ({ ...prev, [key]: value }));
     };
 
@@ -64,6 +64,12 @@ export default function SettingsModal({
             items: [
                 { key: "backupBonusAmount" as const, label: "Yedek Bonus", desc: "Yedekleme sonrası ek puan", min: 0, max: 10 },
                 { key: "absencePenaltyAmount" as const, label: "Devamsızlık Cezası", desc: "Devamsızlık sonrası düşürülen puan", min: 0, max: 10 },
+            ],
+        },
+        {
+            title: "Geliştirici",
+            items: [
+                { key: "debugMode" as const, label: "Debug Modu (Analiz)", desc: "Her atamadan sonra detaylı analiz popup'ı göster", type: "boolean" },
             ],
         },
     ];
@@ -110,16 +116,26 @@ export default function SettingsModal({
                                             <Label className="text-sm font-medium">{item.label}</Label>
                                             <p className="text-xs text-slate-500">{item.desc}</p>
                                         </div>
-                                        <Input
-                                            type="number"
-                                            min={item.min}
-                                            max={item.max}
-                                            value={localSettings[item.key]}
-                                            onChange={(e) =>
-                                                handleChange(item.key, parseInt(e.target.value) || 0)
-                                            }
-                                            className="w-20 text-center"
-                                        />
+                                        {/* @ts-ignore */}
+                                        {item.type === "boolean" ? (
+                                            <input
+                                                type="checkbox"
+                                                checked={!!localSettings[item.key as keyof SettingsType]}
+                                                onChange={(e) => handleChange(item.key as keyof SettingsType, e.target.checked)}
+                                                className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                            />
+                                        ) : (
+                                            <Input
+                                                type="number"
+                                                min={(item as any).min}
+                                                max={(item as any).max}
+                                                value={localSettings[item.key as keyof SettingsType] as number}
+                                                onChange={(e) =>
+                                                    handleChange(item.key as keyof SettingsType, parseInt(e.target.value) || 0)
+                                                }
+                                                className="w-20 text-center"
+                                            />
+                                        )}
                                     </div>
                                 ))}
                             </div>

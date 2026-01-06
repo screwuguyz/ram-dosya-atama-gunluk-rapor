@@ -1212,6 +1212,25 @@ export default function DosyaAtamaApp() {
     }
 
     const chosen = available[0];
+
+    // DEBUG: Canlı atama analizi (Kullanıcı ayarlarından açılabilir)
+    if (settings.debugMode) {
+      const debugInfo = available.slice(0, 3).map(t => `${t.name}: ${getRealYearlyLoad(t.id)} (Gün: ${countCasesToday(t.id)})`).join("\n");
+      // ERAY ANALİZİ
+      const eray = teachers.find(t => t.name.toUpperCase().includes("ERAY"));
+      let erayLog = "Bulunamadı";
+      if (eray) {
+        erayLog = `Yük:${getRealYearlyLoad(eray.id)}, Fzt:${eray.isPhysiotherapist}, Abs:${eray.isAbsent}, Act:${eray.active}, Bak:${eray.backupDay}, Cnt:${countCasesToday(eray.id)}, Lim:${settings.dailyLimit}`;
+        // Rotasyon kontrolü
+        if (lastTid === eray.id) erayLog += " [SON_ALAN/ROT_BLOCK]";
+        if (eray.backupDay === todayYmd) erayLog += " [YEDEK_BLOCK]";
+        if (countCasesToday(eray.id) >= settings.dailyLimit) erayLog += " [LIMIT_BLOCK]";
+        if (eray.isPhysiotherapist) erayLog += " [FZT_BLOCK]";
+        if (eray.isAbsent) erayLog += " [ABSENT_BLOCK]";
+        if (!eray.active) erayLog += " [INACTIVE_BLOCK]";
+      }
+      alert(`📢 ATAMA DETAYI (Debug Modu)\n\n🏆 KAZANAN: ${chosen.name}\n\n🕵️‍♂️ ERAY LOG:\n${erayLog}\nLastTID: ${lastTid}\nErayID: ${eray ? eray.id : "?"}\n\n📋 İLK 3 ADAY (Sıralı):\n${debugInfo}`);
+    }
     const ym = ymOf(newCase.createdAt);
 
     updateTeacher(chosen.id, {
