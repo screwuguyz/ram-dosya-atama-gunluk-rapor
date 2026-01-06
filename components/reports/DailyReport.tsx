@@ -229,7 +229,7 @@ export default function DailyReportView({
       }
     }
 
-    return { id: t.id, name: t.name, perDay, totalPoints, totalCount, liveScore, liveType, isBackupToday, isAbsentToday };
+    return { id: t.id, name: t.name, perDay, totalPoints, totalCount, liveScore, liveType, isBackupToday, isAbsentToday, yearlyLoad: t.yearlyLoad };
   });
 
   const colTotals = dayKeys.map((d) =>
@@ -298,6 +298,7 @@ export default function DailyReportView({
                 })}
                 <th className="p-2 text-right">Aylık Puan</th>
                 <th className="p-2 text-right">Aylık Adet</th>
+                <th className="p-2 text-right font-bold text-blue-600">Yıllık Puan</th>
               </tr>
             </thead>
             <tbody>
@@ -357,6 +358,7 @@ export default function DailyReportView({
                   })}
                   <td className="p-2 text-right font-medium">{r.totalPoints}</td>
                   <td className="p-2 text-right font-medium">{r.totalCount}</td>
+                  <td className="p-2 text-right font-bold text-blue-600">{r.yearlyLoad}</td>
                 </tr>
               ))}
               <tr className="border-t font-semibold">
@@ -380,6 +382,7 @@ export default function DailyReportView({
                 })}
                 <td className="p-2 text-right">{grandPoints}</td>
                 <td className="p-2 text-right">{grandCount}</td>
+                <td className="p-2 text-right text-blue-600">{rows.reduce((a, r) => a + r.yearlyLoad, 0)}</td>
               </tr>
             </tbody>
           </table>
