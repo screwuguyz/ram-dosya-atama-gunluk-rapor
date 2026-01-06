@@ -1070,6 +1070,21 @@ export default function DosyaAtamaApp() {
     return total;
   }
 
+  // SYNC: Öğretmenlerin kayıtlı yıllık yükünü, 2026 gerçek hesaplamasıyla eşitle
+  // (Yılbaşı sıfırlaması ve tutarlılık için)
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      teachers.forEach(t => {
+        const real = getRealYearlyLoad(t.id);
+        // Eğer fark varsa güncelle (veritabanını düzelt)
+        if (t.yearlyLoad !== real) {
+          updateTeacher(t.id, { yearlyLoad: real });
+        }
+      });
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [cases, history, teachers]);
+
   // Günlük atama sınırı: bir öğretmene bir günde verilebilecek maksimum dosya
   const MAX_DAILY_CASES = 4;
   // Bugün en son kime atama yapıldı? (liste en yeni başta olduğundan ilk uygun kaydı alır)
@@ -1185,7 +1200,10 @@ export default function DosyaAtamaApp() {
       available.sort((a, b) => {
         // const byLoad = getRealYearlyLoad(a.id) - getRealYearlyLoad(b.id);
         // UI ile tutarlılık için direkt stored yearlyLoad kullanıyoruz:
-        const byLoad = a.yearlyLoad - b.yearlyLoad;
+        // const byLoad = a.yearlyLoad - b.yearlyLoad;
+        // FIX: Sıralama yaparken veritabanındaki değere değil, her zaman anlık hesaplanan 2026 değerine bak.
+        // (Zaten yukarıdaki sync kodu veritabanını da güncelleyecek ama atama anında garanti olsun)
+        const byLoad = getRealYearlyLoad(a.id) - getRealYearlyLoad(b.id);
         if (byLoad !== 0) return byLoad;
         const byCount = countCasesToday(a.id) - countCasesToday(b.id);
         if (byCount !== 0) return byCount;
