@@ -213,6 +213,27 @@ export default function DailyReportView({
     const totalPoints = perDay.reduce((a, d) => a + d.points, 0);
     const totalCount = perDay.reduce((a, d) => a + d.count, 0);
 
+    // Seçili yılın toplam puanını hesapla (Dinamik Yıllık Yük)
+    let calculatedYearlyLoad = 0;
+
+    // 1. History'den topla
+    Object.entries(history).forEach(([date, dayCases]) => {
+      if (date.startsWith(String(year))) {
+        dayCases.forEach(c => {
+          if (c.assignedTo === t.id) calculatedYearlyLoad += c.score;
+        });
+      }
+    });
+
+    // 2. Bugünün cases'lerinden topla (Eğer seçili yıl, bugünün yılıysa)
+    if (String(year) === todayYmd.slice(0, 4)) {
+      cases.forEach(c => {
+        if (c.assignedTo === t.id && c.createdAt.startsWith(String(year))) {
+          calculatedYearlyLoad += c.score;
+        }
+      });
+    }
+
     // Canlı puan hesaplama (bugün için)
     const isBackupToday = t.backupDay === todayYmd;
     const isAbsentToday = t.isAbsent && t.active;
@@ -229,7 +250,7 @@ export default function DailyReportView({
       }
     }
 
-    return { id: t.id, name: t.name, perDay, totalPoints, totalCount, liveScore, liveType, isBackupToday, isAbsentToday, yearlyLoad: t.yearlyLoad };
+    return { id: t.id, name: t.name, perDay, totalPoints, totalCount, liveScore, liveType, isBackupToday, isAbsentToday, yearlyLoad: calculatedYearlyLoad };
   });
 
   const colTotals = dayKeys.map((d) =>
