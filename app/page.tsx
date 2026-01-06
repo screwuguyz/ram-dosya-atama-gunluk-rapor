@@ -4062,6 +4062,31 @@ export default function DosyaAtamaApp() {
                         </p>
                       </div>
                     </div>
+
+                    {/* Geliştirici Ayarları (Debug Mode) */}
+                    <div className="border-t border-slate-200 pt-4 mt-4">
+                      <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 mb-3">
+                        <Label className="text-sm font-semibold mb-2 block text-slate-900 flex items-center gap-2">
+                          <span>🛠️</span>
+                          <span>Geliştirici Seçenekleri</span>
+                        </Label>
+                        <div className="flex items-center gap-3">
+                          <Checkbox
+                            id="debugMode"
+                            checked={!!settings.debugMode}
+                            onCheckedChange={(v) => updateSettings({ debugMode: !!v })}
+                            className="h-5 w-5 border-slate-400 data-[state=checked]:bg-slate-700 data-[state=checked]:border-slate-700"
+                          />
+                          <div className="flex-1">
+                            <Label htmlFor="debugMode" className="text-sm font-semibold cursor-pointer">Debug Modu (Detaylı Analiz)</Label>
+                            <p className="text-[11px] text-slate-600 mt-0.5">
+                              Her atama işleminden sonra; kazanan öğretmeni, adayları ve özellikle Eray ile ilgili engelleme nedenlerini gösteren bilgi penceresini açar.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
                     <div className="flex justify-end gap-2 pt-1">
                       <Button variant="outline" onClick={() => setSettings(DEFAULT_SETTINGS)}>Varsayılanlara Dön</Button>
                       <Button onClick={() => setSettingsOpen(false)}>Kapat</Button>
