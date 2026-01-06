@@ -14,6 +14,7 @@ interface AudioFeedbackHook {
     playClickSound: () => void;
     playAnnouncementSound: () => void;
     playDingDong: () => void;
+    playTicketAdded: () => void;
     testSound: () => void;
     resumeAudioIfNeeded: () => void;
 }
@@ -182,6 +183,21 @@ export function useAudioFeedback(): AudioFeedbackHook {
         );
     }, [playTone, resumeAudioIfNeeded]);
 
+    // Yeni Sıra Alındı Sesi - Kısa, pozitif onay sesi
+    const playTicketAdded = useCallback(() => {
+        resumeAudioIfNeeded();
+        // Kısa, tatlı bir "bling" sesi - yükselen üç nota
+        playTone(523, 0.12, 0.4, "sine", 0.01, 0.03, 0.8, 0.06); // C5
+        setTimeout(
+            () => playTone(659, 0.12, 0.4, "sine", 0.01, 0.03, 0.8, 0.06), // E5
+            100
+        );
+        setTimeout(
+            () => playTone(784, 0.18, 0.45, "sine", 0.01, 0.03, 0.8, 0.1), // G5
+            200
+        );
+    }, [playTone, resumeAudioIfNeeded]);
+
     // Test sound
     const testSound = useCallback(() => {
         resumeAudioIfNeeded();
@@ -202,6 +218,7 @@ export function useAudioFeedback(): AudioFeedbackHook {
         playClickSound,
         playAnnouncementSound,
         playDingDong,
+        playTicketAdded,
         testSound,
         resumeAudioIfNeeded,
     };

@@ -25,11 +25,12 @@ function extractYouTubeId(url: string): string | null {
 export default function TvDisplayPage() {
     // YENİ: Dedicated queue sync hook kullan
     const { waitingTickets, calledTickets, currentTicket } = useQueueSync();
-    const { playDingDong } = useAudioFeedback();
+    const { playDingDong, playTicketAdded } = useAudioFeedback();
 
     const [lastAnnouncedId, setLastAnnouncedId] = useState<string | null>(null);
     const [isFullscreen, setIsFullscreen] = useState(false);
     const hasInteractedRef = useRef(false);
+    const prevWaitingCountRef = useRef<number>(0);
 
     // Ayarlar paneli state
     const [showSettings, setShowSettings] = useState(false);
@@ -279,6 +280,20 @@ export default function TvDisplayPage() {
             announceTicket(currentTicket);
         }
     }, [currentTicket, lastAnnouncedId]);
+
+    // Yeni sıra alındığında ses çal
+    useEffect(() => {
+        const currentCount = waitingTickets.length;
+        const prevCount = prevWaitingCountRef.current;
+
+        // Eğer sayı arttıysa yeni bilet alınmış demektir
+        if (currentCount > prevCount && prevCount > 0 && hasInteractedRef.current) {
+            console.log("[TV] 🎫 NEW TICKET ADDED TO QUEUE! Playing sound...");
+            playTicketAdded();
+        }
+
+        prevWaitingCountRef.current = currentCount;
+    }, [waitingTickets.length, playTicketAdded]);
 
     const announceTicket = (ticket: QueueTicket) => {
         // Müziği duraklat VE sesini kapat (çift güvenlik)
