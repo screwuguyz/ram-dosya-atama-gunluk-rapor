@@ -1122,7 +1122,7 @@ export default function DosyaAtamaApp() {
     // Test dosyasıysa: sadece testörler ve bugün test almamış olanlar (Fizyoterapistler hariç)
     if (newCase.isTest) {
       let testers = teachers.filter(
-        (t) => !t.isPhysiotherapist && t.isTester && !t.isAbsent && t.active && t.backupDay !== todayYmd && !hasTestToday(t.id) && countCasesToday(t.id) < MAX_DAILY_CASES
+        (t) => !t.isPhysiotherapist && !["Furkan Ata ADIYAMAN", "Furkan Ata"].includes(t.name) && t.isTester && !t.isAbsent && t.active && t.backupDay !== todayYmd && !hasTestToday(t.id) && countCasesToday(t.id) < MAX_DAILY_CASES
       );
       if (!testers.length) return null; // uygun testör yoksa atama yok
 
@@ -1161,9 +1161,10 @@ export default function DosyaAtamaApp() {
     }
 
     // Normal dosyada: bugün test almış olsa da normal dosya verilebilir (Fizyoterapistler hariç)
-    console.log("--- ATAMA VERSİYON 2.0 (Eray Fix) ---");
+    // FIX (v2.3): İsim bazlı engelleme de eklendi (Furkan Ata)
+    console.log("--- ATAMA VERSİYON 2.3 (Fzt Fix) ---");
     let available = teachers.filter(
-      (t) => !t.isPhysiotherapist && !t.isAbsent && t.active && t.backupDay !== todayYmd && countCasesToday(t.id) < settings.dailyLimit
+      (t) => !t.isPhysiotherapist && !["Furkan Ata ADIYAMAN", "Furkan Ata"].includes(t.name) && !t.isAbsent && t.active && t.backupDay !== todayYmd && countCasesToday(t.id) < settings.dailyLimit
     );
     if (!available.length) return null;
 

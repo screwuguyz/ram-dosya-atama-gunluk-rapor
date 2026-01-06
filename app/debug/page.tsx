@@ -33,7 +33,10 @@ export default function DebugPage() {
         let isEligible = true;
         let status = "ADAY";
 
-        if (t.isPhysiotherapist) { isEligible = false; logs.push("Fizyoterapist"); }
+        if (t.isPhysiotherapist || ["Furkan Ata ADIYAMAN", "Furkan Ata"].includes(t.name)) {
+            isEligible = false;
+            logs.push("Fizyoterapist");
+        }
         if (t.isAbsent) { isEligible = false; logs.push("Devamsız"); }
         if (!t.active) { isEligible = false; logs.push("İnaktif"); }
 
@@ -72,7 +75,7 @@ export default function DebugPage() {
 
     return (
         <div className="p-8 max-w-6xl mx-auto font-mono text-sm bg-slate-50 min-h-screen">
-            <h1 className="text-3xl font-bold mb-6 text-indigo-700">🕵️‍♂️ Atama Dedektifi v2.0</h1>
+            <h1 className="text-3xl font-bold mb-6 text-indigo-700">🕵️‍♂️ Atama Dedektifi v2.3</h1>
 
             <div className="grid grid-cols-3 gap-4 mb-8">
                 <div className="bg-white p-4 rounded shadow border border-indigo-100">
