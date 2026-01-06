@@ -1136,7 +1136,9 @@ export default function DosyaAtamaApp() {
       } else {
         // Sıralama: 1) Yıllık yük en az, 2) Bugün en az dosya alan, 3) Rastgele
         testers.sort((a, b) => {
-          const byLoad = getRealYearlyLoad(a.id) - getRealYearlyLoad(b.id);
+          // const byLoad = getRealYearlyLoad(a.id) - getRealYearlyLoad(b.id);
+          // UI ile tutarlılık için direkt stored yearlyLoad kullanıyoruz:
+          const byLoad = a.yearlyLoad - b.yearlyLoad;
           if (byLoad !== 0) return byLoad;
           const byCount = countCasesToday(a.id) - countCasesToday(b.id);
           if (byCount !== 0) return byCount;
@@ -1173,7 +1175,9 @@ export default function DosyaAtamaApp() {
     } else {
       // Sıralama
       available.sort((a, b) => {
-        const byLoad = getRealYearlyLoad(a.id) - getRealYearlyLoad(b.id);
+        // const byLoad = getRealYearlyLoad(a.id) - getRealYearlyLoad(b.id);
+        // UI ile tutarlılık için direkt stored yearlyLoad kullanıyoruz:
+        const byLoad = a.yearlyLoad - b.yearlyLoad;
         if (byLoad !== 0) return byLoad;
         const byCount = countCasesToday(a.id) - countCasesToday(b.id);
         if (byCount !== 0) return byCount;
