@@ -107,13 +107,26 @@ export default function TeacherList() {
         if (t) updateTeacher(tid, { isTester: !t.isTester });
     }
 
+    // Optimistic UI state for backup toggle
+    const [optimisticBackups, setOptimisticBackups] = useState<Record<string, string | undefined>>({});
+
     function handleToggleBackupToday(tid: string) {
         const today = getTodayYmd();
         const t = teachers.find(x => x.id === tid);
-        if (t) {
-            const nextBackup = t.backupDay === today ? undefined : today;
-            updateTeacher(tid, { backupDay: nextBackup });
-        }
+        if (!t) return;
+
+        const currentVal = optimisticBackups[tid] !== undefined ? optimisticBackups[tid] : t.backupDay;
+        const nextBackup = currentVal === today ? undefined : today;
+
+        // Anında UI güncellemesi
+        setOptimisticBackups(prev => ({ ...prev, [tid]: nextBackup }));
+
+        // Store güncellemesi
+        updateTeacher(tid, { backupDay: nextBackup });
+
+        // İşlem tamamlandığında optimistic state'i temizleyebiliriz veya store ile senkronize olmasını bekleyebiliriz.
+        // Ama kullanıcı deneyimi için hemen göstermek yeterli.
+        addToast(nextBackup ? `${t.name} yedek yapıldı.` : `${t.name} yedeği iptal edildi.`);
     }
 
     function handleDeleteTeacher(tid: string) {
@@ -192,12 +205,15 @@ export default function TeacherList() {
 
             {teachers.filter(t => !t.isPhysiotherapist).map((t) => {
                 const locked = hasTestToday(t.id);
+                // Optimistic check
+                const backupDayVal = optimisticBackups[t.id] !== undefined ? optimisticBackups[t.id] : t.backupDay;
+                const isBackupToday = backupDayVal === getTodayYmd();
                 return (
                     <div key={t.id} className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:shadow-md hover:border-slate-300 transition-all duration-200">
                         <div className="space-y-1 min-w-0 flex-shrink">
                             <div className="font-medium">{t.name}</div>
                             <div className="text-xs text-muted-foreground">
-                                Yıllık Yük: {t.yearlyLoad} {t.isTester ? " • Testör" : ""} {locked ? " • Bugün test aldı" : ""} {t.backupDay === getTodayYmd() ? " • Yedek" : ""} {t.birthDate ? ` • 🎂 ${t.birthDate}` : ""}
+                                Yıllık Yük: {t.yearlyLoad} {t.isTester ? " • Testör" : ""} {locked ? " • Bugün test aldı" : ""} {isBackupToday ? " • Yedek" : ""} {t.birthDate ? ` • 🎂 ${t.birthDate}` : ""}
 
                                 {/* Pushover Key Yönetimi */}
                                 {!t.pushoverKey && !editKeyOpen[t.id] ? (
@@ -298,7 +314,7 @@ export default function TeacherList() {
                             <div className="text-xs text-muted-foreground mr-2">
                                 {t.isAbsent ? (
                                     <span className="text-red-600 font-medium">🚫 Devamsız</span>
-                                ) : t.backupDay === getTodayYmd() ? (
+                                ) : isBackupToday ? (
                                     <span className="text-amber-600 font-medium">👑 Yedek</span>
                                 ) : "Uygun"}
                             </div>
@@ -309,12 +325,12 @@ export default function TeacherList() {
                                 {t.isTester ? "🧪 Testör (Açık)" : "🧪 Testör Yap"}
                             </Button>
                             <Button
-                                variant={t.backupDay === getTodayYmd() ? "default" : "outline"}
+                                variant={isBackupToday ? "default" : "outline"}
                                 onClick={() => handleToggleBackupToday(t.id)}
                                 size="sm"
                                 title={`Bugün yedek: dosya almaz. Gün sonunda en yüksek puan +${settings.backupBonusAmount} ile başlar.`}
                             >
-                                {t.backupDay === getTodayYmd() ? "👑 Yedek İptal" : "👑 Başkan Yedek"}
+                                {isBackupToday ? "👑 Yedek İptal" : "👑 Başkan Yedek"}
                             </Button>
                             <Button variant="outline" size="sm" onClick={() => handleToggleActive(t.id)}>{t.active ? "📦 Arşivle" : "✨ Aktif Et"}</Button>
                             <Button variant="destructive" size="sm" title="Kalıcı Sil" onClick={() => handleDeleteTeacher(t.id)}>🗑️ Sil</Button>
