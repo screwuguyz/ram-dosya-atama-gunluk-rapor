@@ -298,8 +298,9 @@ export default function TvDisplayPage() {
         const prevCount = prevWaitingCountRef.current;
 
         // Eğer sayı arttıysa yeni bilet alınmış demektir
-        if (currentCount > prevCount && prevCount > 0 && hasInteractedRef.current) {
-            console.log("[TV] 🎫 NEW TICKET ADDED TO QUEUE! Playing sound...");
+        // hasInteractedRef.current olmadan da çalışsın çünkü kullanıcı etkileşimi olmadan da ses çalabilir
+        if (currentCount > prevCount) {
+            console.log("[TV] 🎫 NEW TICKET ADDED TO QUEUE! Playing sound...", { currentCount, prevCount });
             playTicketAdded();
         }
 
