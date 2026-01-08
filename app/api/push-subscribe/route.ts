@@ -26,7 +26,6 @@ export async function POST(request: NextRequest) {
                     endpoint: subscription.endpoint,
                     keys: subscription.keys,
                     user_agent: request.headers.get("user-agent") || null,
-                    updated_at: new Date().toISOString(),
                 },
                 { onConflict: "endpoint" }
             );
