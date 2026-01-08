@@ -3,7 +3,7 @@
 // ============================================
 
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 
 export async function POST(request: NextRequest) {
     try {
@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Store subscription in Supabase
-        const { error } = await supabase
+        const { error } = await supabaseAdmin
             .from("push_subscriptions")
             .upsert(
                 {
@@ -61,7 +61,7 @@ export async function DELETE(request: NextRequest) {
             );
         }
 
-        const { error } = await supabase
+        const { error } = await supabaseAdmin
             .from("push_subscriptions")
             .delete()
             .eq("endpoint", endpoint);
@@ -97,7 +97,7 @@ export async function GET(request: NextRequest) {
             );
         }
 
-        const { data, error } = await supabase
+        const { data, error } = await supabaseAdmin
             .from("push_subscriptions")
             .select("*")
             .eq("teacher_id", teacherId);

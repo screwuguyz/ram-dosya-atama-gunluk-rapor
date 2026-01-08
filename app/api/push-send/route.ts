@@ -4,7 +4,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import webpush from "web-push";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 
 // Configure web-push with VAPID keys
 const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Get all subscriptions for this teacher
-        const { data: subscriptions, error } = await supabase
+        const { data: subscriptions, error } = await supabaseAdmin
             .from("push_subscriptions")
             .select("*")
             .eq("teacher_id", teacherId);
@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
                 } catch (err: any) {
                     // If subscription expired or invalid, remove it
                     if (err.statusCode === 410 || err.statusCode === 404) {
-                        await supabase
+                        await supabaseAdmin
                             .from("push_subscriptions")
                             .delete()
                             .eq("endpoint", sub.endpoint);
