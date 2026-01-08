@@ -219,7 +219,7 @@ export function useCaseAssignment({
         );
 
         newCase.assignedTo = chosen.id;
-        notifyTeacher(chosen.pushoverKey || "", "Yeni Test Dosyası", `Öğrenci: ${newCase.student}`);
+        notifyTeacher(chosen.pushoverKey || "", "Yeni Test Dosyası", `Öğrenci: ${newCase.student}`, 0, chosen.id);
         onCaseAssigned?.(chosen, newCase);
         return chosen;
       }
@@ -277,7 +277,7 @@ export function useCaseAssignment({
       );
 
       newCase.assignedTo = chosen.id;
-      notifyTeacher(chosen.pushoverKey || "", "Yeni Dosya Atandı", `Öğrenci: ${newCase.student}`);
+      notifyTeacher(chosen.pushoverKey || "", "Yeni Dosya Atandı", `Öğrenci: ${newCase.student}`, 0, chosen.id);
       onCaseAssigned?.(chosen, newCase);
       return chosen;
     },
