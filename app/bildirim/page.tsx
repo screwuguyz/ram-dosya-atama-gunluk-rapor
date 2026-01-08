@@ -127,11 +127,12 @@ export default function BildirimPage() {
                 setIsSubscribed(true);
                 setMessage("✅ Bildirimler açıldı! Artık dosya atandığında bu telefona bildirim gelecek.");
             } else {
-                throw new Error("Failed to save subscription");
+                const errorData = await res.json();
+                throw new Error(errorData.error || "Failed to save subscription");
             }
-        } catch (e) {
+        } catch (e: any) {
             console.error("Subscribe error:", e);
-            setMessage("Kayıt başarısız. Lütfen tekrar deneyin.");
+            setMessage(`Kayıt başarısız: ${e.message || e}`);
         } finally {
             setIsLoading(false);
         }
@@ -201,8 +202,8 @@ export default function BildirimPage() {
                                 onClick={isSubscribed ? unsubscribe : subscribe}
                                 disabled={isLoading}
                                 className={`w-full h-14 text-lg ${isSubscribed
-                                        ? "bg-emerald-500 hover:bg-emerald-600"
-                                        : "bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600"
+                                    ? "bg-emerald-500 hover:bg-emerald-600"
+                                    : "bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600"
                                     }`}
                             >
                                 {isLoading ? (
@@ -240,8 +241,8 @@ export default function BildirimPage() {
                     {/* Message */}
                     {message && (
                         <div className={`mt-6 p-4 rounded-lg text-center ${message.includes("✅")
-                                ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                                : "bg-amber-50 text-amber-700 border border-amber-200"
+                            ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                            : "bg-amber-50 text-amber-700 border border-amber-200"
                             }`}>
                             {message}
                         </div>

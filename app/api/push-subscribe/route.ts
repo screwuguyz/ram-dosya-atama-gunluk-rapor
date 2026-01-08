@@ -34,16 +34,16 @@ export async function POST(request: NextRequest) {
         if (error) {
             console.error("[push-subscribe] Supabase error:", error);
             return NextResponse.json(
-                { error: "Failed to save subscription" },
+                { error: `Database error: ${error.message}` },
                 { status: 500 }
             );
         }
 
         return NextResponse.json({ success: true });
-    } catch (err) {
+    } catch (err: any) {
         console.error("[push-subscribe] Error:", err);
         return NextResponse.json(
-            { error: "Internal server error" },
+            { error: `Server error: ${err.message || err}` },
             { status: 500 }
         );
     }
