@@ -1193,7 +1193,7 @@ export default function DosyaAtamaApp() {
       });
 
       newCase.assignedTo = chosen.id;
-      notifyAssigned(chosen, newCase);
+      notifyTeacher(chosen.pushoverKey || "", "Dosya Atandı (Test)", `Öğrenci: ${newCase.student}`, 0, chosen.id);
       return chosen;
     }
 
@@ -1257,7 +1257,7 @@ export default function DosyaAtamaApp() {
     });
 
     newCase.assignedTo = chosen.id;
-    notifyAssigned(chosen, newCase);
+    notifyTeacher(chosen.pushoverKey || "", "Dosya Atandı", `Öğrenci: ${newCase.student}`, 0, chosen.id);
     return chosen;
   }
 
@@ -1296,7 +1296,7 @@ export default function DosyaAtamaApp() {
           monthly: { ...(chosen.monthly || {}), [ym]: (chosen.monthly?.[ym] || 0) + newCase.score },
         });
         newCase.assignedTo = chosen.id;
-        notifyAssigned(chosen, newCase);
+        notifyTeacher(chosen.pushoverKey || "", "Dosya Atandı (Manuel)", `Öğrenci: ${newCase.student}`, 0, chosen.id);
         playAssignSound();
         showAssignmentPopup({
           teacherName: chosen.name,
