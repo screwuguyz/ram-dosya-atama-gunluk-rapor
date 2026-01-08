@@ -20,52 +20,28 @@ export default function PushSubscriptionButton({
 }: PushSubscriptionButtonProps) {
     const [isSubscribed, setIsSubscribed] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
-    const [isSupported, setIsSupported] = useState(false);
     const addToast = useAppStore((state) => state.addToast);
 
     const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-    const [isChecking, setIsChecking] = useState(true);
 
     useEffect(() => {
-        // Check if push is supported
-        const checkSupport = async () => {
-            setIsChecking(true);
+        // Check current subscription status (silent, no loading)
+        const checkSubscription = async () => {
+            if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
+            if (!vapidPublicKey) return;
 
-            if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
-                setIsSupported(false);
-                setIsChecking(false);
-                return;
-            }
-
-            if (!vapidPublicKey) {
-                setIsSupported(false);
-                setIsChecking(false);
-                return;
-            }
-
-            setIsSupported(true);
-
-            // Check current subscription status with timeout
             try {
-                // Timeout after 3 seconds
-                const timeoutPromise = new Promise((_, reject) =>
-                    setTimeout(() => reject(new Error("Timeout")), 3000)
-                );
-
-                const registration = await Promise.race([
-                    navigator.serviceWorker.ready,
-                    timeoutPromise
-                ]) as ServiceWorkerRegistration;
-
-                const subscription = await registration.pushManager.getSubscription();
-                setIsSubscribed(!!subscription);
+                const registration = await navigator.serviceWorker.getRegistration();
+                if (registration) {
+                    const subscription = await registration.pushManager.getSubscription();
+                    setIsSubscribed(!!subscription);
+                }
             } catch (e) {
-                console.log("Service worker check skipped:", e);
+                // Silent fail
             }
-            setIsChecking(false);
         };
 
-        checkSupport();
+        checkSubscription();
     }, [vapidPublicKey]);
 
     const urlBase64ToUint8Array = (base64String: string): Uint8Array => {
@@ -156,9 +132,7 @@ export default function PushSubscriptionButton({
         }
     };
 
-    if (isChecking || !isSupported) {
-        return null; // Hide button while checking or if not supported
-    }
+    // Always show the button - let it fail gracefully when clicked if not supported
 
     if (size === "icon") {
         return (
