@@ -24,30 +24,45 @@ export default function PushSubscriptionButton({
     const addToast = useAppStore((state) => state.addToast);
 
     const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+    const [isChecking, setIsChecking] = useState(true);
 
     useEffect(() => {
         // Check if push is supported
         const checkSupport = async () => {
+            setIsChecking(true);
+
             if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
                 setIsSupported(false);
+                setIsChecking(false);
                 return;
             }
 
             if (!vapidPublicKey) {
                 setIsSupported(false);
+                setIsChecking(false);
                 return;
             }
 
             setIsSupported(true);
 
-            // Check current subscription status
+            // Check current subscription status with timeout
             try {
-                const registration = await navigator.serviceWorker.ready;
+                // Timeout after 3 seconds
+                const timeoutPromise = new Promise((_, reject) =>
+                    setTimeout(() => reject(new Error("Timeout")), 3000)
+                );
+
+                const registration = await Promise.race([
+                    navigator.serviceWorker.ready,
+                    timeoutPromise
+                ]) as ServiceWorkerRegistration;
+
                 const subscription = await registration.pushManager.getSubscription();
                 setIsSubscribed(!!subscription);
             } catch (e) {
-                console.error("Error checking subscription:", e);
+                console.log("Service worker check skipped:", e);
             }
+            setIsChecking(false);
         };
 
         checkSupport();
@@ -141,8 +156,8 @@ export default function PushSubscriptionButton({
         }
     };
 
-    if (!isSupported) {
-        return null; // Hide button if not supported
+    if (isChecking || !isSupported) {
+        return null; // Hide button while checking or if not supported
     }
 
     if (size === "icon") {
