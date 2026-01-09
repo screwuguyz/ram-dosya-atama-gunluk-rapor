@@ -4,7 +4,7 @@ import { createClient } from "@supabase/supabase-js";
 export const runtime = "nodejs";
 
 // Allow insecure TLS for local dev
-if (process.env.ALLOW_INSECURE_TLS === "1") {
+if (process.env.NODE_ENV === "development" && process.env.ALLOW_INSECURE_TLS === "1") {
     process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 }
 
@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
         const state = currentData?.state || {};
         const queue = Array.isArray(state.queue) ? state.queue : [];
 
-        console.log("[api/queue] Current queue length:", queue.length);
+        // console.log("[api/queue] Current queue length:", queue.length);
 
         // 2. Yeni bilet oluştur
         const maxNo = queue.length > 0 ? Math.max(...queue.map((t: any) => t.no || 0)) : 0;
@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
             throw updateError;
         }
 
-        console.log("[api/queue] New ticket added:", newTicket.no, "Total queue length:", newQueue.length);
+        // console.log("[api/queue] New ticket added:", newTicket.no, "Total queue length:", newQueue.length);
 
         return NextResponse.json({ ok: true, ticket: newTicket });
 

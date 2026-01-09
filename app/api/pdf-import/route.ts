@@ -78,10 +78,12 @@ function parsePdfText(text: string): { entries: PdfEntry[]; dateLabel: string | 
   const footerMatch = text.match(/(\d{2}\.\d{2}\.\d{4})\s+\d{2}:\d{2}:\d{2}/);
   const dateLabel = dateMatch?.[1] || footerMatch?.[1] || null;
 
-  // DEBUG: Tüm satırları logla
-  console.log("=== PDF SATIRLARI ===");
-  normalizedLines.forEach((line, i) => console.log(`[${i}] ${line}`));
-  console.log("=== PDF SATIRLARI SONU ===");
+  // DEBUG: Tüm satırları logla (sadece dev ortamında)
+  if (process.env.NODE_ENV === "development") {
+    console.log("=== PDF SATIRLARI ===");
+    normalizedLines.forEach((line, i) => console.log(`[${i}] ${line}`));
+    console.log("=== PDF SATIRLARI SONU ===");
+  }
 
   const blocks: Array<string[]> = [];
   let current: string[] = [];
@@ -96,9 +98,11 @@ function parsePdfText(text: string): { entries: PdfEntry[]; dateLabel: string | 
   }
   if (current.length) blocks.push(current);
 
-  // DEBUG: Blokları logla
-  console.log(`=== ${blocks.length} BLOK BULUNDU ===`);
-  blocks.forEach((b, i) => console.log(`Blok ${i}: ${JSON.stringify(b)}`));
+  // DEBUG: Blokları logla (sadece dev ortamında)
+  if (process.env.NODE_ENV === "development") {
+    console.log(`=== ${blocks.length} BLOK BULUNDU ===`);
+    blocks.forEach((b, i) => console.log(`Blok ${i}: ${JSON.stringify(b)}`));
+  }
 
   const isUpper = (line: string) => /^[A-ZÇĞİÖŞÜ\s']+$/.test(line.replace(/[^A-ZÇĞİÖŞÜ\s']/gi, ""));
 
