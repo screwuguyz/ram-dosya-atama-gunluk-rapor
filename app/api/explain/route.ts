@@ -90,7 +90,7 @@ export async function POST(req: NextRequest) {
 
     // TLS ayarı (son çare): Kurumsal self-signed CA nedeniyle TLS hatası alınıyorsa,
     // .env.local içine OPENAI_INSECURE_TLS=1 ekleyin. Bu global bir ayardır ve güvensizdir.
-    if (process.env.OPENAI_INSECURE_TLS === "1") {
+    if (process.env.NODE_ENV === "development" && process.env.OPENAI_INSECURE_TLS === "1") {
       // eslint-disable-next-line no-process-env
       process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
     }

@@ -370,7 +370,7 @@ export default function DosyaAtamaApp() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ userKey: key, title: "Duyuru", message: text, priority: 0 })
         });
-      } catch { }
+      } catch (err) { console.error("Notify failed", err); }
     }
   }
 
@@ -1037,7 +1037,8 @@ export default function DosyaAtamaApp() {
       } else {
         alert("Giriş başarısız. E-posta/şifreyi kontrol edin.");
       }
-    } catch {
+    } catch (err) {
+      console.error("Login error", err);
       alert("Giriş sırasında hata oluştu.");
     }
   }
@@ -1823,7 +1824,8 @@ export default function DosyaAtamaApp() {
         const j = await res.json().catch(() => ({}));
         alert("Acil bildirim hatası: " + (j?.errors?.[0] || JSON.stringify(j)));
       }
-    } catch {
+    } catch (err) {
+      console.error("Urgent notify error", err);
       alert("Acil bildirim gönderilemedi.");
     }
   }
@@ -2247,7 +2249,8 @@ export default function DosyaAtamaApp() {
         setHistory(data.history || {});
         setLastRollover(data.lastRollover || getTodayYmd());
         setLastAbsencePenalty(data.lastAbsencePenalty || "");
-      } catch {
+      } catch (err) {
+        console.error("JSON parse error", err);
         alert("JSON okunamadı.");
       } finally {
         e.currentTarget.value = "";
@@ -4029,7 +4032,7 @@ export default function DosyaAtamaApp() {
                       const res = await fetch("/api/feedback", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
                       if (res.ok) { toast("Gönderildi. Teşekkür ederiz!"); setFeedbackOpen(false); setFbName(""); setFbEmail(""); setFbMessage(""); setFbType("oneri"); }
                       else { const j = await res.json().catch(() => ({})); toast("Gönderilemedi: " + (j?.error || res.statusText)); }
-                    } catch { toast("Ağ hatası: Gönderilemedi"); }
+                    } catch (err) { console.error("Feedback error", err); toast("Ağ hatası: Gönderilemedi"); }
                   }}>Gönder</Button>
                 </div>
                 <div className="text-[11px] text-muted-foreground">Gönderimler <strong>ataafurkan@gmail.com</strong> adresine iletilir.</div>

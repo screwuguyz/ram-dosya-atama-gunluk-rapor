@@ -71,7 +71,7 @@ export async function GET() {
       throw error;
     }
     const s = (data?.state as StateShape) || DEFAULT_STATE;
-    console.log("[api/state][GET] Success, teachers count:", s.teachers?.length || 0);
+    // console.log("[api/state][GET] Success, teachers count:", s.teachers?.length || 0);
     return NextResponse.json(s, { headers: { "Cache-Control": "no-store" } });
   } catch (err: any) {
     console.error("[api/state][GET]", err?.message || err);
@@ -121,7 +121,7 @@ export async function POST(req: NextRequest) {
       console.error("[api/state][POST] Supabase error:", error);
       throw error;
     }
-    console.log("[api/state][POST] Success, teachers count:", s.teachers?.length || 0);
+    // console.log("[api/state][POST] Success, teachers count:", s.teachers?.length || 0);
     return NextResponse.json({ ok: true });
   } catch (err: any) {
     console.error("[api/state][POST]", err?.message || err);

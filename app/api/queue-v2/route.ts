@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
         const turkeyTime = new Date(now.getTime() + 3 * 60 * 60 * 1000);
         const todayStart = turkeyTime.toISOString().slice(0, 10) + "T00:00:00+03:00";
 
-        console.log("[queue-v2 POST] Today start (Turkey):", todayStart);
+        // console.log("[queue-v2 POST] Today start (Turkey):", todayStart);
 
         // Bugün oluşturulan TÜM biletlerin (done dahil) en yüksek numarasını al
         const { data: existing, error: fetchError } = await supabase
@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
         }
 
         const maxNo = existing && existing.length > 0 ? existing[0].no : 0;
-        console.log("[queue-v2 POST] Max ticket no today:", maxNo, "Next will be:", maxNo + 1);
+        // console.log("[queue-v2 POST] Max ticket no today:", maxNo, "Next will be:", maxNo + 1);
 
         // Insert new ticket
         const { data, error } = await supabase
@@ -91,7 +91,7 @@ export async function POST(req: NextRequest) {
             updatedAt: data.updated_at,
         };
 
-        console.log("[queue-v2 POST] Created ticket:", ticket.no);
+        // console.log("[queue-v2 POST] Created ticket:", ticket.no);
 
         return NextResponse.json({ ok: true, ticket });
     } catch (err: any) {
@@ -124,7 +124,7 @@ export async function PUT(req: NextRequest) {
 
         if (error) throw error;
 
-        console.log("[queue-v2 PUT] Updated ticket:", id, "->", status);
+        // console.log("[queue-v2 PUT] Updated ticket:", id, "->", status);
 
         return NextResponse.json({ ok: true, ticket: data });
     } catch (err: any) {
@@ -148,7 +148,7 @@ export async function DELETE(req: NextRequest) {
                 .eq("status", "waiting");
 
             if (error) throw error;
-            console.log("[queue-v2 DELETE] Marked all waiting tickets as done");
+            // console.log("[queue-v2 DELETE] Marked all waiting tickets as done");
         } else if (id) {
             // Tek bilet için: done olarak işaretle
             const { error } = await supabase
@@ -157,7 +157,7 @@ export async function DELETE(req: NextRequest) {
                 .eq("id", id);
 
             if (error) throw error;
-            console.log("[queue-v2 DELETE] Marked ticket as done:", id);
+            // console.log("[queue-v2 DELETE] Marked ticket as done:", id);
         }
 
         return NextResponse.json({ ok: true });
