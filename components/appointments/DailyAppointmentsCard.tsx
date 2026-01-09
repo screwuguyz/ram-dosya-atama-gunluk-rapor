@@ -46,7 +46,12 @@ export default function DailyAppointmentsCard({
                         </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar mode="single" onSelect={(date) => onShowDetails(date)} initialFocus />
+                        <Calendar
+                            mode="single"
+                            selected={pdfDate ? new Date(pdfDate.split('.').reverse().join('-')) : undefined}
+                            onSelect={(date) => onShowDetails(date)}
+                            initialFocus
+                        />
                     </PopoverContent>
                 </Popover>
                 <div className="flex items-center gap-2">
