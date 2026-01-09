@@ -564,7 +564,7 @@ export default function TimeMachinePage() {
                         <h3 className="text-lg font-bold mb-4">{currentSimDate} - Arşiv Kayıtları</h3>
                         <AssignedArchiveView
                             history={history}
-                            cases={[]} // Passing empty cases because archive view uses history[date] mostly
+                            cases={cases} // Now showing current cases too, not just rolled-over history
                             teacherName={(id) => teachers.find(t => t.id === id)?.name || "—"}
                             caseDesc={caseDesc}
                             settings={settings}
