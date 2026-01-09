@@ -39,7 +39,7 @@ export async function GET(request: Request) {
             created_at: now.toISOString(),
             backup_type: "auto",
             description: `Otomatik Günlük Yedek - ${dateStr} 18:00`,
-            state: stateData,
+            state_snapshot: stateData,  // Fixed: was 'state', should be 'state_snapshot'
         };
 
         const { error: backupError } = await client

@@ -90,14 +90,14 @@ export async function POST(req: NextRequest) {
 
     const client = createClient(SUPA_URL, SUPA_SERVICE_KEY);
 
-    // Eski yedekleri temizle (3 günden eski olanları sil) - Kullanıcı isteği: 3 gün
-    const threeDaysAgo = new Date();
-    threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+    // Eski yedekleri temizle (30 günden eski olanları sil)
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
     await client
       .from(TABLE_NAME)
       .delete()
-      .lt("created_at", threeDaysAgo.toISOString());
+      .lt("created_at", thirtyDaysAgo.toISOString());
 
     // Yeni yedek oluştur
     const { data, error } = await client
