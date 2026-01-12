@@ -1,5 +1,6 @@
 "use client";
 import React, { createContext, useContext, useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 
 type Ctx = {
   value?: string;
@@ -8,6 +9,7 @@ type Ctx = {
   open: boolean;
   setOpen: (o: boolean) => void;
   setLabel: (s: string) => void;
+  triggerRef: React.RefObject<HTMLButtonElement | null>;
 };
 const SelectCtx = createContext<Ctx | null>(null);
 
@@ -16,8 +18,9 @@ export function Select({
 }: { children: React.ReactNode; value?: string; onValueChange?: (v: string) => void; }) {
   const [open, setOpen] = useState(false);
   const [label, setLabel] = useState<string>("");
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
   return (
-    <SelectCtx.Provider value={{ value, onValueChange, open, setOpen, label, setLabel }}>
+    <SelectCtx.Provider value={{ value, onValueChange, open, setOpen, label, setLabel, triggerRef }}>
       <div className="relative w-full">{children}</div>
     </SelectCtx.Provider>
   );
@@ -28,7 +31,9 @@ export function SelectTrigger(
 ) {
   const ctx = useContext(SelectCtx)!;
   return (
-    <button type="button"
+    <button
+      type="button"
+      ref={ctx.triggerRef}
       onClick={() => ctx.setOpen(!ctx.open)}
       className={`flex h-10 w-full items-center justify-between rounded-md border px-3 text-sm bg-white hover:bg-gray-50 transition-colors ${className || ""}`}
       {...props}
@@ -51,27 +56,66 @@ export function SelectContent(
 ) {
   const ctx = useContext(SelectCtx)!;
   const ref = useRef<HTMLDivElement | null>(null);
+  const [position, setPosition] = useState({ top: 0, left: 0, width: 0 });
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (ctx.open && ctx.triggerRef.current) {
+      const rect = ctx.triggerRef.current.getBoundingClientRect();
+      setPosition({
+        top: rect.bottom + window.scrollY + 4,
+        left: rect.left + window.scrollX,
+        width: rect.width
+      });
+    }
+  }, [ctx.open, ctx.triggerRef]);
 
   useEffect(() => {
     function onDocClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) ctx.setOpen(false);
+      if (ref.current && !ref.current.contains(e.target as Node) &&
+        ctx.triggerRef.current && !ctx.triggerRef.current.contains(e.target as Node)) {
+        ctx.setOpen(false);
+      }
     }
-    if (ctx.open) document.addEventListener("mousedown", onDocClick);
-    return () => document.removeEventListener("mousedown", onDocClick);
+    function onEscape(e: KeyboardEvent) {
+      if (e.key === 'Escape') ctx.setOpen(false);
+    }
+    if (ctx.open) {
+      document.addEventListener("mousedown", onDocClick);
+      document.addEventListener("keydown", onEscape);
+    }
+    return () => {
+      document.removeEventListener("mousedown", onDocClick);
+      document.removeEventListener("keydown", onEscape);
+    };
   }, [ctx]);
 
-  if (!ctx.open) return null;
-  return (
+  if (!ctx.open || !mounted) return null;
+
+  const dropdown = (
     <div
       ref={ref}
-      className={`absolute left-0 right-0 z-[9999] mt-1 rounded-md border bg-white shadow-lg ${className || ""}`}
-      style={{ maxHeight: '240px', overflowY: 'auto' }}
+      style={{
+        position: 'absolute',
+        top: position.top,
+        left: position.left,
+        width: position.width,
+        maxHeight: '280px',
+        overflowY: 'auto',
+        zIndex: 99999,
+      }}
+      className={`rounded-md border bg-white shadow-xl p-1 ${className || ""}`}
     >
-      <div className="p-1">
-        {children}
-      </div>
+      {children}
     </div>
   );
+
+  // Portal to body to escape overflow:hidden containers
+  return createPortal(dropdown, document.body);
 }
 
 export function SelectItem(
