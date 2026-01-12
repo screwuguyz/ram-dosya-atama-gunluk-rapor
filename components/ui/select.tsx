@@ -1,5 +1,5 @@
 "use client";
-import React, {createContext, useContext, useState, useRef, useEffect} from "react";
+import React, { createContext, useContext, useState, useRef, useEffect } from "react";
 
 type Ctx = {
   value?: string;
@@ -30,7 +30,7 @@ export function SelectTrigger(
   return (
     <button type="button"
       onClick={() => ctx.setOpen(!ctx.open)}
-      className={`flex h-10 w-full items-center justify-between rounded-md border px-3 text-sm bg-white ${className||""}`}
+      className={`flex h-10 w-full items-center justify-between rounded-md border px-3 text-sm bg-white ${className || ""}`}
       {...props}
     />
   );
@@ -58,7 +58,7 @@ export function SelectContent(
   if (!ctx.open) return null;
   return (
     <div ref={ref}
-      className={`absolute z-50 mt-1 min-w-[8rem] rounded-md border bg-white shadow p-1 ${className||""}`}>
+      className={`absolute z-50 mt-1 min-w-[8rem] w-full max-h-[300px] overflow-y-auto rounded-md border bg-white shadow p-1 ${className || ""}`}>
       {children}
     </div>
   );
@@ -66,13 +66,13 @@ export function SelectContent(
 
 export function SelectItem(
   { children, value, className, ...props }:
-  { children: React.ReactNode; value: string; className?: string } & React.ComponentPropsWithoutRef<"div">
+    { children: React.ReactNode; value: string; className?: string } & React.ComponentPropsWithoutRef<"div">
 ) {
   const ctx = useContext(SelectCtx)!;
   return (
     <div role="option"
       onClick={() => { ctx.onValueChange?.(value); ctx.setLabel(String(children)); ctx.setOpen(false); }}
-      className={`cursor-pointer px-2 py-1 text-sm rounded hover:bg-gray-100 ${className||""}`}
+      className={`cursor-pointer px-2 py-1 text-sm rounded hover:bg-gray-100 ${className || ""}`}
       {...props}
     >
       {children}
