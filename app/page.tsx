@@ -4257,7 +4257,7 @@ export default function DosyaAtamaApp() {
 
         {/* Öneri/Şikayet Modal */}
         {feedbackOpen && (
-          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50" onClick={() => setFeedbackOpen(false)}>
+          <div className="fixed inset-0 h-screen w-screen bg-black/30 backdrop-blur-sm flex items-center justify-center z-[99999]" onClick={() => setFeedbackOpen(false)}>
             <Card className="w-[420px] shadow-2xl border-0" onClick={(e) => e.stopPropagation()}>
               <CardHeader className="bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-t-lg">
                 <CardTitle className="text-white flex items-center gap-2">
@@ -4310,7 +4310,7 @@ export default function DosyaAtamaApp() {
 
         {/* Settings Modal */}
         {settingsOpen && (
-          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50" onClick={() => setSettingsOpen(false)}>
+          <div className="fixed inset-0 h-screen w-screen bg-black/30 backdrop-blur-sm flex items-center justify-center z-[99999]" onClick={() => setSettingsOpen(false)}>
             <Card className="w-[600px] max-h-[90vh] overflow-y-auto shadow-2xl border-0" onClick={(e) => e.stopPropagation()}>
               <CardHeader className="bg-gradient-to-r from-emerald-600 to-emerald-700 text-white rounded-t-lg sticky top-0 z-10">
                 <CardTitle className="text-white flex items-center gap-2">
@@ -4477,7 +4477,7 @@ export default function DosyaAtamaApp() {
         )}
         {/* Login Modal */}
         {loginOpen && (
-          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="fixed inset-0 h-screen w-screen bg-black/30 backdrop-blur-sm flex items-center justify-center z-[99999]">
             <Card className="w-[400px] shadow-2xl border-0">
               <CardHeader className="bg-gradient-to-r from-slate-700 to-slate-800 text-white rounded-t-lg">
                 <CardTitle className="text-white flex items-center gap-2">
