@@ -4,7 +4,7 @@ import { verifyCredentials } from "@/lib/auth";
 import { checkRateLimit, getClientIp, RATE_LIMITS } from "@/lib/rateLimit";
 
 const ENV_EMAIL = (process.env.ADMIN_EMAIL || "").toLowerCase();
-const ENV_PASSWORD = process.env.ADMIN_PASSWORD || "";
+const ENV_PASSWORD = (process.env.ADMIN_PASSWORD || "").trim();
 
 // Production'da şifre zorunlu olmalı
 if (process.env.NODE_ENV === "production" && (!ENV_EMAIL || !ENV_PASSWORD)) {
