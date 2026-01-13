@@ -40,6 +40,7 @@ import CalendarView from "@/components/reports/CalendarView";
 import QuickSearch from "@/components/search/QuickSearch";
 import MiniWidgets from "@/components/dashboard/MiniWidgets";
 import DailyAppointmentsCard from "@/components/appointments/DailyAppointmentsCard";
+import { SchoolParade, FloatingIcons, WelcomeLottie } from "@/components/ui/FloatingAnimations";
 // Monthly Recap removed by user request
 import { useAppStore } from "@/stores/useAppStore";
 // Merkezi tipler ve utility'ler
@@ -2722,6 +2723,9 @@ export default function DosyaAtamaApp() {
   if (viewMode === "landing") {
     return (
       <main className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-teal-50 via-white to-orange-50 relative text-slate-800 overflow-hidden">
+        {/* Hareketli Arka Plan İkonları */}
+        <FloatingIcons />
+
         {/* Animasyonlu arka plan deseni */}
         <div className="absolute inset-0 overflow-hidden">
           <div className="absolute -top-40 -right-40 w-80 h-80 bg-teal-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob"></div>
@@ -2732,9 +2736,7 @@ export default function DosyaAtamaApp() {
         <div className="relative z-10 max-w-3xl w-full mx-4 px-8 py-14 text-center space-y-8 bg-white/80 backdrop-blur-xl rounded-[40px] shadow-2xl border border-white/50 animate-landing-card">
           {/* Logo/İkon - Floating animasyonu */}
           <div className="flex justify-center">
-            <div className="w-20 h-20 bg-gradient-to-br from-teal-500 to-teal-600 rounded-2xl flex items-center justify-center shadow-xl animate-logo-float hover:animate-logo-spin cursor-pointer">
-              <span className="text-4xl">📚</span>
-            </div>
+            <WelcomeLottie />
           </div>
 
           <div className="text-sm md:text-base uppercase tracking-[0.5em] text-teal-600 font-semibold animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
@@ -2742,12 +2744,15 @@ export default function DosyaAtamaApp() {
           </div>
 
           <h1 className="text-4xl md:text-5xl font-extrabold bg-gradient-to-r from-teal-600 via-teal-500 to-orange-500 bg-clip-text text-transparent animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
-            Özel Eğitim Bölümü Paneli
+            Özel Eğitim Bölümü <span className="text-teal-600">Paneli</span>
           </h1>
 
           <p className="text-lg md:text-xl text-slate-600 leading-relaxed max-w-xl mx-auto animate-fade-in-up" style={{ animationDelay: '0.4s' }}>
             👋 Hoş geldiniz! Günlük randevu listelerini yükleyin, dosya atamalarını yönetin ve öğretmen bildirimlerini takip edin.
           </p>
+
+          {/* Butonlar ... */}
+
 
           {/* Özellik kartları - Buton olarak çalışır */}
           <div className="grid grid-cols-3 gap-4 py-4">
@@ -2791,6 +2796,7 @@ export default function DosyaAtamaApp() {
             v{APP_VERSION} • Son güncelleme: {new Date().toLocaleDateString('tr-TR')}
           </div>
         </div>
+        <SchoolParade />
       </main>
     );
   }
