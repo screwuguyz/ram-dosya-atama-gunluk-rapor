@@ -14,6 +14,10 @@
   --foreground: #0f172a;
 }
 
+html {
+  scrollbar-gutter: stable;
+}
+
 body {
   background-color: var(--background);
   color: var(--foreground);
@@ -25,6 +29,7 @@ body {
   perspective: 1000px;
   /* 3D Tilt Derinliği */
   transition: background-color 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow-x: hidden;
 }
 
 /* Scrollbar Customization */
