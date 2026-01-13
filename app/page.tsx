@@ -30,6 +30,7 @@ import { setSupabaseSyncCallback, loadThemeFromSupabase, getThemeMode, getColorS
 import AssignedArchiveView from "@/components/archive/AssignedArchive";
 import AssignedArchiveSingleDayView from "@/components/archive/AssignedArchiveSingleDay";
 import { Calendar as CalendarIcon, Trash2, Search, UserMinus, Plus, FileSpreadsheet, BarChart2, Volume2, VolumeX, X, Printer, Loader2, Inbox, FileText, ChevronLeft, ChevronRight } from "lucide-react";
+import confetti from "canvas-confetti";
 
 
 // === YENİ MODÜLER BİLEŞENLER ===
@@ -132,6 +133,48 @@ export default function DosyaAtamaApp() {
   const [fbMessage, setFbMessage] = useState("");
 
   // ---- Girdi durumları
+
+  // 🎉 Havai Fişek Animasyonu
+  function triggerFireworks() {
+    const duration = 2000;
+    const end = Date.now() + duration;
+
+    // Kenarlardan konfeti yağmuru
+    (function frame() {
+      confetti({
+        particleCount: 4,
+        angle: 60,
+        spread: 55,
+        origin: { x: 0 },
+        colors: ['#26ccff', '#a25afd', '#ff5e7e', '#88ff5a', '#fcff42'],
+        zIndex: 9999
+      });
+      confetti({
+        particleCount: 4,
+        angle: 120,
+        spread: 55,
+        origin: { x: 1 },
+        colors: ['#26ccff', '#a25afd', '#ff5e7e', '#88ff5a', '#fcff42'],
+        zIndex: 9999
+      });
+
+      if (Date.now() < end) {
+        requestAnimationFrame(frame);
+      }
+    }());
+
+    // Ortadan patlama
+    setTimeout(() => {
+      confetti({
+        particleCount: 150,
+        spread: 100,
+        origin: { y: 0.6 },
+        startVelocity: 40,
+        zIndex: 9999
+      });
+    }, 200);
+  }
+
   const [student, setStudent] = useState("");
   const [fileNo, setFileNo] = useState("");
   const [type, setType] = useState<"YONLENDIRME" | "DESTEK" | "IKISI">("YONLENDIRME");
@@ -1480,6 +1523,7 @@ export default function DosyaAtamaApp() {
         newCase.assignedTo = chosen.id;
         notifyTeacher(chosen.pushoverKey || "", "Dosya Atandı (Manuel)", `Öğrenci: ${newCase.student}`, 0, chosen.id);
         playAssignSound();
+        triggerFireworks();
         showAssignmentPopup({
           teacherName: chosen.name,
           studentName: newCase.student,
@@ -1523,6 +1567,7 @@ export default function DosyaAtamaApp() {
 
       if (result.chosen) {
         playAssignSound();
+        triggerFireworks();
         showAssignmentPopup({
           teacherName: result.chosen.name,
           studentName: newCase.student,
