@@ -3360,9 +3360,10 @@ export default function DosyaAtamaApp() {
 
   // ---------- TEK RETURN: BİLEŞEN ÇIKIŞI ----------
   return (
-    <>
+    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-indigo-50 relative selection:bg-emerald-100 selection:text-emerald-900">
+      <FloatingIcons />
       <ThemeToggle />
-      <div className="container mx-auto p-4 space-y-6">
+      <div className="container mx-auto p-4 space-y-6 relative z-10">
         {/* Üst araç çubuğu: rapor ve giriş */}
         {/* ÜST BAR (sticky + cam) - MOBİL OPTİMİZE */}
         <div className="sticky top-0 z-40 backdrop-blur bg-white/70 border-b border-slate-200/60">
@@ -4930,7 +4931,7 @@ export default function DosyaAtamaApp() {
         announcement={announcementPopupData}
         onClose={hideAnnouncementPopup}
       />
-    </>
+    </div>
   );
 }
 
