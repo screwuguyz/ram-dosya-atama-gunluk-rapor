@@ -134,11 +134,31 @@ export function findBestTeacher(
         return todayCounts[t.id] || 0;
     };
 
-    // Sıralama: 1) Yıllık yük en az, 2) Bugün en az dosya alan
+    // Bu ay aldığı dosya sayısı (Aylık Adet)
+    const getMonthlyCount = (t: Teacher): number => {
+        const now = new Date();
+        const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+        let count = 0;
+        // Bugünkü cases'lerden say
+        cases.forEach(c => {
+            if (c.assignedTo === t.id && c.createdAt.startsWith(ym) && !c.absencePenalty) count++;
+        });
+        return count;
+    };
+
+    // Sıralama: 1) Yıllık yük, 2) Günlük dosya, 3) Aylık adet, 4) ID (tutarlılık için)
     const sorted = [...activeTeachers].sort((a, b) => {
+        // 1. Yıllık yük (en düşük önce)
         const byLoad = getEffectiveLoad(a) - getEffectiveLoad(b);
         if (byLoad !== 0) return byLoad;
-        return getTodayCount(a) - getTodayCount(b);
+        // 2. Günlük dosya sayısı (en düşük önce)
+        const byDailyCount = getTodayCount(a) - getTodayCount(b);
+        if (byDailyCount !== 0) return byDailyCount;
+        // 3. Aylık adet (en düşük önce)
+        const byMonthlyCount = getMonthlyCount(a) - getMonthlyCount(b);
+        if (byMonthlyCount !== 0) return byMonthlyCount;
+        // 4. ID ile tutarlı sıralama (rastgele değil)
+        return a.id.localeCompare(b.id);
     });
 
     // Filter out teachers who hit daily limit
