@@ -21,11 +21,29 @@ export async function POST(req: NextRequest) {
   const email = String(body?.email ?? "").trim().toLowerCase();
   const password = String(body?.password ?? "").trim();
 
+  // DEBUG: Log what we're comparing (remove in production!)
+  console.log("LOGIN DEBUG:", {
+    inputEmail: email,
+    inputPasswordLength: password.length,
+    envEmail: ENV_EMAIL,
+    envPasswordLength: ENV_PASSWORD.length,
+    envPasswordFirst3: ENV_PASSWORD.substring(0, 3),
+    emailMatch: email === ENV_EMAIL,
+  });
+
   // Verify credentials (supports both plain text and bcrypt hashed passwords)
   const result = await verifyCredentials(email, password, ENV_EMAIL, ENV_PASSWORD);
 
   if (!result.success) {
-    return NextResponse.json({ ok: false }, { status: 401 });
+    // Return more detailed error for debugging
+    return NextResponse.json({
+      ok: false,
+      debug: {
+        emailMatch: email === ENV_EMAIL,
+        envEmailSet: !!ENV_EMAIL,
+        envPasswordSet: !!ENV_PASSWORD,
+      }
+    }, { status: 401 });
   }
 
   // If password needs migration (was plain text), log the new hash
