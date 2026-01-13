@@ -1070,6 +1070,29 @@ export default function DosyaAtamaApp() {
     return n;
   }
 
+  // Bu ay bu öğretmene kaç dosya atanmış (Aylık Adet)
+  function countCasesThisMonth(tid: string): number {
+    const now = new Date();
+    const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    let count = 0;
+
+    // History'den bu ayın dosyalarını say
+    Object.entries(history).forEach(([date, dayCases]) => {
+      if (date.startsWith(ym)) {
+        dayCases.forEach(c => {
+          if (c.assignedTo === tid && !c.absencePenalty && !c.backupBonus) count++;
+        });
+      }
+    });
+
+    // Bugünün cases'lerinden de say
+    cases.forEach(c => {
+      if (c.assignedTo === tid && c.createdAt.startsWith(ym) && !c.absencePenalty && !c.backupBonus) count++;
+    });
+
+    return count;
+  }
+
   // Gerçek yıllık yükü hesapla (cases + history'den)
   function getRealYearlyLoad(tid: string): number {
     const currentYear = new Date().getFullYear();
@@ -1180,14 +1203,18 @@ export default function DosyaAtamaApp() {
       if (isFirstOfYear) {
         testers.sort((a, b) => getPreviousYearLoad(a.id) - getPreviousYearLoad(b.id));
       } else {
-        // Sıralama: 1) Yıllık yük en az, 2) Bugün en az dosya alan, 3) Rastgele
+        // Sıralama: 1) Yıllık yük, 2) Günlük dosya, 3) Aylık adet, 4) Rastgele
         testers.sort((a, b) => {
-          // const byLoad = getRealYearlyLoad(a.id) - getRealYearlyLoad(b.id);
-          // UI ile tutarlılık için direkt stored yearlyLoad kullanıyoruz:
+          // 1. Yıllık yük (en düşük önce)
           const byLoad = a.yearlyLoad - b.yearlyLoad;
           if (byLoad !== 0) return byLoad;
+          // 2. Günlük dosya sayısı (en düşük önce)
           const byCount = countCasesToday(a.id) - countCasesToday(b.id);
           if (byCount !== 0) return byCount;
+          // 3. Aylık adet (en düşük önce)
+          const byMonthly = countCasesThisMonth(a.id) - countCasesThisMonth(b.id);
+          if (byMonthly !== 0) return byMonthly;
+          // 4. Rastgele
           return Math.random() - 0.5;
         });
       }
@@ -1218,16 +1245,22 @@ export default function DosyaAtamaApp() {
       available = available.filter(t => t.id !== lastTid);
     }
 
-    // 🆕 YENİ YIL İLK ATAMA: Geçen yılın en düşük puanlısını seç
+    // İlk yıl ilk atama kontrolü
     if (isFirstOfYear) {
       available.sort((a, b) => getPreviousYearLoad(a.id) - getPreviousYearLoad(b.id));
     } else {
-      // Sıralama
+      // Sıralama: 1) Yıllık yük, 2) Günlük dosya, 3) Aylık adet, 4) Rastgele
       available.sort((a, b) => {
+        // 1. Yıllık yük (en düşük önce)
         const byLoad = getRealYearlyLoad(a.id) - getRealYearlyLoad(b.id);
         if (byLoad !== 0) return byLoad;
+        // 2. Günlük dosya sayısı (en düşük önce)
         const byCount = countCasesToday(a.id) - countCasesToday(b.id);
         if (byCount !== 0) return byCount;
+        // 3. Aylık adet (en düşük önce)
+        const byMonthly = countCasesThisMonth(a.id) - countCasesThisMonth(b.id);
+        if (byMonthly !== 0) return byMonthly;
+        // 4. Rastgele
         return Math.random() - 0.5;
       });
     }
@@ -1284,12 +1317,18 @@ export default function DosyaAtamaApp() {
       available = available.filter(t => t.id !== lastTid);
     }
 
-    // Sıralama
+    // Sıralama: 1) Yıllık yük, 2) Günlük dosya, 3) Aylık adet, 4) Rastgele
     available.sort((a, b) => {
+      // 1. Yıllık yük (en düşük önce)
       const byLoad = getRealYearlyLoad(a.id) - getRealYearlyLoad(b.id);
       if (byLoad !== 0) return byLoad;
+      // 2. Günlük dosya sayısı (en düşük önce)
       const byCount = countCasesToday(a.id) - countCasesToday(b.id);
       if (byCount !== 0) return byCount;
+      // 3. Aylık adet (en düşük önce)
+      const byMonthly = countCasesThisMonth(a.id) - countCasesThisMonth(b.id);
+      if (byMonthly !== 0) return byMonthly;
+      // 4. Rastgele
       return Math.random() - 0.5;
     });
 
