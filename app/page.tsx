@@ -250,12 +250,13 @@ export default function DosyaAtamaApp() {
   const [loginRemember, setLoginRemember] = useState(true);
   const [showVersionPopup, setShowVersionPopup] = useState(false);
 
-  // Test Bitti Mi? Dialog State
+  // Test Bitti Mi? / Testör Koruma Dialog State
   const [testNotFinishedDialog, setTestNotFinishedDialog] = useState<{
     open: boolean;
     pendingCase: CaseFile | null;
     chosenTeacher: Teacher | null;
     skipTeacherIds: string[];
+    confirmType?: 'testNotFinished' | 'testerProtection';
   }>({ open: false, pendingCase: null, chosenTeacher: null, skipTeacherIds: [] });
 
   // Sound Effect
@@ -1340,7 +1341,8 @@ export default function DosyaAtamaApp() {
   }
 
   // 🆕 Test Bitti Mi Dialog ile Atama (skipTeacherIds: daha önce "bitmedi" denilen öğretmenler)
-  function autoAssignWithTestCheck(newCase: CaseFile, skipTeacherIds: string[] = []): { chosen: Teacher | null; needsConfirm: boolean; pendingCase?: CaseFile; availableList?: Teacher[] } {
+  // 🆕 Testör Koruma: Normal dosya testöre gidecekse onay iste
+  function autoAssignWithTestCheck(newCase: CaseFile, skipTeacherIds: string[] = []): { chosen: Teacher | null; needsConfirm: boolean; pendingCase?: CaseFile; availableList?: Teacher[]; confirmType?: 'testNotFinished' | 'testerProtection' } {
     const todayYmd = getTodayYmd();
     const lastTid = lastAssignedTeacherToday();
 
@@ -1378,13 +1380,26 @@ export default function DosyaAtamaApp() {
 
     const chosen = available[0];
 
+    // 🆕 TESTÖR KORUMA: Seçilen öğretmen testör ise ve normal dosya verilecekse onay iste
+    // (Testör test dosyası bekliyor olabilir)
+    if (chosen.isTester && !newCase.isTest) {
+      return {
+        chosen,
+        needsConfirm: true,
+        pendingCase: newCase,
+        availableList: available,
+        confirmType: 'testerProtection'
+      };
+    }
+
     // 🔔 TEST BİTTİ Mİ? Seçilen öğretmen bugün test aldıysa onay iste
     if (hasTestToday(chosen.id)) {
       return {
         chosen,
         needsConfirm: true,
         pendingCase: newCase,
-        availableList: available
+        availableList: available,
+        confirmType: 'testNotFinished'
       };
     }
 
@@ -1555,12 +1570,13 @@ export default function DosyaAtamaApp() {
       const result = autoAssignWithTestCheck(newCase);
 
       if (result.needsConfirm && result.chosen && result.pendingCase) {
-        // Test alan öğretmene atanacak - dialog göster
+        // Testör koruma veya test bitti dialogu göster
         setTestNotFinishedDialog({
           open: true,
           pendingCase: result.pendingCase,
           chosenTeacher: result.chosen,
-          skipTeacherIds: []
+          skipTeacherIds: [],
+          confirmType: result.confirmType
         });
         // Form resetleme ve case ekleme dialog callbacklerinde yapılacak
         return;
@@ -4911,29 +4927,37 @@ export default function DosyaAtamaApp() {
         </div>
       )}
 
-      {/* 🆕 Test Bitti Mi? Dialog */}
+      {/* 🆕 Test Bitti Mi? / Testör Koruma Dialog */}
       {testNotFinishedDialog.open && testNotFinishedDialog.chosenTeacher && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[99999]" onClick={() => setTestNotFinishedDialog({ open: false, pendingCase: null, chosenTeacher: null, skipTeacherIds: [] })}>
           <Card className="w-[420px] shadow-2xl border-0 animate-in fade-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
-            <CardHeader className="bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-t-lg">
+            <CardHeader className={`text-white rounded-t-lg ${testNotFinishedDialog.confirmType === 'testerProtection' ? 'bg-gradient-to-r from-purple-500 to-indigo-500' : 'bg-gradient-to-r from-amber-500 to-orange-500'}`}>
               <CardTitle className="text-white flex items-center gap-2">
-                <span className="text-2xl">⏱️</span>
-                <span>Test Bitti Mi?</span>
+                <span className="text-2xl">{testNotFinishedDialog.confirmType === 'testerProtection' ? '🛡️' : '⏱️'}</span>
+                <span>{testNotFinishedDialog.confirmType === 'testerProtection' ? 'Testör Koruma' : 'Test Bitti Mi?'}</span>
               </CardTitle>
             </CardHeader>
             <CardContent className="p-6 space-y-4">
               <div className="text-center">
-                <div className="inline-flex items-center justify-center w-16 h-16 bg-amber-100 rounded-full mb-4">
-                  <span className="text-3xl">🧪</span>
+                <div className={`inline-flex items-center justify-center w-16 h-16 rounded-full mb-4 ${testNotFinishedDialog.confirmType === 'testerProtection' ? 'bg-purple-100' : 'bg-amber-100'}`}>
+                  <span className="text-3xl">{testNotFinishedDialog.confirmType === 'testerProtection' ? '👨‍🏫' : '🧪'}</span>
                 </div>
                 <p className="text-lg font-medium text-slate-900 mb-2">
-                  <span className="text-amber-600 font-bold">{testNotFinishedDialog.chosenTeacher.name}</span>
+                  <span className={`font-bold ${testNotFinishedDialog.confirmType === 'testerProtection' ? 'text-purple-600' : 'text-amber-600'}`}>{testNotFinishedDialog.chosenTeacher.name}</span>
                 </p>
-                <p className="text-slate-600 text-sm">
-                  Bu öğretmen bugün test dosyası aldı.
-                  <br />
-                  Yeni dosya atanacak ama test henüz bitmemiş olabilir.
-                </p>
+                {testNotFinishedDialog.confirmType === 'testerProtection' ? (
+                  <p className="text-slate-600 text-sm">
+                    Bu öğretmen <strong>testör</strong> olarak seçili.
+                    <br />
+                    Normal dosya mı verilsin, yoksa test dosyası için mi beklesin?
+                  </p>
+                ) : (
+                  <p className="text-slate-600 text-sm">
+                    Bu öğretmen bugün test dosyası aldı.
+                    <br />
+                    Yeni dosya atanacak ama test henüz bitmemiş olabilir.
+                  </p>
+                )}
               </div>
 
               <div className="bg-slate-50 rounded-lg p-3 text-sm">
@@ -4954,18 +4978,20 @@ export default function DosyaAtamaApp() {
                   className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white"
                   onClick={confirmTestFinished}
                 >
-                  ✅ Test Bitti, Ata
+                  {testNotFinishedDialog.confirmType === 'testerProtection' ? '✅ Verilsin' : '✅ Test Bitti, Ata'}
                 </Button>
                 <Button
-                  className="flex-1 bg-amber-600 hover:bg-amber-700 text-white"
+                  className={`flex-1 text-white ${testNotFinishedDialog.confirmType === 'testerProtection' ? 'bg-purple-600 hover:bg-purple-700' : 'bg-amber-600 hover:bg-amber-700'}`}
                   onClick={skipTestNotFinished}
                 >
-                  ⏭️ Bitmedi, Atla
+                  {testNotFinishedDialog.confirmType === 'testerProtection' ? '🛡️ Atlansın, Test Beklesin' : '⏭️ Bitmedi, Atla'}
                 </Button>
               </div>
 
               <p className="text-xs text-center text-slate-500">
-                "Atla" seçerseniz dosya sıradaki uygun öğretmene verilecek
+                {testNotFinishedDialog.confirmType === 'testerProtection'
+                  ? '"Atlansın" seçerseniz dosya sıradaki öğretmene verilir, testör test için bekler'
+                  : '"Atla" seçerseniz dosya sıradaki uygun öğretmene verilecek'}
               </p>
             </CardContent>
           </Card>
