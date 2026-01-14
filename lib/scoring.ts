@@ -86,6 +86,7 @@ export function findBestTeacher(
     options?: {
         excludeIds?: string[];
         forTestCase?: boolean;
+        history?: Record<string, CaseFile[]>;
     }
 ): Teacher | null {
     // Bugünün tarihi (yedek günü kontrolü için)
@@ -133,15 +134,28 @@ export function findBestTeacher(
         return todayCounts[t.id] || 0;
     };
 
-    // Bu ay aldığı dosya sayısı (Aylık Adet)
+    // Bu ay aldığı dosya sayısı (Aylık Adet) - history dahil
     const getMonthlyCount = (t: Teacher): number => {
         const now = new Date();
         const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
         let count = 0;
-        // Bugünkü cases'lerden say
+
+        // 1. History'den bu ayki dosyaları say
+        if (options?.history) {
+            Object.entries(options.history).forEach(([date, dayCases]) => {
+                if (date.startsWith(ym)) {
+                    dayCases.forEach(c => {
+                        if (c.assignedTo === t.id && !c.absencePenalty) count++;
+                    });
+                }
+            });
+        }
+
+        // 2. Bugünkü cases'lerden de say
         cases.forEach(c => {
             if (c.assignedTo === t.id && c.createdAt.startsWith(ym) && !c.absencePenalty) count++;
         });
+
         return count;
     };
 

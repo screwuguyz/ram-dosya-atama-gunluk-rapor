@@ -77,11 +77,11 @@ export default function MiniWidgets() {
     const prediction = useMemo(() => {
         if (!nextAppointment || !settings) return null;
 
-        const bestForSupport = findBestTeacher(teachers, cases, settings, { forTestCase: false });
-        const bestForTest = findBestTeacher(teachers, cases, settings, { forTestCase: true });
+        const bestForSupport = findBestTeacher(teachers, cases, settings, { forTestCase: false, history });
+        const bestForTest = findBestTeacher(teachers, cases, settings, { forTestCase: true, history });
 
         return { bestForSupport, bestForTest };
-    }, [nextAppointment, teachers, cases, settings]);
+    }, [nextAppointment, teachers, cases, settings, history]);
 
     // 4. Aylık Performans
     const performanceStats = useMemo(() => {
