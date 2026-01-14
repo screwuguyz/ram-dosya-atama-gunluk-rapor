@@ -41,7 +41,7 @@ import CalendarView from "@/components/reports/CalendarView";
 import QuickSearch from "@/components/search/QuickSearch";
 import MiniWidgets from "@/components/dashboard/MiniWidgets";
 import DailyAppointmentsCard from "@/components/appointments/DailyAppointmentsCard";
-import { SchoolParade, FloatingIcons, WelcomeLottie } from "@/components/ui/FloatingAnimations";
+// FloatingAnimations components removed by user request
 // Monthly Recap removed by user request
 import { useAppStore } from "@/stores/useAppStore";
 // Merkezi tipler ve utility'ler
@@ -2785,8 +2785,7 @@ export default function DosyaAtamaApp() {
   if (viewMode === "landing") {
     return (
       <main className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-teal-50 via-white to-orange-50 relative text-slate-800 overflow-hidden">
-        {/* Hareketli Arka Plan İkonları */}
-        <FloatingIcons />
+
 
         {/* Animasyonlu arka plan deseni */}
         <div className="absolute inset-0 overflow-hidden">
@@ -2796,9 +2795,9 @@ export default function DosyaAtamaApp() {
         </div>
 
         <div className="relative z-10 max-w-3xl w-full mx-4 px-8 py-14 text-center space-y-8 bg-white/80 backdrop-blur-xl rounded-[40px] shadow-2xl border border-white/50 animate-landing-card">
-          {/* Logo/İkon - Floating animasyonu */}
-          <div className="flex justify-center">
-            <WelcomeLottie />
+          {/* Logo/İkon */}
+          <div className="flex justify-center mb-6">
+            <div className="text-[100px] drop-shadow-xl">🏫</div>
           </div>
 
           <div className="text-sm md:text-base uppercase tracking-[0.5em] text-teal-600 font-semibold animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
@@ -2858,7 +2857,7 @@ export default function DosyaAtamaApp() {
             v{APP_VERSION} • Son güncelleme: {new Date().toLocaleDateString('tr-TR')}
           </div>
         </div>
-        <SchoolParade />
+
       </main>
     );
   }
