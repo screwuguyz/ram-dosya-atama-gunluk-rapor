@@ -60,6 +60,7 @@ import { caseDescription } from "@/lib/scoring";
 
 
 
+
 // Utility fonksiyonları artık lib'den import ediliyor
 // Alias for backward compatibility
 const caseDesc = caseDescription;
@@ -3422,7 +3423,7 @@ export default function DosyaAtamaApp() {
   // ---------- TEK RETURN: BİLEŞEN ÇIKIŞI ----------
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-indigo-50 relative selection:bg-emerald-100 selection:text-emerald-900">
-      <FloatingIcons />
+
       <ThemeToggle />
       <div className="container mx-auto p-4 space-y-6 relative z-10">
         {/* Üst araç çubuğu: rapor ve giriş */}
