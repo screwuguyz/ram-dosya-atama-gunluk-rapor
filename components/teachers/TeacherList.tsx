@@ -328,8 +328,13 @@ export default function TeacherList() {
                                                 <span
                                                     className="inline-flex items-center gap-1 cursor-pointer hover:bg-slate-100 rounded px-1 -mx-1 transition-colors"
                                                     onClick={() => {
-                                                        setEditingLoadId(t.id);
-                                                        setEditLoadValue(String(t.yearlyLoad || 0));
+                                                        const pw = window.prompt("Puan düzenlemek için şifre girin:");
+                                                        if (pw === "Tuna.280225") {
+                                                            setEditingLoadId(t.id);
+                                                            setEditLoadValue(String(t.yearlyLoad || 0));
+                                                        } else if (pw !== null) {
+                                                            alert("Yanlış şifre!");
+                                                        }
                                                     }}
                                                     title="Puanı düzenlemek için tıklayın"
                                                 >
