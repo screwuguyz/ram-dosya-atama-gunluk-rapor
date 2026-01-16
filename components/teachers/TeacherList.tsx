@@ -29,7 +29,13 @@ export default function TeacherList() {
         absenceRecords,
         setAbsenceRecords,
         settings,
-        addToast
+        addToast,
+        history,
+        lastRollover,
+        lastAbsencePenalty,
+        announcements,
+        eArchive,
+        queue
     } = useAppStore();
 
     const [newTeacherName, setNewTeacherName] = useState("");
@@ -327,14 +333,41 @@ export default function TeacherList() {
                                             ) : (
                                                 <span
                                                     className="inline-flex items-center gap-1 cursor-pointer hover:bg-slate-100 rounded px-1 -mx-1 transition-colors"
-                                                    onClick={() => {
+                                                    onClick={async () => {
                                                         const pw = window.prompt("Puan düzenlemek için şifre girin:");
                                                         if (pw === "Tuna.280225") {
                                                             const newValStr = window.prompt(`${t.name} için yeni puan girin:`, String(t.yearlyLoad || 0));
                                                             if (newValStr !== null) {
                                                                 const newVal = Math.max(0, parseInt(newValStr) || 0);
+                                                                // Önce local state'i güncelle
+                                                                const updatedTeachers = teachers.map(teacher =>
+                                                                    teacher.id === t.id ? { ...teacher, yearlyLoad: newVal } : teacher
+                                                                );
                                                                 updateTeacher(t.id, { yearlyLoad: newVal });
-                                                                addToast(`${t.name} puanı ${newVal} olarak güncellendi.`);
+
+                                                                // Hemen Supabase'e kaydet (realtime sync'ten önce)
+                                                                try {
+                                                                    await fetch("/api/state", {
+                                                                        method: "POST",
+                                                                        headers: { "Content-Type": "application/json" },
+                                                                        body: JSON.stringify({
+                                                                            teachers: updatedTeachers,
+                                                                            cases,
+                                                                            history,
+                                                                            lastRollover,
+                                                                            lastAbsencePenalty,
+                                                                            announcements,
+                                                                            settings,
+                                                                            eArchive,
+                                                                            absenceRecords,
+                                                                            queue,
+                                                                            updatedAt: new Date().toISOString(),
+                                                                        }),
+                                                                    });
+                                                                    addToast(`${t.name} puanı ${newVal} olarak güncellendi.`);
+                                                                } catch (err) {
+                                                                    addToast(`Hata: Puan kaydedilemedi!`);
+                                                                }
                                                             }
                                                         } else if (pw !== null) {
                                                             alert("Yanlış şifre!");
