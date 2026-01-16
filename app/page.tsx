@@ -166,8 +166,18 @@ export default function DosyaAtamaApp() {
         return remoteT;
       });
 
+      // ORPHAN PROTECTION: Keep local teachers that are totally missing from server
+      // (This handles the case where we added a teacher, but server response came back without it yet)
+      const incomingIds = new Set(incomingTeachers.map((t: any) => t.id));
+      const orphanTeachers = currentTeachers.filter(t => !incomingIds.has(t.id));
+
+      if (orphanTeachers.length > 0) {
+        // console.log(`[Protection] Keeping ${orphanTeachers.length} local teachers not yet in server`);
+        mergedTeachers.push(...orphanTeachers);
+      }
+
       // Simple set
-      if (mergedTeachers.length > 0 || currentTeachers.length === 0) {
+      if (mergedTeachers.length > 0 || (currentTeachers.length === 0 && incomingTeachers.length === 0)) {
         setTeachers(mergedTeachers);
       }
 
