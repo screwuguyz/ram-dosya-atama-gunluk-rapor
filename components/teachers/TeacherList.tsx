@@ -72,6 +72,9 @@ export default function TeacherList() {
         // Güvenlik: Eğer ortalama 0 veya çok düşükse ve kullanıcı girmediyse varsayılan kullan
         if (initialLoad < 10 && !newTeacherStartScore.trim()) initialLoad = 75;
 
+        // DEBUG: Puanı kontrol et
+        // alert(`EKLENİYOR: ${name} - Puan: ${initialLoad}`);
+
         const newTeacher: Teacher = {
             id: uid(),
             name,
