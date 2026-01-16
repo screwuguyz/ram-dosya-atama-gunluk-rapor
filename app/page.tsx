@@ -55,6 +55,7 @@ import CaseList from "@/components/cases/CaseList";
 import { logger } from "@/lib/logger";
 import { notifyTeacher } from "@/lib/notifications";
 import { caseDescription } from "@/lib/scoring";
+import { useSupabaseSync } from "@/hooks/useSupabaseSync";
 
 
 
@@ -118,6 +119,8 @@ export default function DosyaAtamaApp() {
   const setLastAbsencePenalty = useAppStore(s => s.setLastAbsencePenalty);
 
   // Refler ve Local UI State
+  const { fetchCentralState, syncToServer } = useSupabaseSync();
+
   const lastAppliedAtRef = React.useRef<string>("")
   const teachersRef = React.useRef<Teacher[]>([]);
   const casesRef = React.useRef<CaseFile[]>([]);
@@ -479,138 +482,7 @@ export default function DosyaAtamaApp() {
     }
   }, []);
 
-  const fetchCentralState = React.useCallback(async () => {
-    try {
-      const res = await fetch(`/api/state?ts=${Date.now()}`, { cache: "no-store" });
-      if (!res.ok) {
-        logger.error("[fetchCentralState] HTTP error:", res.status);
-        return;
-      }
-      const s = await res.json();
-      // Supabase hatası varsa logla
-      if (s._error) {
-        logger.error("[fetchCentralState] Supabase error:", s._error);
-        toast(`Supabase bağlantı hatası: ${s._error}`);
-      }
-
-      // Supabase'den gelen öğretmen sayısını kaydet (koruma için)
-      const supabaseTeacherCount = s.teachers?.length || 0;
-      supabaseTeacherCountRef.current = supabaseTeacherCount;
-      logger.debug("[fetchCentralState] Supabase teacher count:", supabaseTeacherCount);
-
-      const incomingTs = Date.parse(String(s.updatedAt || 0));
-      const currentTs = Date.parse(String(lastAppliedAtRef.current || 0));
-      // Eğer gelen veri daha eskiyse veya aynıysa, güncelleme yapma (race condition önleme)
-      if (!isNaN(incomingTs) && incomingTs <= currentTs) {
-        logger.debug("[fetchCentralState] Skipping update - incoming data is older or same");
-        return;
-      }
-      lastAppliedAtRef.current = s.updatedAt || new Date().toISOString();
-
-      // KORUMA: Eğer Supabase'de öğretmen yoksa ama mevcut state'te varsa, mevcut state'i koru
-      // Ayrıca localStorage henüz yüklenmemişse (hydrated false), Supabase'den gelen boş veriyi kullanma
-      const supabaseTeachers = s.teachers ?? [];
-      const currentTeachers = teachersRef.current || [];
-
-      // Eğer localStorage henüz yüklenmemişse ve Supabase'de öğretmen yoksa, öğretmenleri güncelleme
-      // (localStorage yüklemesi tamamlanana kadar bekle)
-      if (!hydrated && supabaseTeachers.length === 0) {
-        logger.debug("[fetchCentralState] localStorage henüz yüklenmedi, öğretmenleri güncellemiyoruz.");
-        // Öğretmenleri güncelleme, sadece diğer verileri güncelle
-      } else if (supabaseTeachers.length === 0 && currentTeachers.length > 0) {
-        logger.warn("[fetchCentralState] Supabase'de öğretmen yok ama mevcut state'te var. Mevcut state'i koruyoruz.");
-        // Öğretmenleri güncelleme, sadece diğer verileri güncelle
-      } else if (supabaseTeachers.length > 0) {
-        // Supabase'de öğretmen varsa, onları kullan
-        setTeachers(supabaseTeachers);
-      }
-      // Eğer hem Supabase hem mevcut state boşsa, zaten boş kalacak
-
-      setCases(s.cases ?? []);
-      setHistory(s.history ?? {});
-      setLastRollover(s.lastRollover ?? "");
-      setLastAbsencePenalty(s.lastAbsencePenalty ?? "");
-      if (Array.isArray(s.announcements)) {
-        const today = getTodayYmd();
-        const todayAnnouncements = (s.announcements || []).filter((a: any) => (a.createdAt || "").slice(0, 10) === today);
-
-        // Yeni duyuru kontrolü - admin değilse popup göster
-        if (!isAdmin) {
-          for (const ann of todayAnnouncements) {
-            if (!seenAnnouncementIdsRef.current.has(ann.id)) {
-              seenAnnouncementIdsRef.current.add(ann.id);
-              // Yeni duyuru bulundu - popup göster ve ses çal
-              playAnnouncementSound();
-              showAnnouncementPopup(ann);
-              break; // Sadece bir tane göster
-            }
-          }
-        }
-
-        setAnnouncements(todayAnnouncements);
-      }
-      if (s.settings) updateSettings(s.settings);
-      // Tema ayarlarını Supabase'den yükle
-      if (s.themeSettings) {
-        loadThemeFromSupabase(s.themeSettings);
-      }
-      // E-Arşiv'i Supabase'den yükle (varsa)
-      if (Array.isArray(s.eArchive) && s.eArchive.length > 0) {
-        setEArchive(s.eArchive);
-      }
-      // Devamsızlık kayıtlarını Supabase'den yükle
-      if (Array.isArray(s.absenceRecords)) {
-        setAbsenceRecords(s.absenceRecords);
-      }
-      // Queue'yu Supabase'den yükle - Race condition önleme ile
-      const currentLocalQueue = useAppStore.getState().queue;
-      const localCalledTickets = currentLocalQueue.filter((t: any) => t && t.status === 'called');
-      const supabaseQueue = Array.isArray(s.queue) ? s.queue : [];
-      const supabaseCalledTickets = supabaseQueue.filter((t: any) => t && t.status === 'called');
-
-      // Eğer local'de yeni çağrılan bir ticket varsa ve Supabase'de yoksa, local'i koru
-      // (Yeni çağrılan ticket henüz Supabase'e sync olmamış olabilir)
-      if (localCalledTickets.length > 0 && supabaseCalledTickets.length === 0) {
-        const latestLocalCalled = localCalledTickets.sort((a, b) => {
-          const aTime = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
-          const bTime = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
-          return bTime - aTime;
-        })[0];
-
-        // Eğer local'deki çağrılan ticket çok yeni ise (son 2 saniye içinde), local'i koru
-        const localCalledTime = latestLocalCalled.updatedAt ? new Date(latestLocalCalled.updatedAt).getTime() : 0;
-        const now = Date.now();
-        if (now - localCalledTime < 2000) {
-          logger.debug("[fetchCentralState] Keeping local queue - recent call detected");
-          // Local queue'yu koru, Supabase'e sync olmasını bekle
-          return;
-        }
-      }
-
-      // Normal durum: Supabase'de queue varsa onu kullan
-      if (Array.isArray(s.queue)) {
-        if (s.queue.length > 0) {
-          logger.debug("[fetchCentralState] Loading queue from Supabase:", s.queue.length, "tickets");
-          setQueue(s.queue);
-        } else {
-          logger.debug("[fetchCentralState] Supabase queue is empty array");
-          setQueue([]);
-        }
-      } else {
-        logger.debug("[fetchCentralState] No queue property in Supabase state");
-        if (Array.isArray(currentLocalQueue) && currentLocalQueue.length > 0) {
-          logger.debug("[fetchCentralState] Keeping local queue:", currentLocalQueue.length, "tickets");
-        } else {
-          setQueue([]);
-        }
-      }
-      logger.debug("[fetchCentralState] Loaded, teachers:", s.teachers?.length || 0, "eArchive:", s.eArchive?.length || 0, "absenceRecords:", s.absenceRecords?.length || 0, "queue:", s.queue?.length || 0);
-    } catch (err) {
-      logger.error("[fetchCentralState] Network error:", err);
-    } finally {
-      setCentralLoaded(true);
-    }
-  }, [hydrated, setQueue]);
+  // fetchCentralState logic removed - replaced by useSupabaseSync hook
 
   function handlePdfFileChange(file: File | null) {
     setPdfFile(file);
@@ -861,14 +733,9 @@ export default function DosyaAtamaApp() {
 
 
   // ---- Merkezi durum: açılışta Supabase'den oku (LS olsa bile override et)
-  useEffect(() => {
-    fetchCentralState();
-  }, [fetchCentralState]);
-
   // ---- ⌨️ KLAVYE KISAYOLLARI
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
-      // Escape: Tüm modalları kapat
       if (e.key === "Escape") {
         if (loginOpen) setLoginOpen(false);
         if (settingsOpen) setSettingsOpen(false);
@@ -876,37 +743,16 @@ export default function DosyaAtamaApp() {
         if (showPdfPanel) setShowPdfPanel(false);
         if (showRules) setShowRules(false);
       }
-
-      // Ctrl+Enter veya Cmd+Enter: Dosya ekle (admin ise)
       if ((e.ctrlKey || e.metaKey) && e.key === "Enter" && isAdmin && student.trim()) {
         e.preventDefault();
         handleAddCase();
       }
     }
-
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [loginOpen, settingsOpen, feedbackOpen, showPdfPanel, showRules, isAdmin, student]);
 
-  useEffect(() => {
-    if (process.env.NEXT_PUBLIC_DISABLE_REALTIME === "1") return;
-    const channel = supabase
-      .channel("realtime:app_state")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "app_state" },
-        (payload: any) => {
-          const targetId = payload?.new?.id ?? payload?.old?.id;
-          if (targetId && targetId !== "global") return;
-          fetchCentralState();
-        }
-      )
-      .subscribe();
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [fetchCentralState]);
-
+  // PDF Realtime listener (kept as it is distinct from general app state)
   useEffect(() => {
     if (process.env.NEXT_PUBLIC_DISABLE_REALTIME === "1") return;
     const channel = supabase
@@ -923,6 +769,7 @@ export default function DosyaAtamaApp() {
       supabase.removeChannel(channel);
     };
   }, [fetchPdfEntriesFromServer]);
+
   // Oturum bilgisini sunucudan çek
   useEffect(() => {
     fetch("/api/session").then(r => r.ok ? r.json() : { isAdmin: false })
@@ -930,10 +777,9 @@ export default function DosyaAtamaApp() {
       .catch(() => { });
   }, []);
 
-  // Versiyon kontrolü - Admin olmayan kullanıcılar için
+  // Versiyon kontrolü
   useEffect(() => {
-    if (isAdmin || !hydrated) return; // Admin ise veya henüz yüklenmediyse gösterme
-
+    if (isAdmin || !hydrated) return;
     try {
       const lastSeenVersion = localStorage.getItem(LS_LAST_SEEN_VERSION);
       if (lastSeenVersion !== APP_VERSION) {
@@ -941,103 +787,10 @@ export default function DosyaAtamaApp() {
       }
     } catch { }
   }, [isAdmin, hydrated]);
-  // === Realtime abonelik: postgres_changes kullan (broadcast yerine) ===
-  // Not: Broadcast kaldırıldı, sadece postgres_changes kullanılıyor
-  // useSupabaseSync hook'u zaten postgres_changes ile app_state tablosunu dinliyor
-  useEffect(() => {
-    if (process.env.NEXT_PUBLIC_DISABLE_REALTIME === '1') {
-      setLive('offline');
-      return;
-    }
-    // Realtime connection status için basit bir kontrol
-    // Asıl sync useSupabaseSync hook'unda yapılıyor
-    setLive('online');
-    return () => {
-      setLive('offline');
-    };
-  }, []);
 
-  // === Admin değiştirince merkezi state'e de yaz (kalıcılık)
-  useEffect(() => {
-    if (!isAdmin) return;
-    if (!hydrated) return;
-    if (!centralLoaded) return;
-
-    // KORUMA: Eğer Supabase'de öğretmen varsa ama local'de yoksa, yazma!
-    // Bu, yeni tarayıcı/boş localStorage'ın Supabase verisini silmesini önler
-    if (supabaseTeacherCountRef.current > 0 && teachers.length === 0) {
-      logger.warn("[state POST] BLOCKED: Supabase has", supabaseTeacherCountRef.current, "teachers but local has 0. Refusing to overwrite.");
-      return;
-    }
-
-    // KORUMA: Queue boşsa ve Supabase'de queue varsa, yazma!
-    // Bu, /api/queue endpoint'inin yazdığı queue'yu silmeyi önler
-    // Queue sadece admin panelinde değişiklik yapıldığında yazılmalı
-    // /api/queue endpoint'i zaten queue'yu Supabase'e yazıyor
-    const currentQueue = useAppStore.getState().queue;
-    if (!Array.isArray(currentQueue) || currentQueue.length === 0) {
-      // Queue boş, Supabase'e yazma (queue sadece /api/queue veya admin panelinde değişiklik yapıldığında yazılmalı)
-      logger.debug("[state POST] Skipping queue sync - queue is empty (will be written by /api/queue endpoint)");
-    }
-
-    const ctrl = new AbortController();
-    const nowTs = new Date().toISOString();
-    lastAppliedAtRef.current = nowTs;
-    // Tema ayarlarını payload'a ekle
-    const themeMode = getThemeMode();
-    const colorSchemeName = typeof window !== "undefined" ? (localStorage.getItem("site_color_scheme") || "default") : "default";
-    const customColors = typeof window !== "undefined" ? (() => {
-      try {
-        const custom = localStorage.getItem("site_custom_colors");
-        return custom ? JSON.parse(custom) : undefined;
-      } catch {
-        return undefined;
-      }
-    })() : undefined;
-
-    const payload = {
-      teachers,
-      cases,
-      history,
-      lastRollover,
-      lastAbsencePenalty,
-      announcements,
-      settings,
-      themeSettings: {
-        themeMode,
-        colorScheme: colorSchemeName,
-        customColors: colorSchemeName === "custom" ? customColors : undefined,
-      },
-      eArchive,
-      absenceRecords,
-      // Queue'yu sadece boş değilse ekle
-      ...(Array.isArray(currentQueue) && currentQueue.length > 0 ? { queue: currentQueue } : {}),
-      updatedAt: nowTs,
-    };
-    const t = window.setTimeout(() => {
-      fetch("/api/state", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-        signal: ctrl.signal,
-      })
-        .then(async (res) => {
-          if (!res.ok) {
-            const json = await res.json().catch(() => ({}));
-            logger.error("[state POST] Error:", json);
-            toast(`Supabase kayıt hatası: ${json?.error || res.status}`);
-          } else {
-            logger.debug("[state POST] Success, teachers:", teachers.length, "queue:", currentQueue.length);
-          }
-        })
-        .catch((err) => {
-          if (err.name !== "AbortError") {
-            logger.error("[state POST] Network error:", err);
-          }
-        });
-    }, 300);
-    return () => { window.clearTimeout(t); ctrl.abort(); };
-  }, [teachers, cases, history, lastRollover, lastAbsencePenalty, announcements, settings, eArchive, absenceRecords, queue, isAdmin, hydrated, centralLoaded]);
+  // Connection status (already handled by useSupabaseSync logic via liveStatus in store, but keeping basic check or using hook's isConnected)
+  // setLiveStatus is updated by hook, so we don't need manual setLive logic here except for fallback.
+  // We can remove the setLive logic here as hook handles it.
 
   // Tema ayarlarını Supabase'e senkronize et
   useEffect(() => {
