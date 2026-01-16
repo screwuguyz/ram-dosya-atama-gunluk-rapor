@@ -277,7 +277,7 @@ export function useSupabaseSync(): SupabaseSyncHook {
             const debugTeacher = currentTeachers.find(t => t.name.includes("ANIL") || t.name.includes("Anıl"));
             if (debugTeacher) {
                 // Sadece kullanıcıya bilgi vermek için alert (geçici)
-                // alert(`DEBUG: Sunucuya gönderilecek puan: ${debugTeacher.name} = ${debugTeacher.yearlyLoad}`);
+                alert(`DEBUG: Sunucuya gönderilecek puan: ${debugTeacher.name} = ${debugTeacher.yearlyLoad}`);
                 console.log(`[syncToServer] Sending: ${debugTeacher.name} = ${debugTeacher.yearlyLoad}`);
             }
 
@@ -309,6 +309,7 @@ export function useSupabaseSync(): SupabaseSyncHook {
                 clientId: clientId.current,
             };
 
+            // 1. API ÜZERİNDEN KAYIT (Mevcut Yöntem)
             const res = await fetch(API_ENDPOINTS.STATE, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -318,6 +319,21 @@ export function useSupabaseSync(): SupabaseSyncHook {
             if (!res.ok) {
                 console.error("[syncToServer] HTTP error:", res.status);
                 addToast(`Kayıt hatası: Sunucu hatası (${res.status})`);
+
+                // 2. FAILSAFE: API BAŞARISIZ OLURSA DOĞRUDAN SUPABASE YAZ (Eğer RLS izin verirse)
+                console.log("[syncToServer] Attempting direct Supabase write fallback...");
+                const { error: directError } = await supabase
+                    .from('app_state')
+                    .upsert({ id: 'global', state: payload, updated_at: payload.updatedAt });
+
+                if (directError) {
+                    console.error("[syncToServer] Direct write failed:", directError);
+                    alert(`KRİTİK HATA: Hem API hem Supabase doğrudan yazma başarısız!\n${directError.message}`);
+                } else {
+                    console.log("[syncToServer] Direct write SUCCESS!");
+                    alert("API hatası aldı ama doğrudan veritabanına yazıldı!");
+                }
+
             } else {
                 console.log("[syncToServer] Successfully synced to server");
 
