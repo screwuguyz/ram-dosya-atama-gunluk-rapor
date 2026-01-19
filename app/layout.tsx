@@ -4,6 +4,8 @@ import { Outfit } from "next/font/google";
 import "./globals.css";
 import ThemeProvider from "@/components/ThemeProvider";
 import ErrorBoundary from "@/components/ErrorBoundary";
+import { ProductionDebugGuard } from "@/components/ProductionDebugGuard";
+import { EnvironmentValidator } from "@/components/EnvironmentValidator";
 
 const outfit = Outfit({ subsets: ['latin'], variable: '--font-outfit' });
 
@@ -94,11 +96,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         `}</style>
       </head>
       <body className="min-h-screen bg-slate-50 antialiased selection:bg-teal-200 selection:text-teal-900">
-        <ErrorBoundary>
-          <ThemeProvider>
-            <div className="relative z-10">{children}</div>
-          </ThemeProvider>
-        </ErrorBoundary>
+        <ProductionDebugGuard />
+        <EnvironmentValidator>
+          <ErrorBoundary>
+            <ThemeProvider>
+              <div className="relative z-10">{children}</div>
+            </ThemeProvider>
+          </ErrorBoundary>
+        </EnvironmentValidator>
       </body>
     </html>
   );

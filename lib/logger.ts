@@ -1,52 +1,62 @@
 // ============================================
-// RAM Dosya Atama - Logger Utility
+// RAM Dosya Atama - Production-Safe Logger
+// Automatically disabled in production
 // ============================================
 
-type LogLevel = 'debug' | 'info' | 'warn' | 'error';
+import { FeatureFlags } from './featureFlags';
 
-const LOG_LEVELS: Record<LogLevel, number> = {
-  debug: 0,
-  info: 1,
-  warn: 2,
-  error: 3,
-};
-
-const getLogLevel = (): LogLevel => {
-  if (typeof window === 'undefined') {
-    return process.env.NODE_ENV === 'production' ? 'warn' : 'debug';
-  }
-  // Client-side: production'da sadece warn/error
-  return process.env.NODE_ENV === 'production' ? 'warn' : 'debug';
-};
-
-const shouldLog = (level: LogLevel): boolean => {
-  const currentLevel = getLogLevel();
-  return LOG_LEVELS[level] >= LOG_LEVELS[currentLevel];
-};
-
+/**
+ * Debug logger that's automatically disabled in production
+ * Use this instead of console.log for debug messages
+ */
 export const logger = {
-  debug: (...args: unknown[]) => {
-    if (shouldLog('debug')) {
-      console.debug('[DEBUG]', ...args);
+  /**
+   * Debug log - only shows in development
+   */
+  debug: (...args: any[]) => {
+    if (!FeatureFlags.PRODUCTION_MODE && FeatureFlags.DEBUG_SYNC) {
+      console.log('[DEBUG]', ...args);
     }
   },
-  
-  info: (...args: unknown[]) => {
-    if (shouldLog('info')) {
-      console.info('[INFO]', ...args);
+
+  /**
+   * Info log - shows in development, minimal in production
+   */
+  info: (...args: any[]) => {
+    if (!FeatureFlags.PRODUCTION_MODE) {
+      console.log('[INFO]', ...args);
     }
   },
-  
-  warn: (...args: unknown[]) => {
-    if (shouldLog('warn')) {
-      console.warn('[WARN]', ...args);
-    }
+
+  /**
+   * Warning - always shows (important for troubleshooting)
+   */
+  warn: (...args: any[]) => {
+    console.warn('[WARN]', ...args);
   },
-  
-  error: (...args: unknown[]) => {
-    if (shouldLog('error')) {
-      console.error('[ERROR]', ...args);
-    }
+
+  /**
+   * Error - always shows (critical for troubleshooting)
+   */
+  error: (...args: any[]) => {
+    console.error('[ERROR]', ...args);
   },
+
+  /**
+   * Alert replacement - only shows in development
+   * In production, logs to console instead of showing alert popup
+   */
+  alert: (message: string) => {
+    if (!FeatureFlags.PRODUCTION_MODE) {
+      alert(message);
+    } else {
+      console.warn('[ALERT SUPPRESSED]', message);
+    }
+  }
 };
 
+/**
+ * Legacy support - use logger.debug instead
+ * @deprecated Use logger.debug() instead
+ */
+export const debugLog = logger.debug;

@@ -1,6 +1,7 @@
 // app/api/state/route.ts (Supabase-backed)
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { FeatureFlags } from "@/lib/featureFlags";
 
 export const runtime = "nodejs";
 
@@ -83,12 +84,15 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  // const isAdmin = req.cookies.get("ram_admin")?.value === "1";
-  // if (!isAdmin) {
-  //   return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
-  // }
-  // SECURITY WARNING: Admin check disabled for debugging
-  const isAdmin = true;
+  // SECURITY: Admin authentication with feature flag control
+  // When REQUIRE_ADMIN_AUTH is true (production default), check auth cookie
+  // When false (local dev only), skip auth check
+  if (FeatureFlags.REQUIRE_ADMIN_AUTH) {
+    const isAdmin = req.cookies.get("ram_admin")?.value === "1";
+    if (!isAdmin) {
+      return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+    }
+  }
 
   let body: Partial<StateShape> = {};
   try {

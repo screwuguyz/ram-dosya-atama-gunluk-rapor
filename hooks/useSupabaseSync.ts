@@ -13,6 +13,7 @@ import { loadThemeFromSupabase } from "@/lib/theme";
 import { REALTIME_CHANNEL, API_ENDPOINTS } from "@/lib/constants";
 import { FeatureFlags } from "@/lib/featureFlags";
 import { retryWithBackoff } from "@/lib/syncUtils";
+import { logger } from "@/lib/logger";
 import type { Teacher, CaseFile, Settings, EArchiveEntry, AbsenceRecord, QueueTicket } from "@/types";
 
 // Generate unique client ID
@@ -305,12 +306,10 @@ export function useSupabaseSync(): SupabaseSyncHook {
             // Get latest state from store to avoid closure issues
             const currentTeachers = useAppStore.getState().teachers;
 
-            // DEBUG: Check specific teacher
+            // DEBUG: Check specific teacher (only in development)
             const debugTeacher = currentTeachers.find(t => t.name.includes("ANIL") || t.name.includes("Anıl"));
             if (debugTeacher) {
-                // Sadece kullanıcıya bilgi vermek için alert (geçici)
-                alert(`DEBUG: Sunucuya gönderilecek puan: ${debugTeacher.name} = ${debugTeacher.yearlyLoad}`);
-                console.log(`[syncToServer] Sending: ${debugTeacher.name} = ${debugTeacher.yearlyLoad}`);
+                logger.debug(`[syncToServer] Sending: ${debugTeacher.name} = ${debugTeacher.yearlyLoad}`);
             }
 
             const currentCases = useAppStore.getState().cases;
@@ -366,10 +365,11 @@ export function useSupabaseSync(): SupabaseSyncHook {
 
                 if (directError) {
                     console.error("[syncToServer] Direct write failed:", directError);
-                    alert(`KRİTİK HATA: Hem API hem Supabase doğrudan yazma başarısız!\n${directError.message}`);
+                    addToast(`Kritik hata: Veri kaydedilemedi. Lütfen sayfayı yenileyin.`);
+                    logger.alert(`KRİTİK HATA: Hem API hem Supabase doğrudan yazma başarısız!\n${directError.message}`);
                 } else {
                     console.log("[syncToServer] Direct write SUCCESS!");
-                    alert("API hatası aldı ama doğrudan veritabanına yazıldı!");
+                    addToast("API hatası oldu ancak veriler kaydedildi.");
                 }
 
             } else {

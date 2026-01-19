@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { FeatureFlags } from "@/lib/featureFlags";
 
 export const runtime = "nodejs";
 
@@ -7,6 +8,14 @@ export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
     try {
+        // SECURITY: Admin authentication with feature flag control
+        if (FeatureFlags.REQUIRE_ADMIN_AUTH) {
+            const isAdmin = req.cookies.get("ram_admin")?.value === "1";
+            if (!isAdmin) {
+                return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+            }
+        }
+
         const body = await req.json();
         const { action, name } = body;
 
