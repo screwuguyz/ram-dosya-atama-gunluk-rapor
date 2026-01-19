@@ -71,10 +71,17 @@ export default function AssignedArchive({
   }, [days, day]);
 
   const list = useMemo(() => {
-    return [
+    // History ve cases birleştirilirken aynı ID'liler çiftlenebilir; önce dedupe et
+    const combined = [
       ...(history[day] || []),
       ...cases.filter((c) => c.createdAt.slice(0, 10) === day),
-    ].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+    ];
+    // Map ile benzersiz ID'leri tut (son gelen kazanır)
+    const uniqueMap = new Map<string, CaseFile>();
+    for (const c of combined) {
+      uniqueMap.set(c.id, c);
+    }
+    return Array.from(uniqueMap.values()).sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   }, [day, history, cases]);
 
   const idx = days.indexOf(day);
