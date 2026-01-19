@@ -199,8 +199,12 @@ export default function DailyReportView({
       if (!ymd.startsWith(monthKey)) return;
       const key = `${c.assignedTo}|${ymd}`;
       const cur = m.get(key) || { points: 0, count: 0 };
-      cur.points += c.score;
-      if (!c.absencePenalty && !c.backupBonus) cur.count += 1;
+      // Fix: Absence penalty ve Backup bonus puanlarını toplama dahil etme
+      // Bunlar sistem dengeleme puanlarıdır, günlük yapılan iş puanı değildir.
+      if (!c.absencePenalty && !c.backupBonus) {
+        cur.points += c.score;
+        cur.count += 1;
+      }
       m.set(key, cur);
     });
     return m;
