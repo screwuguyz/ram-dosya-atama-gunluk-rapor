@@ -4,7 +4,7 @@
 
 "use client";
 
-import { useEffect, useRef, useCallback, useMemo } from "react";
+import { useEffect, useRef, useCallback, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { useAppStore } from "@/stores/useAppStore";
@@ -12,6 +12,7 @@ import { getTodayYmd } from "@/lib/date";
 import { loadThemeFromSupabase } from "@/lib/theme";
 import { REALTIME_CHANNEL, API_ENDPOINTS } from "@/lib/constants";
 import { FeatureFlags } from "@/lib/featureFlags";
+import { retryWithBackoff } from "@/lib/syncUtils";
 import type { Teacher, CaseFile, Settings, EArchiveEntry, AbsenceRecord, QueueTicket } from "@/types";
 
 // Generate unique client ID
@@ -19,16 +20,24 @@ function uid(): string {
     return Math.random().toString(36).slice(2, 9);
 }
 
+export type SyncStatus = 'idle' | 'syncing' | 'success' | 'error';
+
 interface SupabaseSyncHook {
     fetchCentralState: () => Promise<void>;
     syncToServer: () => Promise<void>;
     isConnected: boolean;
+    syncStatus: SyncStatus;
+    lastSyncError: string | null;
 }
 
 export function useSupabaseSync(): SupabaseSyncHook {
     const clientId = useRef(uid());
     const channelRef = useRef<RealtimeChannel | null>(null);
     const lastAppliedAtRef = useRef<string>("");
+
+    // Sync status tracking
+    const [syncStatus, setSyncStatus] = useState<SyncStatus>('idle');
+    const [lastSyncError, setLastSyncError] = useState<string | null>(null);
 
     // Store selectors
     const {
@@ -264,6 +273,10 @@ export function useSupabaseSync(): SupabaseSyncHook {
 
     // Sync current state to server (only for admin users)
     const syncToServer = useCallback(async () => {
+        // Set syncing status
+        setSyncStatus('syncing');
+        setLastSyncError(null);
+
         try {
             // REMOVED LOCALHOST BLOCK to allow fixing data from local dev
             // if (typeof window !== "undefined" &&
@@ -368,10 +381,18 @@ export function useSupabaseSync(): SupabaseSyncHook {
                 }
 
                 lastAppliedAtRef.current = payload.updatedAt; // Prevent loop
+                setSyncStatus('success');
+
+                // Reset to idle after 2 seconds
+                setTimeout(() => setSyncStatus('idle'), 2000);
             }
 
-        } catch (err) {
+        } catch (err: any) {
             console.error("[syncToServer] Network error:", err);
+            setSyncStatus('error');
+            setLastSyncError(err?.message || 'Network error');
+
+            // Auto-retry is handled by debounced auto-sync
         }
     }, [
         // Don't include queue in deps - we get it directly from store
@@ -383,9 +404,12 @@ export function useSupabaseSync(): SupabaseSyncHook {
     useEffect(() => {
         if (!hydrated) return;
 
+        // Improved debounce: 3 seconds (reduces conflicts)
+        const debounceMs = FeatureFlags.USE_IMPROVED_SYNC ? 3000 : 1000;
+
         const timer = setTimeout(() => {
             syncToServer();
-        }, 1000); // Debounce 1s (Faster Sync)
+        }, debounceMs);
 
         return () => clearTimeout(timer);
     }, [
@@ -461,5 +485,7 @@ export function useSupabaseSync(): SupabaseSyncHook {
         fetchCentralState,
         syncToServer,
         isConnected: liveStatus === "online",
+        syncStatus,
+        lastSyncError,
     };
 }

@@ -34,6 +34,9 @@ type StateShape = {
   // Only kept for backward compatibility (NEXT_PUBLIC_USE_SEPARATE_QUEUE=false)
   queue?: QueueTicket[];
 
+  // Versioning (for conflict detection)
+  version?: number;
+
   updatedAt?: string;
 };
 
@@ -106,16 +109,46 @@ export async function POST(req: NextRequest) {
     eArchive: Array.isArray(body.eArchive) ? (body.eArchive as EArchiveEntry[]) : [],
     absenceRecords: Array.isArray(body.absenceRecords) ? (body.absenceRecords as AbsenceRecord[]) : [],
     queue: Array.isArray(body.queue) ? (body.queue as QueueTicket[]) : [],
+    version: body.version,
     updatedAt: body.updatedAt ? String(body.updatedAt) : new Date().toISOString(),
   };
+
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL as string;
   const service = process.env.SUPABASE_SERVICE_ROLE_KEY as string;
   if (!url || !service) {
     console.error("[api/state][POST] Missing env vars: URL=", !!url, "SERVICE_KEY=", !!service);
     return NextResponse.json({ ok: false, error: "Missing Supabase envs (URL or SERVICE_ROLE_KEY)" }, { status: 500 });
   }
+
   try {
     const admin = createClient(url, service);
+
+    // Versioning: Check for conflicts if feature enabled
+    const useVersioning = process.env.NEXT_PUBLIC_USE_VERSIONING === 'true';
+    if (useVersioning && body.version) {
+      const { data: currentState } = await admin
+        .from("app_state")
+        .select("state")
+        .eq("id", "global")
+        .maybeSingle();
+
+      const currentVersion = (currentState?.state as StateShape)?.version || 0;
+
+      if (currentVersion > body.version) {
+        console.warn("[api/state][POST] Version conflict detected:", {
+          incoming: body.version,
+          current: currentVersion
+        });
+        return NextResponse.json({
+          ok: false,
+          error: "Version conflict",
+          conflict: true,
+          currentVersion,
+          incomingVersion: body.version
+        }, { status: 409 });
+      }
+    }
+
     const { error } = await admin
       .from("app_state")
       .upsert({ id: "global", state: s, updated_at: new Date().toISOString() })
@@ -124,8 +157,8 @@ export async function POST(req: NextRequest) {
       console.error("[api/state][POST] Supabase error:", error);
       throw error;
     }
-    console.log("[api/state][POST] Success, teachers count:", s.teachers?.length || 0);
-    return NextResponse.json({ ok: true });
+    console.log("[api/state][POST] Success, teachers count:", s.teachers?.length || 0, "version:", s.version);
+    return NextResponse.json({ ok: true, version: s.version });
   } catch (err: any) {
     console.error("[api/state][POST]", err?.message || err);
     return NextResponse.json({ ok: false, error: String(err?.message || err) }, { status: 500 });
