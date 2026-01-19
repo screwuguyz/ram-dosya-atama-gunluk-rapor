@@ -3,6 +3,7 @@
 // ============================================
 
 import { createClient } from "@supabase/supabase-js";
+import { getErrorMessage } from "./errorUtils";
 
 export interface BackupMetadata {
   id: string;
@@ -58,8 +59,8 @@ export async function createManualBackup(
     }
 
     return { success: true, backupId };
-  } catch (error: any) {
-    return { success: false, error: error.message || "Unknown error" };
+  } catch (error: unknown) {
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
@@ -108,8 +109,8 @@ export async function restoreFromBackup(
     }
 
     return { success: true };
-  } catch (error: any) {
-    return { success: false, error: error.message || "Unknown error" };
+  } catch (error: unknown) {
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
@@ -141,16 +142,16 @@ export async function listBackups(): Promise<{
       return { success: false, error: error.message };
     }
 
-    const backups: BackupMetadata[] = (data || []).map((b: any) => ({
-      id: b.id,
-      label: b.description || b.backup_type,
-      createdAt: b.created_at,
+    const backups: BackupMetadata[] = (data || []).map((b) => ({
+      id: String(b.id),
+      label: String(b.description || b.backup_type || 'backup'),
+      createdAt: String(b.created_at),
       size: 0, // We could calculate this if needed
     }));
 
     return { success: true, backups };
-  } catch (error: any) {
-    return { success: false, error: error.message || "Unknown error" };
+  } catch (error: unknown) {
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
@@ -184,7 +185,7 @@ export async function exportStateAsJSON(): Promise<{
 
     const json = JSON.stringify(data, null, 2);
     return { success: true, json };
-  } catch (error: any) {
-    return { success: false, error: error.message || "Unknown error" };
+  } catch (error: unknown) {
+    return { success: false, error: getErrorMessage(error) };
   }
 }

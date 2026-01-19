@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { FeatureFlags } from "@/lib/featureFlags";
+import { getErrorMessage } from "@/lib/errorUtils";
 
 export const runtime = "nodejs";
 
@@ -77,9 +78,10 @@ export async function GET() {
     const s = (data?.state as StateShape) || DEFAULT_STATE;
     console.log("[api/state][GET] Success, teachers count:", s.teachers?.length || 0);
     return NextResponse.json(s, { headers: { "Cache-Control": "no-store" } });
-  } catch (err: any) {
-    console.error("[api/state][GET]", err?.message || err);
-    return NextResponse.json({ ...DEFAULT_STATE, _error: err?.message }, { headers: { "Cache-Control": "no-store" } });
+  } catch (err: unknown) {
+    const errorMsg = getErrorMessage(err);
+    console.error("[api/state][GET]", errorMsg);
+    return NextResponse.json({ ...DEFAULT_STATE, _error: errorMsg }, { headers: { "Cache-Control": "no-store" } });
   }
 }
 
@@ -163,8 +165,9 @@ export async function POST(req: NextRequest) {
     }
     console.log("[api/state][POST] Success, teachers count:", s.teachers?.length || 0, "version:", s.version);
     return NextResponse.json({ ok: true, version: s.version });
-  } catch (err: any) {
-    console.error("[api/state][POST]", err?.message || err);
-    return NextResponse.json({ ok: false, error: String(err?.message || err) }, { status: 500 });
+  } catch (err: unknown) {
+    const errorMsg = getErrorMessage(err);
+    console.error("[api/state][POST]", errorMsg);
+    return NextResponse.json({ ok: false, error: errorMsg }, { status: 500 });
   }
 }

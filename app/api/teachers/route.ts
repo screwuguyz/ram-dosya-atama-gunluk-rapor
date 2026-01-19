@@ -1,4 +1,5 @@
 // ============================================
+import { getErrorMessage } from "@/lib/errorUtils";
 // RAM Dosya Atama - Teachers API (Dedicated Table)
 // Week 2-4: CRUD operations for teachers table
 // ============================================
@@ -59,7 +60,7 @@ export async function GET() {
     }));
 
     return NextResponse.json({ ok: true, teachers });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[api/teachers][GET]", error);
     return NextResponse.json(
       { ok: false, error: error.message },
@@ -162,7 +163,7 @@ export async function POST(req: NextRequest) {
         version: data.version,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[api/teachers][POST]", error);
     return NextResponse.json(
       { ok: false, error: error.message },
@@ -242,7 +243,7 @@ export async function PATCH(req: NextRequest) {
       newVersion: result.new_version,
       newScore: result.new_score,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[api/teachers][PATCH]", error);
     return NextResponse.json(
       { ok: false, error: error.message },
@@ -295,7 +296,7 @@ export async function DELETE(req: NextRequest) {
     }
 
     return NextResponse.json({ ok: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[api/teachers][DELETE]", error);
     return NextResponse.json(
       { ok: false, error: error.message },

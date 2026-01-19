@@ -2,6 +2,8 @@
 // RAM Dosya Atama - Sync Utilities
 // ============================================
 
+import { getErrorMessage } from "./errorUtils";
+
 /**
  * Retry a function with exponential backoff
  */
@@ -10,18 +12,18 @@ export async function retryWithBackoff<T>(
   maxRetries: number = 3,
   initialDelay: number = 1000
 ): Promise<{ success: boolean; data?: T; error?: string }> {
-  let lastError: any;
+  let lastError: unknown;
 
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
       const result = await fn();
       return { success: true, data: result };
-    } catch (error: any) {
+    } catch (error: unknown) {
       lastError = error;
 
-      // Don't retry on certain errors
-      if (error.status === 409) { // Conflict
-        return { success: false, error: error.message || "Conflict detected" };
+      // Don't retry on certain errors (like conflict)
+      if (error && typeof error === 'object' && 'status' in error && error.status === 409) {
+        return { success: false, error: getErrorMessage(error) };
       }
 
       if (attempt < maxRetries - 1) {
@@ -34,7 +36,7 @@ export async function retryWithBackoff<T>(
 
   return {
     success: false,
-    error: lastError?.message || "Max retries exceeded"
+    error: getErrorMessage(lastError) || "Max retries exceeded"
   };
 }
 

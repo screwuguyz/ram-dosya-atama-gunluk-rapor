@@ -6,7 +6,7 @@
 
 import { useEffect, useRef, useCallback, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import type { RealtimeChannel } from "@supabase/supabase-js";
+import type { RealtimeChannel, RealtimePostgresChangesPayload } from "@supabase/supabase-js";
 import { useAppStore } from "@/stores/useAppStore";
 import { getTodayYmd } from "@/lib/date";
 import { loadThemeFromSupabase } from "@/lib/theme";
@@ -14,6 +14,7 @@ import { REALTIME_CHANNEL, API_ENDPOINTS } from "@/lib/constants";
 import { FeatureFlags } from "@/lib/featureFlags";
 import { retryWithBackoff } from "@/lib/syncUtils";
 import { logger } from "@/lib/logger";
+import { getErrorMessage } from "@/lib/errorUtils";
 import type { Teacher, CaseFile, Settings, EArchiveEntry, AbsenceRecord, QueueTicket } from "@/types";
 
 // Generate unique client ID
@@ -387,10 +388,10 @@ export function useSupabaseSync(): SupabaseSyncHook {
                 setTimeout(() => setSyncStatus('idle'), 2000);
             }
 
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error("[syncToServer] Network error:", err);
             setSyncStatus('error');
-            setLastSyncError(err?.message || 'Network error');
+            setLastSyncError(getErrorMessage(err));
 
             // Auto-retry is handled by debounced auto-sync
         }
@@ -439,7 +440,7 @@ export function useSupabaseSync(): SupabaseSyncHook {
             .on(
                 "postgres_changes",
                 { event: "*", schema: "public", table: "app_state" },
-                (payload: any) => {
+                (payload: RealtimePostgresChangesPayload<{ id: string }>) => {
                     const targetId = payload?.new?.id ?? payload?.old?.id;
                     if (targetId && targetId !== "global") return;
                     console.log("[Realtime] app_state changed, fetching...");

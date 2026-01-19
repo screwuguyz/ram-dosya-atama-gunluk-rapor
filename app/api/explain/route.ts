@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getErrorMessage } from "@/lib/errorUtils";
 
 export const runtime = "nodejs";
 
@@ -150,10 +151,10 @@ export async function POST(req: NextRequest) {
     const ok = NextResponse.json({ answer });
     addCors(ok);
     return ok;
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error("/api/explain server error", e);
     const r = NextResponse.json(
-      { error: "Sunucu hatası", details: String(e?.message || e) },
+      { error: "Sunucu hatası", details: getErrorMessage(e) },
       { status: 500 }
     );
     addCors(r);

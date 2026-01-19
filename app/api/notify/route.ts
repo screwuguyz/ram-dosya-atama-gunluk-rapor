@@ -1,4 +1,5 @@
 // app/api/notify/route.ts
+import { getErrorMessage } from "@/lib/errorUtils";
 import { NextRequest, NextResponse } from "next/server";
 
 export const runtime = "nodejs";        // Edge değil Node runtime'ı kullan
@@ -76,15 +77,19 @@ export async function POST(req: NextRequest) {
       );
     }
     return NextResponse.json({ ok: true, pushover: json });
-  } catch (e: any) {
+  } catch (e: unknown) {
     // Hata mesajını da göster ki sebebi görülsün
+    const errorDetails = typeof e === 'object' && e !== null ? {
+      code: 'code' in e ? String(e.code) : undefined,
+      cause: 'cause' in e ? (typeof e.cause === 'object' ? JSON.stringify(e.cause) : String(e.cause)) : undefined,
+      name: 'name' in e ? String(e.name) : undefined,
+    } : {};
+
     return NextResponse.json(
       {
         error: "notify_failed",
-        message: String(e?.message || e),
-        code: e?.code,
-        cause: e?.cause && (typeof e.cause === "object" ? (e.cause.code || String(e.cause)) : String(e.cause)),
-        name: e?.name,
+        message: getErrorMessage(e),
+        ...errorDetails,
       },
       { status: 502 }
     );

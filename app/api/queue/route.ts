@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { FeatureFlags } from "@/lib/featureFlags";
+import { getErrorMessage } from "@/lib/errorUtils";
 
 export const runtime = "nodejs";
 
@@ -85,8 +86,8 @@ export async function POST(req: NextRequest) {
 
         return NextResponse.json({ ok: true, ticket: newTicket });
 
-    } catch (err: any) {
+    } catch (err: unknown) {
         console.error("[api/queue] Error:", err);
-        return NextResponse.json({ ok: false, error: err.message }, { status: 500 });
+        return NextResponse.json({ ok: false, error: getErrorMessage(err) }, { status: 500 });
     }
 }

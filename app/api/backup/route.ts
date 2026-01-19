@@ -1,4 +1,5 @@
 // ============================================
+import { getErrorMessage } from "@/lib/errorUtils";
 // RAM Dosya Atama - Backup API
 // ============================================
 
@@ -47,7 +48,7 @@ export async function GET(req: NextRequest) {
     }
 
     return NextResponse.json({ ok: true, backups: result.backups });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return NextResponse.json(
       { ok: false, error: error.message },
       { status: 500 }
@@ -77,7 +78,7 @@ export async function POST(req: NextRequest) {
       backupId: result.backupId,
       message: "Backup created successfully",
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return NextResponse.json(
       { ok: false, error: error.message },
       { status: 500 }
@@ -113,7 +114,7 @@ export async function PUT(req: NextRequest) {
       ok: true,
       message: "Backup restored successfully",
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return NextResponse.json(
       { ok: false, error: error.message },
       { status: 500 }

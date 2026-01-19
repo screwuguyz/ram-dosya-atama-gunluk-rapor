@@ -1,4 +1,5 @@
 // ============================================
+import { getErrorMessage } from "@/lib/errorUtils";
 // RAM Dosya Atama - Cases API (Dedicated Table)
 // Week 5-8: CRUD operations for cases table
 // ============================================
@@ -70,7 +71,7 @@ export async function GET(req: NextRequest) {
     }));
 
     return NextResponse.json({ ok: true, cases });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[api/cases][GET]", error);
     return NextResponse.json(
       { ok: false, error: error.message },
@@ -144,7 +145,7 @@ export async function POST(req: NextRequest) {
         diagCount: data.diag_count,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[api/cases][POST]", error);
     return NextResponse.json(
       { ok: false, error: error.message },

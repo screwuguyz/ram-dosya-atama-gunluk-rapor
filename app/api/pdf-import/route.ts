@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getErrorMessage } from "@/lib/errorUtils";
 import pdfParse from "pdf-parse";
 import { createClient } from "@supabase/supabase-js";
 import { randomUUID } from "crypto";
@@ -360,9 +361,9 @@ export async function POST(req: NextRequest) {
       date: result.dateLabel || formatDisplayDate(appointmentDateIso),
       dateIso: appointmentDateIso,
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("pdf-import error", err);
-    return NextResponse.json({ error: err?.message || "PDF işlenemedi." }, { status: 500 });
+    return NextResponse.json({ error: getErrorMessage(err) || "PDF işlenemedi." }, { status: 500 });
   }
 }
 

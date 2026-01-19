@@ -1,4 +1,5 @@
 "use client";
+import { getErrorMessage } from "@/lib/errorUtils";
 
 import { useEffect, useCallback, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
@@ -24,7 +25,7 @@ export function useQueueSync() {
             } else {
                 setError(data.error || "Failed to fetch tickets");
             }
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error("[useQueueSync] Fetch error:", err);
             setError(err.message);
         } finally {
@@ -48,7 +49,7 @@ export function useQueueSync() {
                 return data.ticket;
             }
             return null;
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error("[useQueueSync] Add error:", err);
             return null;
         }
@@ -75,7 +76,7 @@ export function useQueueSync() {
                 // Revert on failure
                 await fetchTickets();
             }
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error("[useQueueSync] Call error:", err);
             await fetchTickets();
         }
@@ -101,7 +102,7 @@ export function useQueueSync() {
             if (!data.ok) {
                 await fetchTickets();
             }
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error("[useQueueSync] Complete error:", err);
             await fetchTickets();
         }
@@ -122,7 +123,7 @@ export function useQueueSync() {
             if (!data.ok) {
                 await fetchTickets();
             }
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error("[useQueueSync] Clear error:", err);
             await fetchTickets();
         }
