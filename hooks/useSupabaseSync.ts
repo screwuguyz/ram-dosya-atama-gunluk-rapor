@@ -11,6 +11,7 @@ import { useAppStore } from "@/stores/useAppStore";
 import { getTodayYmd } from "@/lib/date";
 import { loadThemeFromSupabase } from "@/lib/theme";
 import { REALTIME_CHANNEL, API_ENDPOINTS } from "@/lib/constants";
+import { FeatureFlags } from "@/lib/featureFlags";
 import type { Teacher, CaseFile, Settings, EArchiveEntry, AbsenceRecord, QueueTicket } from "@/types";
 
 // Generate unique client ID
@@ -214,21 +215,22 @@ export function useSupabaseSync(): SupabaseSyncHook {
                 setAbsenceRecords(s.absenceRecords);
             }
 
-            // Load Queue - KORUMA: Local queue dolu, remote boş ise üzerine yazma!
-            const localQueue = useAppStore.getState().queue;
-            const remoteQueue = Array.isArray(s.queue) ? s.queue : [];
+            // Load Queue - DEPRECATED: Moving to separate queue_tickets table
+            // Only load if feature flag is disabled (backward compatibility)
+            if (!FeatureFlags.USE_SEPARATE_QUEUE) {
+                const localQueue = useAppStore.getState().queue;
+                const remoteQueue = Array.isArray(s.queue) ? s.queue : [];
 
-            if (remoteQueue.length > 0) {
-                // Remote'da queue varsa, güncelle
-                console.log("[fetchCentralState] Loading queue from remote:", remoteQueue.length, "tickets");
-                setQueue(remoteQueue);
-            } else if (localQueue.length > 0) {
-                // Remote boş ama local dolu - KORU! (Race condition önleme)
-                console.log("[fetchCentralState] Keeping local queue (remote empty):", localQueue.length, "tickets");
-                // setQueue çağırma - local'i koru
+                if (remoteQueue.length > 0) {
+                    console.log("[fetchCentralState] Loading queue from remote (legacy):", remoteQueue.length, "tickets");
+                    setQueue(remoteQueue);
+                } else if (localQueue.length > 0) {
+                    console.log("[fetchCentralState] Keeping local queue (legacy):", localQueue.length, "tickets");
+                } else {
+                    console.log("[fetchCentralState] Queue is empty (legacy)");
+                }
             } else {
-                // Her ikisi de boş
-                console.log("[fetchCentralState] Queue is empty");
+                console.log("[fetchCentralState] Queue sync disabled (using separate queue_tickets table)");
             }
 
             console.log(
@@ -288,7 +290,6 @@ export function useSupabaseSync(): SupabaseSyncHook {
             }
 
             // Get latest state from store to avoid closure issues
-            const currentQueue = useAppStore.getState().queue;
             const currentTeachers = useAppStore.getState().teachers;
 
             // DEBUG: Check specific teacher
@@ -306,9 +307,15 @@ export function useSupabaseSync(): SupabaseSyncHook {
             const currentAnnouncements = useAppStore.getState().announcements;
             const currentAbsenceRecords = useAppStore.getState().absenceRecords;
 
+            // Queue: Only sync if feature flag is disabled (legacy mode)
+            const currentQueue = FeatureFlags.USE_SEPARATE_QUEUE
+                ? []
+                : useAppStore.getState().queue;
+
             console.log("[syncToServer] Syncing...", {
                 teachers: currentTeachers.length,
                 queue: currentQueue.length,
+                queueMode: FeatureFlags.USE_SEPARATE_QUEUE ? 'separate' : 'legacy',
                 isAdmin: sessionData.isAdmin
             });
 
@@ -322,7 +329,7 @@ export function useSupabaseSync(): SupabaseSyncHook {
                 absenceRecords: currentAbsenceRecords,
                 lastRollover,
                 lastAbsencePenalty,
-                queue: currentQueue, // Use latest queue from store
+                queue: currentQueue, // Empty array if using separate queue system
                 updatedAt: new Date().toISOString(),
                 clientId: clientId.current,
             };
@@ -383,7 +390,10 @@ export function useSupabaseSync(): SupabaseSyncHook {
         return () => clearTimeout(timer);
     }, [
         teachers, cases, history, settings, eArchive, announcements, absenceRecords,
-        lastRollover, lastAbsencePenalty, queue, hydrated, syncToServer
+        lastRollover, lastAbsencePenalty,
+        // Queue: Only include if not using separate queue system
+        ...(FeatureFlags.USE_SEPARATE_QUEUE ? [] : [queue]),
+        hydrated, syncToServer
     ]);
 
     // Store fetchCentralState in ref to avoid reconnection issues

@@ -29,7 +29,11 @@ type StateShape = {
   themeSettings?: ThemeSettings; // Tema ayarları
   eArchive?: EArchiveEntry[]; // E-Arşiv (tüm atanmış dosyalar)
   absenceRecords?: AbsenceRecord[]; // Devamsızlık kayıtları (öğretmen ID + tarih)
+
+  // DEPRECATED: Queue moved to separate queue_tickets table
+  // Only kept for backward compatibility (NEXT_PUBLIC_USE_SEPARATE_QUEUE=false)
   queue?: QueueTicket[];
+
   updatedAt?: string;
 };
 
