@@ -15,6 +15,8 @@ CREATE TABLE IF NOT EXISTS teachers (
   is_tester BOOLEAN DEFAULT FALSE,
   active BOOLEAN DEFAULT TRUE,
   pushover_key TEXT,
+  is_physiotherapist BOOLEAN DEFAULT FALSE,
+  birth_date DATE,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),
 
@@ -140,9 +142,9 @@ BEGIN
   -- Loop through each teacher in the array
   FOR teacher_record IN SELECT * FROM jsonb_array_elements(teachers_data)
   LOOP
-    INSERT INTO teachers (
       id, name, score, yearly_load, monthly, is_absent,
-      backup_day, is_tester, active, pushover_key
+      backup_day, is_tester, active, pushover_key,
+      is_physiotherapist, birth_date
     )
     VALUES (
       teacher_record->>'id',
@@ -154,7 +156,9 @@ BEGIN
       teacher_record->>'backupDay',
       COALESCE((teacher_record->>'isTester')::BOOLEAN, false),
       COALESCE((teacher_record->>'active')::BOOLEAN, true),
-      teacher_record->>'pushoverKey'
+      teacher_record->>'pushoverKey',
+      COALESCE((teacher_record->>'isPhysiotherapist')::BOOLEAN, false),
+      (teacher_record->>'birthDate')::DATE
     )
     ON CONFLICT (id) DO UPDATE SET
       name = EXCLUDED.name,
@@ -165,7 +169,9 @@ BEGIN
       backup_day = EXCLUDED.backup_day,
       is_tester = EXCLUDED.is_tester,
       active = EXCLUDED.active,
-      pushover_key = EXCLUDED.pushover_key;
+      pushover_key = EXCLUDED.pushover_key,
+      is_physiotherapist = EXCLUDED.is_physiotherapist,
+      birth_date = EXCLUDED.birth_date;
 
     synced := synced + 1;
   END LOOP;
