@@ -233,7 +233,9 @@ export function useQueueSync() {
                 supabase.removeChannel(channelRef.current);
             }
         };
-    }, [fetchTickets, isQueueEnabled]);
+    // fetchTickets is stable (useCallback with empty deps), no need to include
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isQueueEnabled]);
 
     // Computed values
     const waitingTickets = tickets

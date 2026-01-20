@@ -193,7 +193,28 @@ export function useSupabaseSync(): SupabaseSyncHook {
             }
 
             setCases(s.cases ?? []);
-            setHistory(s.history ?? {});
+
+            // Clean history: remove orphaned records for deleted teachers/cases
+            const activeTeacherIds = new Set((s.teachers ?? []).map((t: any) => t.id));
+            const activeCaseIds = new Set((s.cases ?? []).map((c: any) => c.id));
+            const cleanedHistory: Record<string, any[]> = {};
+
+            Object.entries(s.history ?? {}).forEach(([date, casesForDate]: [string, any]) => {
+                if (!Array.isArray(casesForDate)) return;
+
+                // Keep history entries that reference existing teachers or cases
+                const validCases = casesForDate.filter((c: any) => {
+                    // Keep if case still exists OR teacher still exists
+                    return activeCaseIds.has(c.id) || (c.assignedTo && activeTeacherIds.has(c.assignedTo));
+                });
+
+                // Only keep dates that have valid cases
+                if (validCases.length > 0) {
+                    cleanedHistory[date] = validCases;
+                }
+            });
+
+            setHistory(cleanedHistory);
             setLastRollover(s.lastRollover ?? "");
             setLastAbsencePenalty(s.lastAbsencePenalty ?? "");
 
