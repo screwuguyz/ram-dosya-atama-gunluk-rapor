@@ -216,9 +216,12 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Force server timestamp to prevent clock skew issues
+    s.updatedAt = new Date().toISOString();
+
     const { error } = await admin
       .from("app_state")
-      .upsert({ id: "global", state: s, updated_at: new Date().toISOString() })
+      .upsert({ id: "global", state: s, updated_at: s.updatedAt })
       .single();
     if (error) {
       console.error("[api/state][POST] Supabase error:", error);
@@ -236,14 +239,12 @@ export async function POST(req: NextRequest) {
         if (teachersError) {
           console.error("[api/state][POST] Error syncing teachers table:", teachersError);
           return NextResponse.json({ ok: false, error: "Teachers Table Sync Error: " + teachersError.message }, { status: 500 });
-        } else {
-          // console.log(`[api/state][POST] Synced ${dbTeachers.length} teachers to dedicated table`);
         }
       }
     }
 
     console.log("[api/state][POST] Success, teachers count:", s.teachers?.length || 0, "version:", s.version);
-    return NextResponse.json({ ok: true, version: s.version });
+    return NextResponse.json({ ok: true, version: s.version, updatedAt: s.updatedAt });
   } catch (err: unknown) {
     const errorMsg = getErrorMessage(err);
     console.error("[api/state][POST]", errorMsg);

@@ -274,11 +274,17 @@ export default function DosyaAtamaApp() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
+      const json = await res.json().catch(() => ({}));
+
       if (!res.ok) {
-        console.error("Sync failed:", await res.text());
+        console.error("Sync failed:", json.error || res.statusText);
         toast("Kayıt başarısız (Sync)");
       } else {
         // console.log("Auto-sync success");
+        // Update local ref with TRUE server timestamp to prevent sync race conditions
+        if (json.updatedAt) {
+          lastAppliedAtRef.current = json.updatedAt;
+        }
       }
     } catch (err) {
       console.error("Sync network error:", err);
