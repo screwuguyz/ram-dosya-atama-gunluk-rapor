@@ -3878,7 +3878,7 @@ export default function DosyaAtamaApp() {
                           <SelectTrigger className="w-full"><SelectValue placeholder="Öğretmen seçin" /></SelectTrigger>
                           <SelectContent>
                             <SelectItem value="">— Manuel atama yok —</SelectItem>
-                            {teachers.filter(t => t.active).map(t => (
+                            {teachers.filter(t => t.active && !t.isPhysiotherapist).map(t => (
                               <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
                             ))}
                           </SelectContent>

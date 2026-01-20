@@ -447,7 +447,7 @@ export default function TimeMachinePage() {
                                     onChange={(e) => setManualTeacherId(e.target.value)}
                                 >
                                     <option value="">Seçiniz...</option>
-                                    {teachers.filter(t => t.active).map(t => (
+                                    {teachers.filter(t => t.active && !t.isPhysiotherapist).map(t => (
                                         <option key={t.id} value={t.id}>{t.name}</option>
                                     ))}
                                 </select>
