@@ -441,7 +441,9 @@ export function useSupabaseSync(): SupabaseSyncHook {
                 "postgres_changes",
                 { event: "*", schema: "public", table: "app_state" },
                 (payload: RealtimePostgresChangesPayload<{ id: string }>) => {
-                    const targetId = payload?.new?.id ?? payload?.old?.id;
+                    const newRecord = payload?.new as { id?: string } | null;
+                    const oldRecord = payload?.old as { id?: string } | null;
+                    const targetId = newRecord?.id ?? oldRecord?.id;
                     if (targetId && targetId !== "global") return;
                     console.log("[Realtime] app_state changed, fetching...");
                     fetchRef.current(); // Use ref instead of direct call
