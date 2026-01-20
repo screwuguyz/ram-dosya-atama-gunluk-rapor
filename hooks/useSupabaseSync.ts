@@ -362,11 +362,6 @@ export function useSupabaseSync(): SupabaseSyncHook {
             } else {
                 console.log("[syncToServer] Successfully synced to server");
 
-                // Başarılı olursa kullanıcıya bildir (DEBUG için)
-                if (debugTeacher && debugTeacher.yearlyLoad > 0) {
-                    addToast(`✅ Sunucuya KAYDEDİLDİ: ${debugTeacher.name} = ${debugTeacher.yearlyLoad}`);
-                }
-
                 lastAppliedAtRef.current = payload.updatedAt; // Prevent loop
                 setSyncStatus('success');
 
