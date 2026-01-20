@@ -176,7 +176,9 @@ export default function BackupManager({ currentState, onRestore }: Props) {
 
       if (data.ok) {
         setMessage({ type: "success", text: "✅ Yedek geri yüklendi! Sayfa yenileniyor..." });
-        onRestore(data.state);
+        if (data.state) {
+          onRestore(data.state);
+        }
         setTimeout(() => window.location.reload(), 1500);
       } else {
         setMessage({ type: "error", text: data.error || "Geri yükleme başarısız" });

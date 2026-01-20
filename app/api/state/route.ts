@@ -69,6 +69,27 @@ function transformTeacher(t: any): Teacher {
     isTester: t.is_tester,
     active: t.active,
     pushoverKey: t.pushover_key,
+    isPhysiotherapist: t.is_physiotherapist,
+    birthDate: t.birth_date,
+  };
+}
+
+// Helper to transform App teacher to DB format
+function transformTeacherToDB(t: Teacher): any {
+  return {
+    id: t.id,
+    name: t.name,
+    yearly_load: t.yearlyLoad || 0,
+    monthly: t.monthly || {},
+    is_absent: t.isAbsent || false,
+    backup_day: t.backupDay || null,
+    is_tester: t.isTester || false,
+    active: t.active !== undefined ? t.active : true,
+    pushover_key: t.pushoverKey || null,
+    is_physiotherapist: t.isPhysiotherapist || false,
+    birth_date: t.birthDate || null,
+    // Database might require score, let's assume it matches yearlyLoad or 0
+    score: t.yearlyLoad || 0,
   };
 }
 
@@ -204,6 +225,24 @@ export async function POST(req: NextRequest) {
       console.error("[api/state][POST] Supabase error:", error);
       throw error;
     }
+
+    // 2. Migration: Sync to dedicated tables if enabled
+    if (FeatureFlags.USE_TEACHERS_TABLE) {
+      const dbTeachers = s.teachers.map(transformTeacherToDB);
+      if (dbTeachers.length > 0) {
+        const { error: teachersError } = await admin
+          .from("teachers")
+          .upsert(dbTeachers);
+
+        if (teachersError) {
+          console.error("[api/state][POST] Error syncing teachers table:", teachersError);
+          // We don't fail the request here, as app_state is the source of truth for now
+        } else {
+          // console.log(`[api/state][POST] Synced ${dbTeachers.length} teachers to dedicated table`);
+        }
+      }
+    }
+
     console.log("[api/state][POST] Success, teachers count:", s.teachers?.length || 0, "version:", s.version);
     return NextResponse.json({ ok: true, version: s.version });
   } catch (err: unknown) {
