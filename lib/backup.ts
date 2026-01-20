@@ -40,8 +40,9 @@ export async function createManualBackup(
       return { success: false, error: stateError.message };
     }
 
-    // 2. Create backup
-    const backupId = `${label}-${Date.now()}`;
+    // 2. Create backup with UUID
+    const { randomUUID } = await import("crypto");
+    const backupId = randomUUID();
     const backupPayload = {
       id: backupId,
       created_at: new Date().toISOString(),
