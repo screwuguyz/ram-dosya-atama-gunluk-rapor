@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
       return new NextResponse(result.json, {
         headers: {
           "Content-Type": "application/json",
-          "Content-Disposition": \`attachment; filename="ram-backup-\${Date.now()}.json"\`,
+          "Content-Disposition": `attachment; filename=ram-backup-${Date.now()}.json`,
         },
       });
     }
@@ -50,7 +50,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ok: true, backups: result.backups });
   } catch (error: unknown) {
     return NextResponse.json(
-      { ok: false, error: error.message },
+      { ok: false, error: getErrorMessage(error) },
       { status: 500 }
     );
   }
@@ -80,7 +80,7 @@ export async function POST(req: NextRequest) {
     });
   } catch (error: unknown) {
     return NextResponse.json(
-      { ok: false, error: error.message },
+      { ok: false, error: getErrorMessage(error) },
       { status: 500 }
     );
   }
@@ -116,7 +116,7 @@ export async function PUT(req: NextRequest) {
     });
   } catch (error: unknown) {
     return NextResponse.json(
-      { ok: false, error: error.message },
+      { ok: false, error: getErrorMessage(error) },
       { status: 500 }
     );
   }
