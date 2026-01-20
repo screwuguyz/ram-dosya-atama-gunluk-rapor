@@ -17,9 +17,9 @@ CREATE INDEX IF NOT EXISTS idx_queue_tickets_status
 ON queue_tickets(status)
 WHERE status != 'done';
 
--- Composite index for daily queries
-CREATE INDEX IF NOT EXISTS idx_queue_tickets_date_status
-ON queue_tickets(created_at::date, status);
+-- Composite index for daily queries (simplified - removed cast)
+CREATE INDEX IF NOT EXISTS idx_queue_tickets_created_status
+ON queue_tickets(created_at, status);
 
 -- ============================================
 -- 2. Push Subscriptions Indexes
@@ -109,9 +109,9 @@ BEGIN
         ON cases(absence_penalty)
         WHERE absence_penalty = true;
 
-        -- Composite index for daily teacher queries
+        -- Composite index for daily teacher queries (simplified - removed cast)
         CREATE INDEX IF NOT EXISTS idx_cases_teacher_date
-        ON cases(assigned_to, created_at::date);
+        ON cases(assigned_to, created_at);
 
         -- Index for type filtering
         CREATE INDEX IF NOT EXISTS idx_cases_type
