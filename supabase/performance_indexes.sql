@@ -151,27 +151,20 @@ BEGIN
 END $$;
 
 -- ============================================
--- 7. Vacuum and Analyze (Optimize Statistics)
+-- 7. Analyze Statistics (Optimize Query Planner)
 -- ============================================
 
 -- Update query planner statistics for better performance
-VACUUM ANALYZE queue_tickets;
-VACUUM ANALYZE push_subscriptions;
-VACUUM ANALYZE app_state;
+ANALYZE queue_tickets;
+ANALYZE push_subscriptions;
+ANALYZE app_state;
 
--- If migrated tables exist
-DO $$
-BEGIN
-    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'teachers') THEN
-        VACUUM ANALYZE teachers;
-    END IF;
-    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'cases') THEN
-        VACUUM ANALYZE cases;
-    END IF;
-    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'history') THEN
-        VACUUM ANALYZE history;
-    END IF;
-END $$;
+-- Note: Run VACUUM manually after indexes are created
+-- VACUUM cannot run inside transaction blocks
+-- Run these commands separately if needed:
+--   VACUUM ANALYZE queue_tickets;
+--   VACUUM ANALYZE push_subscriptions;
+--   VACUUM ANALYZE app_state;
 
 -- ============================================
 -- 8. Verify Indexes Created
