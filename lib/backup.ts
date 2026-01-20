@@ -8,7 +8,9 @@ import { getErrorMessage } from "./errorUtils";
 export interface BackupMetadata {
   id: string;
   label: string;
-  createdAt: string;
+  created_at: string;
+  backup_type: "manual" | "auto";
+  description?: string;
   size: number;
   version?: number;
 }
@@ -146,7 +148,9 @@ export async function listBackups(): Promise<{
     const backups: BackupMetadata[] = (data || []).map((b) => ({
       id: String(b.id),
       label: String(b.description || b.backup_type || 'backup'),
-      createdAt: String(b.created_at),
+      created_at: String(b.created_at),
+      backup_type: (b.backup_type as "manual" | "auto") || "manual",
+      description: b.description ? String(b.description) : undefined,
       size: 0, // We could calculate this if needed
     }));
 
