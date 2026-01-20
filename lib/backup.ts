@@ -22,6 +22,21 @@ function transformTeacher(t: any): Teacher {
   };
 }
 
+// Helper to transform App teacher to DB format
+function transformTeacherToDB(t: Teacher): any {
+  return {
+    id: t.id,
+    name: t.name,
+    yearly_load: t.yearlyLoad || 0,
+    monthly: t.monthly || {},
+    is_absent: t.isAbsent || false,
+    backup_day: t.backupDay || null,
+    is_tester: t.isTester || false,
+    active: t.active !== undefined ? t.active : true,
+    pushover_key: t.pushoverKey || null,
+  };
+}
+
 export interface BackupMetadata {
   id: string;
   label: string;
@@ -138,6 +153,25 @@ export async function restoreFromBackup(
 
     if (restoreError) {
       return { success: false, error: restoreError.message };
+    }
+
+    // 3. Restore dedicated tables if migration enabled
+    if (FeatureFlags.USE_TEACHERS_TABLE) {
+      const teachers = backupData.state_snapshot?.state?.teachers;
+      if (Array.isArray(teachers) && teachers.length > 0) {
+        const dbTeachers = teachers.map(transformTeacherToDB);
+
+        // Upsert all teachers to the dedicated table
+        const { error: teachersUpsertError } = await client
+          .from("teachers")
+          .upsert(dbTeachers);
+
+        if (teachersUpsertError) {
+          console.error("[restore] Error restoring teachers table:", teachersUpsertError);
+          // Don't fail the whole restore, but log it
+          return { success: false, error: `App state restored but teachers table failed: ${teachersUpsertError.message}` };
+        }
+      }
     }
 
     return { success: true };
