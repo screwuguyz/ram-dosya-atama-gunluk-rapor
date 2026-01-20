@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { MoreHorizontal, Bell, BellOff, UserCheck, UserX, Crown, FlaskConical, Archive, Trash2, Plus, Cake, KeyRound } from "lucide-react";
+import { ConfirmDialog, useConfirmDialog } from "@/components/ConfirmDialog";
 
 import { uid } from "@/lib/utils";
 import { getTodayYmd } from "@/lib/date";
@@ -48,6 +49,11 @@ export default function TeacherList() {
     const [editingLoadId, setEditingLoadId] = useState<string | null>(null);
     const [editLoadValue, setEditLoadValue] = useState<string>("");
 
+    // Confirmation dialog
+    const deleteConfirm = useConfirmDialog();
+    const [confirmTitle, setConfirmTitle] = useState("");
+    const [confirmMessage, setConfirmMessage] = useState("");
+
     // ---- Helpers
     function hasTestToday(tid: string) {
         const today = getTodayYmd();
@@ -71,9 +77,6 @@ export default function TeacherList() {
 
         // Güvenlik: Eğer ortalama 0 veya çok düşükse ve kullanıcı girmediyse varsayılan kullan
         if (initialLoad < 10 && !newTeacherStartScore.trim()) initialLoad = 75;
-
-        // DEBUG: Puanı kontrol et
-        alert(`EKLENİYOR: ${name} (Ham: "${newTeacherStartScore}") -> Puan: ${initialLoad}`);
 
         const newTeacher: Teacher = {
             id: uid(),
@@ -166,23 +169,31 @@ export default function TeacherList() {
         const hasLoad = t.yearlyLoad > 0 || Object.values(t.monthly || {}).some(v => v > 0);
 
         if (caseCount > 0 || hasLoad) {
-            alert("Bu öğretmenin geçmiş kaydı var. Silmek raporları etkiler; öğretmen arşivlendi.");
-            updateTeacher(tid, { active: false });
+            // Archive instead of delete
+            setConfirmTitle("Öğretmen Arşivleniyor");
+            setConfirmMessage(`${t.name} geçmiş kayıtları olduğu için silinemez. Bunun yerine arşivlenecek (pasif yapılacak).`);
+            deleteConfirm.confirm(async () => {
+                updateTeacher(tid, { active: false });
+                addToast(`${t.name} arşivlendi.`);
+            });
             return;
         }
 
-        if (!confirm("Bu öğretmeni kalıcı olarak silmek istiyor musunuz?")) return;
-
-        removeTeacher(tid);
-        // Atanmış dosyaların atamasını kaldır
-        const updatedCases = cases.map(c => (c.assignedTo === tid ? { ...c, assignedTo: undefined } : c));
-        setCases(updatedCases);
-        addToast("Öğretmen silindi.");
+        // Permanent delete
+        setConfirmTitle("Öğretmen Siliniyor");
+        setConfirmMessage(`${t.name} kalıcı olarak silinecek. Bu işlem geri alınamaz!`);
+        deleteConfirm.confirm(async () => {
+            removeTeacher(tid);
+            // Atanmış dosyaların atamasını kaldır
+            const updatedCases = cases.map(c => (c.assignedTo === tid ? { ...c, assignedTo: undefined } : c));
+            setCases(updatedCases);
+            addToast(`${t.name} silindi.`);
+        });
     }
 
     async function testNotifyTeacher(t: Teacher) {
         if (!t.pushoverKey) {
-            alert("Bu öğretmenin Pushover User Key'i boş.");
+            addToast("Bu öğretmenin Pushover User Key'i boş.");
             return;
         }
         try {
@@ -198,12 +209,12 @@ export default function TeacherList() {
             });
             const json = await res.json();
             if (!res.ok) {
-                alert("Bildirim hatası: " + (json?.errors?.[0] || JSON.stringify(json)));
+                addToast("Bildirim hatası: " + (json?.errors?.[0] || JSON.stringify(json)));
             } else {
-                alert("Test bildirimi gönderildi!");
+                addToast("✅ Test bildirimi gönderildi!");
             }
         } catch {
-            alert("Bildirim gönderilemedi.");
+            addToast("❌ Bildirim gönderilemedi.");
         }
     }
 
@@ -221,12 +232,12 @@ export default function TeacherList() {
             });
             const json = await res.json();
             if (!res.ok) {
-                alert("Web Push hatası: " + (json.error || "Bilinmiyor"));
+                addToast("❌ Web Push hatası: " + (json.error || "Bilinmiyor"));
             } else {
-                alert(`Sonuç: ${json.sent} gönderildi, ${json.failed} başarısız.`);
+                addToast(`✅ ${json.sent} gönderildi, ${json.failed} başarısız.`);
             }
-        } catch (e: any) {
-            alert("Web Push isteği başarısız: " + e.message);
+        } catch (e: unknown) {
+            addToast("❌ Web Push isteği başarısız");
         }
     }
 
@@ -648,6 +659,19 @@ export default function TeacherList() {
                     </div>
                 </div>
             )}
+
+            {/* Confirmation Dialog */}
+            <ConfirmDialog
+                isOpen={deleteConfirm.isOpen}
+                onClose={deleteConfirm.handleClose}
+                onConfirm={deleteConfirm.handleConfirm}
+                title={confirmTitle}
+                message={confirmMessage}
+                variant="danger"
+                loading={deleteConfirm.loading}
+                confirmText="Sil"
+                cancelText="İptal"
+            />
         </div>
     );
 }

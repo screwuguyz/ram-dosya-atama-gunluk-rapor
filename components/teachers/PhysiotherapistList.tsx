@@ -12,6 +12,7 @@ import {
     CardTitle,
 } from "@/components/ui/card";
 
+import { ConfirmDialog, useConfirmDialog } from "@/components/ConfirmDialog";
 import { uid } from "@/lib/utils";
 import { getTodayYmd } from "@/lib/date";
 import type { Teacher } from "@/types";
@@ -101,7 +102,7 @@ export default function PhysiotherapistList() {
         const hasLoad = t.yearlyLoad > 0 || Object.values(t.monthly || {}).some(v => v > 0);
 
         if (caseCount > 0 || hasLoad) {
-            alert("Bu fizyoterapistin geçmiş kaydı var. Silmek raporları etkiler; arşivlendi.");
+            addToast("Bu fizyoterapistin geçmiş kaydı var. Arşivlendi.");
             updateTeacher(tid, { active: false });
             return;
         }
@@ -117,7 +118,7 @@ export default function PhysiotherapistList() {
 
     async function testNotifyTeacher(t: Teacher) {
         if (!t.pushoverKey) {
-            alert("Bu kişinin Pushover User Key’i boş.");
+            addToast("Bu kişinin Pushover User Key'i boş.");
             return;
         }
         try {
@@ -133,12 +134,12 @@ export default function PhysiotherapistList() {
             });
             const json = await res.json();
             if (!res.ok) {
-                alert("Bildirim hatası: " + (json?.errors?.[0] || JSON.stringify(json)));
+                addToast("❌ Bildirim hatası: " + (json?.errors?.[0] || JSON.stringify(json)));
             } else {
-                alert("Test bildirimi gönderildi!");
+                addToast("✅ Test bildirimi gönderildi!");
             }
         } catch {
-            alert("Bildirim gönderilemedi.");
+            addToast("❌ Bildirim gönderilemedi.");
         }
     }
 
@@ -156,12 +157,12 @@ export default function PhysiotherapistList() {
             });
             const json = await res.json();
             if (!res.ok) {
-                alert("Web Push hatası: " + (json.error || "Bilinmiyor"));
+                addToast("❌ Web Push hatası: " + (json.error || "Bilinmiyor"));
             } else {
-                alert(`Sonuç: ${json.sent} gönderildi, ${json.failed} başarısız.`);
+                addToast(`✅ Sonuç: ${json.sent} gönderildi, ${json.failed} başarısız.`);
             }
         } catch (e: any) {
-            alert("Web Push isteği başarısız: " + e.message);
+            addToast("❌ Web Push isteği başarısız: " + e.message);
         }
     }
 
