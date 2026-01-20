@@ -87,7 +87,6 @@ function transformTeacherToDB(t: Teacher): any {
     active: t.active !== undefined ? t.active : true,
     pushover_key: t.pushoverKey || null,
     is_physiotherapist: t.isPhysiotherapist || false,
-    birth_date: t.birthDate || null,
     // Database might require score, let's assume it matches yearlyLoad or 0
     score: t.yearlyLoad || 0,
   };

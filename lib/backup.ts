@@ -37,7 +37,6 @@ function transformTeacherToDB(t: Teacher): any {
     active: t.active !== undefined ? t.active : true,
     pushover_key: t.pushoverKey || null,
     is_physiotherapist: t.isPhysiotherapist || false,
-    birth_date: t.birthDate || null,
     score: t.yearlyLoad || 0,
   };
 }
