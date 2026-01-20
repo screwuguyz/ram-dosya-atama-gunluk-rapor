@@ -88,6 +88,24 @@ export default function CaseList() {
             }
         }
 
+        // Remove from history as well
+        const dateKey = targetNow.createdAt.slice(0, 10);
+        const currentHistory = useAppStore.getState().history;
+        const dayHistory = currentHistory[dateKey] || [];
+        const updatedDayHistory = dayHistory.filter(h => h.id !== id);
+
+        if (updatedDayHistory.length === 0) {
+            // Eğer o günde başka dosya yoksa, günü tamamen sil
+            const { [dateKey]: _, ...restHistory } = currentHistory;
+            useAppStore.getState().setHistory(restHistory);
+        } else {
+            // Sadece o dosyayı sil
+            useAppStore.getState().setHistory({
+                ...currentHistory,
+                [dateKey]: updatedDayHistory
+            });
+        }
+
         removeCase(id);
     }
 
