@@ -1,8 +1,8 @@
--- ============================================
 -- Performance Optimization - Database Indexes
--- ============================================
 -- Run this SQL in Supabase SQL Editor
 -- Impact: 10-100x faster queries on large datasets
+--
+-- ============================================
 
 -- ============================================
 -- 1. Queue Tickets Indexes
