@@ -27,7 +27,7 @@ export function useQueueSync() {
             }
         } catch (err: unknown) {
             console.error("[useQueueSync] Fetch error:", err);
-            setError(err.message);
+            setError(getErrorMessage(err));
         } finally {
             setLoading(false);
         }
