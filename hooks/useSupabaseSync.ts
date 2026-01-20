@@ -291,27 +291,13 @@ export function useSupabaseSync(): SupabaseSyncHook {
             const sessionRes = await fetch("/api/session");
             const sessionData = sessionRes.ok ? await sessionRes.json() : { isAdmin: false };
 
-            // DEBUG: Bypass admin check to rule out auth issues
-            /* 
             if (!sessionData.isAdmin) {
                 console.log("[syncToServer] Skipping sync - user is not admin");
-                // DEBUG: Alert user if they think they are admin but system disagrees
-                addToast("HATA: Admin yetkisi yok, kayıt yapılmadı!"); 
                 return;
-            } 
-            */
-            if (!sessionData.isAdmin) {
-                addToast("DEBUG: Admin değil ama kayıt zorlanıyor...");
             }
 
             // Get latest state from store to avoid closure issues
             const currentTeachers = useAppStore.getState().teachers;
-
-            // DEBUG: Check specific teacher (only in development)
-            const debugTeacher = currentTeachers.find(t => t.name.includes("ANIL") || t.name.includes("Anıl"));
-            if (debugTeacher) {
-                logger.debug(`[syncToServer] Sending: ${debugTeacher.name} = ${debugTeacher.yearlyLoad}`);
-            }
 
             const currentCases = useAppStore.getState().cases;
             const currentHistory = useAppStore.getState().history;

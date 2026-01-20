@@ -153,3 +153,47 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+
+/**
+ * DELETE /api/cases?id=xxx - Delete a case
+ */
+export async function DELETE(req: NextRequest) {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+
+  if (!url || !serviceKey) {
+    return NextResponse.json(
+      { ok: false, error: "Missing Supabase credentials" },
+      { status: 500 }
+    );
+  }
+
+  try {
+    const { searchParams } = new URL(req.url);
+    const caseId = searchParams.get("id");
+
+    if (!caseId) {
+      return NextResponse.json(
+        { ok: false, error: "Case ID required" },
+        { status: 400 }
+      );
+    }
+
+    const client = createClient(url, serviceKey);
+
+    const { error } = await client
+      .from("cases")
+      .delete()
+      .eq("id", caseId);
+
+    if (error) throw error;
+
+    return NextResponse.json({ ok: true });
+  } catch (error: unknown) {
+    console.error("[api/cases][DELETE]", error);
+    return NextResponse.json(
+      { ok: false, error: getErrorMessage(error) },
+      { status: 500 }
+    );
+  }
+}

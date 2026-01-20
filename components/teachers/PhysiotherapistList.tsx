@@ -113,6 +113,17 @@ export default function PhysiotherapistList() {
         // Atanmış dosyaların atamasını kaldır
         const updatedCases = cases.map(c => (c.assignedTo === tid ? { ...c, assignedTo: undefined } : c));
         setCases(updatedCases);
+
+        // Update history to remove teacher assignments
+        const currentHistory = useAppStore.getState().history;
+        const updatedHistory = { ...currentHistory };
+        Object.keys(updatedHistory).forEach(dateKey => {
+            updatedHistory[dateKey] = updatedHistory[dateKey].map(c =>
+                c.assignedTo === tid ? { ...c, assignedTo: undefined } : c
+            );
+        });
+        useAppStore.getState().setHistory(updatedHistory);
+
         addToast("Fizyoterapist silindi.");
     }
 

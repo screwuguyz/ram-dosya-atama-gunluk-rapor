@@ -187,10 +187,23 @@ export const useAppStore = create<AppState>()(
                     ),
                 })),
             removeCase: (id) =>
-                set((state) => ({
-                    cases: state.cases.filter((c) => c.id !== id),
-                    eArchive: state.eArchive.filter((a) => a.id !== id)
-                })),
+                set((state) => {
+                    // Remove from history as well
+                    const updatedHistory = { ...state.history };
+                    Object.keys(updatedHistory).forEach(dateKey => {
+                        updatedHistory[dateKey] = updatedHistory[dateKey].filter(c => c.id !== id);
+                        // Remove empty date entries
+                        if (updatedHistory[dateKey].length === 0) {
+                            delete updatedHistory[dateKey];
+                        }
+                    });
+
+                    return {
+                        cases: state.cases.filter((c) => c.id !== id),
+                        eArchive: state.eArchive.filter((a) => a.id !== id),
+                        history: updatedHistory
+                    };
+                }),
 
             // === History ===
             setHistory: (history) => set({ history }),
