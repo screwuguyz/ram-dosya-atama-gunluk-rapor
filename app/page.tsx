@@ -145,58 +145,15 @@ export default function DosyaAtamaApp() {
       }
       lastAppliedAtRef.current = s.updatedAt || new Date().toISOString();
 
-      // ZERO PROTECTION & MERGE LOGIC
+      // DIRECT SYNC: Trust the server as Source of Truth
+      // This allows deletions (by Admin) to propagate to other clients.
       const incomingTeachers = s.teachers || [];
-      const currentTeachers = teachersRef.current || [];
-
-      // 1. New Teacher Protection: If local has a teacher not in remote (and we have teachers), don't delete immediately
-      // (This is a simple safeguard: if server has 0 teachers but we have some, ignore.
-      // If server has teachers but misses one we just added... that's harder in this simple logic, 
-      // but we will prioritize "Zero Score Protection" first)
-
-      const mergedTeachers = incomingTeachers.map((remoteT: any) => {
-        const localT = currentTeachers.find(t => t.id === remoteT.id);
-        if (localT) {
-          // ZERO SCORE PROTECTION (Expanded to include null/undefined)
-          const remoteLoad = remoteT.yearlyLoad || 0;
-          if (remoteLoad <= 0 && localT.yearlyLoad > 0) {
-            // console.log(`[Protection] Keeping local score ${localT.yearlyLoad} for ${localT.name} against server ${remoteLoad}`);
-            toast(`🛡️ Puan Korundu: ${localT.name} (${localT.yearlyLoad})`);
-            return { ...remoteT, yearlyLoad: localT.yearlyLoad };
-          }
-        }
-        return remoteT;
-      });
-
-      // ORPHAN PROTECTION: Keep local teachers that are totally missing from server
-      // (This handles the case where we added a teacher, but server response came back without it yet)
-      const incomingIds = new Set(incomingTeachers.map((t: any) => t.id));
-      const orphanTeachers = currentTeachers.filter(t => !incomingIds.has(t.id));
-
-      if (orphanTeachers.length > 0) {
-        // console.log(`[Protection] Keeping ${orphanTeachers.length} local teachers not yet in server`);
-        mergedTeachers.push(...orphanTeachers);
-      }
-
-      // Simple set
-      if (mergedTeachers.length > 0 || (currentTeachers.length === 0 && incomingTeachers.length === 0)) {
-        setTeachers(mergedTeachers);
-      }
-
-      // CASE ORPHAN PROTECTION: Local'de olup sunucuda olmayan case'leri koru
-      // Bu, yeni eklenen ama henüz sunucuya gitmemiş dosyaları korur
       const incomingCases = s.cases || [];
-      const currentCases = casesRef.current || [];
-      const incomingCaseIds = new Set(incomingCases.map((c: any) => c.id));
-      const orphanCases = currentCases.filter(c => !incomingCaseIds.has(c.id));
 
-      if (orphanCases.length > 0) {
-        console.log(`[Protection] Keeping ${orphanCases.length} local cases not yet in server`);
-        // toast(`🛡️ ${orphanCases.length} dosya korundu`);
-        setCases([...incomingCases, ...orphanCases]);
-      } else {
-        setCases(incomingCases);
-      }
+      // No more "Orphan Protection" or "Zero Score Protection"
+      // because they were preventing valid deletions/updates.
+      setTeachers(incomingTeachers);
+      setCases(incomingCases);
       setHistory(s.history ?? {});
       setLastRollover(s.lastRollover ?? "");
       setLastAbsencePenalty(s.lastAbsencePenalty ?? "");
