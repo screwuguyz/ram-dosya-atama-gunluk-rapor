@@ -24,9 +24,9 @@ export function useQueueSync() {
             } else {
                 setError(data.error || "Failed to fetch tickets");
             }
-        } catch (err: any) {
+        } catch (err) {
             console.error("[useQueueSync] Fetch error:", err);
-            setError(err.message);
+            setError(err instanceof Error ? err.message : String(err));
         } finally {
             setLoading(false);
         }
