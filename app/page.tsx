@@ -384,34 +384,38 @@ export default function DosyaAtamaApp() {
   const [selectedPdfUploadDate, setSelectedPdfUploadDate] = useState<string | null>(null); // Takvimden seçilen tarih için PDF yükleme
   const activePdfEntry = useMemo(() => pdfEntries.find(e => e.id === selectedPdfEntryId) || null, [pdfEntries, selectedPdfEntryId]);
 
-  // Pending Appointments Count calculation
+  // Pending Appointments Count calculation (O(n) using Set)
   const pendingAppointmentsCount = useMemo(() => {
-    const isEntryAssigned = (entry: PdfAppointment) => {
-      const inCases = cases.some((c: CaseFile) => {
-        const source = c.sourcePdfEntry;
-        if (!source) return false;
-        if (source.id === entry.id) return true;
-        return (
-          source.time === entry.time &&
-          source.name === entry.name &&
-          (source.fileNo || "") === (entry.fileNo || "")
-        );
+    // Build Set of assigned entry IDs for O(1) lookup
+    const assignedIds = new Set<string>();
+    const assignedKeys = new Set<string>();
+
+    // Helper to create unique key from entry properties
+    const makeKey = (e: any) => `${e.time}|${e.name}|${e.fileNo || ''}`;
+
+    // Collect from cases
+    cases.forEach(c => {
+      if (c.sourcePdfEntry) {
+        if (c.sourcePdfEntry.id) assignedIds.add(c.sourcePdfEntry.id);
+        assignedKeys.add(makeKey(c.sourcePdfEntry));
+      }
+    });
+
+    // Collect from history
+    Object.values(history).forEach((dayCases: CaseFile[]) => {
+      dayCases.forEach(c => {
+        if (c.sourcePdfEntry) {
+          if (c.sourcePdfEntry.id) assignedIds.add(c.sourcePdfEntry.id);
+          assignedKeys.add(makeKey(c.sourcePdfEntry));
+        }
       });
-      const inHistory = Object.values(history).some((dayCases: CaseFile[]) =>
-        dayCases.some((c: CaseFile) => {
-          const source = c.sourcePdfEntry;
-          if (!source) return false;
-          if (source.id === entry.id) return true;
-          return (
-            source.time === entry.time &&
-            source.name === entry.name &&
-            (source.fileNo || "") === (entry.fileNo || "")
-          );
-        })
-      );
-      return inCases || inHistory;
-    };
-    return pdfEntries.filter(entry => !isEntryAssigned(entry)).length;
+    });
+
+    // Simple O(n) filter
+    return pdfEntries.filter(entry => {
+      if (entry.id && assignedIds.has(entry.id)) return false;
+      return !assignedKeys.has(makeKey(entry));
+    }).length;
   }, [cases, history, pdfEntries]);
 
   const [isDragging, setIsDragging] = useState(false);

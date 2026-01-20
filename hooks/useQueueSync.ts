@@ -12,6 +12,8 @@ export function useQueueSync() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const channelRef = useRef<any>(null);
+    const [isRealtimeConnected, setIsRealtimeConnected] = useState(false);
+    const lastFetchRef = useRef<number>(0);
 
     // Fetch all tickets from API
     const fetchTickets = useCallback(async () => {
@@ -154,6 +156,9 @@ export function useQueueSync() {
                     (payload: any) => {
                         console.log("[useQueueSync] Realtime event:", payload.eventType);
 
+                        // Update last fetch time on any realtime event
+                        lastFetchRef.current = Date.now();
+
                         if (payload.eventType === "INSERT") {
                             const record = payload.new;
 
@@ -219,23 +224,40 @@ export function useQueueSync() {
                 )
                 .subscribe((status) => {
                     console.log("[useQueueSync] Subscription status:", status);
+                    setIsRealtimeConnected(status === "SUBSCRIBED");
+
+                    // Mark last fetch time when connected
+                    if (status === "SUBSCRIBED") {
+                        lastFetchRef.current = Date.now();
+                    }
                 });
 
             channelRef.current = channel;
         }
 
-        // Backup polling every 5 seconds (in case realtime fails)
-        const interval = setInterval(fetchTickets, 5000);
+        // Fallback polling: only poll if realtime disconnected
+        const pollInterval = setInterval(() => {
+            const timeSinceLastFetch = Date.now() - lastFetchRef.current;
+
+            // Poll if:
+            // 1. No realtime connection, OR
+            // 2. More than 10 seconds since last update
+            if (!isRealtimeConnected || timeSinceLastFetch > 10000) {
+                console.log("[useQueueSync] Fallback polling (realtime:", isRealtimeConnected, ")");
+                fetchTickets();
+                lastFetchRef.current = Date.now();
+            }
+        }, 10000); // Check every 10 seconds
 
         return () => {
-            clearInterval(interval);
+            clearInterval(pollInterval);
             if (channelRef.current && supabase) {
                 supabase.removeChannel(channelRef.current);
             }
         };
     // fetchTickets is stable (useCallback with empty deps), no need to include
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isQueueEnabled]);
+    }, [isQueueEnabled, isRealtimeConnected]);
 
     // Computed values
     const waitingTickets = tickets
