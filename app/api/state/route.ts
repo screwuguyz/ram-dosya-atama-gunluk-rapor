@@ -235,7 +235,7 @@ export async function POST(req: NextRequest) {
 
         if (teachersError) {
           console.error("[api/state][POST] Error syncing teachers table:", teachersError);
-          // We don't fail the request here, as app_state is the source of truth for now
+          return NextResponse.json({ ok: false, error: "Teachers Table Sync Error: " + teachersError.message }, { status: 500 });
         } else {
           // console.log(`[api/state][POST] Synced ${dbTeachers.length} teachers to dedicated table`);
         }
