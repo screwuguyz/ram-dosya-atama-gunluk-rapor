@@ -63,7 +63,7 @@ export async function GET() {
   } catch (error: unknown) {
     console.error("[api/teachers][GET]", error);
     return NextResponse.json(
-      { ok: false, error: error.message },
+      { ok: false, error: getErrorMessage(error) },
       { status: 500 }
     );
   }
@@ -166,7 +166,7 @@ export async function POST(req: NextRequest) {
   } catch (error: unknown) {
     console.error("[api/teachers][POST]", error);
     return NextResponse.json(
-      { ok: false, error: error.message },
+      { ok: false, error: getErrorMessage(error) },
       { status: 500 }
     );
   }
@@ -246,7 +246,7 @@ export async function PATCH(req: NextRequest) {
   } catch (error: unknown) {
     console.error("[api/teachers][PATCH]", error);
     return NextResponse.json(
-      { ok: false, error: error.message },
+      { ok: false, error: getErrorMessage(error) },
       { status: 500 }
     );
   }
@@ -299,7 +299,7 @@ export async function DELETE(req: NextRequest) {
   } catch (error: unknown) {
     console.error("[api/teachers][DELETE]", error);
     return NextResponse.json(
-      { ok: false, error: error.message },
+      { ok: false, error: getErrorMessage(error) },
       { status: 500 }
     );
   }

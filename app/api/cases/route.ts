@@ -74,7 +74,7 @@ export async function GET(req: NextRequest) {
   } catch (error: unknown) {
     console.error("[api/cases][GET]", error);
     return NextResponse.json(
-      { ok: false, error: error.message },
+      { ok: false, error: getErrorMessage(error) },
       { status: 500 }
     );
   }
@@ -148,7 +148,7 @@ export async function POST(req: NextRequest) {
   } catch (error: unknown) {
     console.error("[api/cases][POST]", error);
     return NextResponse.json(
-      { ok: false, error: error.message },
+      { ok: false, error: getErrorMessage(error) },
       { status: 500 }
     );
   }
