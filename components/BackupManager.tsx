@@ -163,7 +163,17 @@ export default function BackupManager({ currentState, onRestore }: Props) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ backupId }),
       });
-      const data = await res.json();
+
+      // Try to parse JSON, if fails, get text
+      let data;
+      const contentType = res.headers.get("content-type");
+      if (contentType && contentType.indexOf("application/json") !== -1) {
+        data = await res.json();
+      } else {
+        const text = await res.text();
+        throw new Error(`Sunucu Hatası (${res.status}): ${text.slice(0, 100)}`);
+      }
+
       if (data.ok) {
         setMessage({ type: "success", text: "✅ Yedek geri yüklendi! Sayfa yenileniyor..." });
         onRestore(data.state);
@@ -171,8 +181,9 @@ export default function BackupManager({ currentState, onRestore }: Props) {
       } else {
         setMessage({ type: "error", text: data.error || "Geri yükleme başarısız" });
       }
-    } catch (err) {
-      setMessage({ type: "error", text: "Bağlantı hatası" });
+    } catch (err: any) {
+      console.error("Restore error:", err);
+      setMessage({ type: "error", text: `Hata: ${err?.message || "Bilinmeyen hata"}` });
     } finally {
       setLoading(false);
     }
