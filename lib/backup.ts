@@ -4,6 +4,23 @@
 
 import { createClient } from "@supabase/supabase-js";
 import { getErrorMessage } from "./errorUtils";
+import { FeatureFlags } from "./featureFlags";
+import type { Teacher } from "@/types";
+
+// Helper to transform teacher from DB to App format
+function transformTeacher(t: any): Teacher {
+  return {
+    id: t.id,
+    name: t.name,
+    yearlyLoad: t.yearly_load,
+    monthly: t.monthly,
+    isAbsent: t.is_absent,
+    backupDay: t.backup_day,
+    isTester: t.is_tester,
+    active: t.active,
+    pushoverKey: t.pushover_key,
+  };
+}
 
 export interface BackupMetadata {
   id: string;
@@ -39,6 +56,19 @@ export async function createManualBackup(
 
     if (stateError) {
       return { success: false, error: stateError.message };
+    }
+
+    // 1.5. Override with dedicated tables if Feature Flags are enabled
+    if (FeatureFlags.USE_TEACHERS_TABLE) {
+      const { data: teachersData, error: teachersError } = await client
+        .from("teachers")
+        .select("*")
+        .order("name", { ascending: true });
+
+      if (!teachersError && teachersData && stateData?.state) {
+        stateData.state.teachers = teachersData.map(transformTeacher);
+        // console.log(`[backup] Included ${stateData.state.teachers.length} teachers from dedicated table`);
+      }
     }
 
     // 2. Create backup - Let Supabase generate UUID automatically

@@ -57,6 +57,21 @@ const DEFAULT_STATE: StateShape = {
   updatedAt: undefined,
 };
 
+// Helper to transform teacher from DB to App format
+function transformTeacher(t: any): Teacher {
+  return {
+    id: t.id,
+    name: t.name,
+    yearlyLoad: t.yearly_load,
+    monthly: t.monthly,
+    isAbsent: t.is_absent,
+    backupDay: t.backup_day,
+    isTester: t.is_tester,
+    active: t.active,
+    pushoverKey: t.pushover_key,
+  };
+}
+
 export async function GET() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL as string;
   const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string;
@@ -66,16 +81,42 @@ export async function GET() {
   }
   try {
     const client = createClient(url, anon);
+
+    // 1. Fetch base state from app_state table
     const { data, error } = await client
       .from("app_state")
       .select("state")
       .eq("id", "global")
       .maybeSingle();
+
     if (error) {
       console.error("[api/state][GET] Supabase error:", error);
       throw error;
     }
+
     const s = (data?.state as StateShape) || DEFAULT_STATE;
+
+    // 2. Override with dedicated tables if Feature Flags are enabled
+
+    // Teachers Table
+    if (FeatureFlags.USE_TEACHERS_TABLE) {
+      const { data: teachersData, error: teachersError } = await client
+        .from("teachers")
+        .select("*")
+        .order("name", { ascending: true });
+
+      if (!teachersError && teachersData) {
+        s.teachers = teachersData.map(transformTeacher);
+        console.log(`[api/state][GET] Loaded ${s.teachers.length} teachers from dedicated table`);
+      } else if (teachersError) {
+        console.error("[api/state][GET] Error loading teachers table:", teachersError);
+      }
+    }
+
+    // TODO: Implement Cases and History table support when schemas are confirmed
+    // if (FeatureFlags.USE_CASES_TABLE) { ... }
+    // if (FeatureFlags.USE_HISTORY_TABLE) { ... }
+
     console.log("[api/state][GET] Success, teachers count:", s.teachers?.length || 0);
     return NextResponse.json(s, { headers: { "Cache-Control": "no-store" } });
   } catch (err: unknown) {
