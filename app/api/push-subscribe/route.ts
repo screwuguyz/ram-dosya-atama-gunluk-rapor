@@ -4,6 +4,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
+import { getErrorMessage } from "@/lib/errorUtils";
 
 export async function POST(request: NextRequest) {
     try {
@@ -31,18 +32,20 @@ export async function POST(request: NextRequest) {
             );
 
         if (error) {
-            console.error("[push-subscribe] Supabase error:", error);
+            const errorMessage = getErrorMessage(error);
+            console.error("[push-subscribe] Supabase error:", errorMessage);
             return NextResponse.json(
-                { error: `Database error: ${error.message}` },
+                { error: `Database error: ${errorMessage}` },
                 { status: 500 }
             );
         }
 
         return NextResponse.json({ success: true });
-    } catch (err: any) {
-        console.error("[push-subscribe] Error:", err);
+    } catch (err: unknown) {
+        const errorMessage = getErrorMessage(err);
+        console.error("[push-subscribe] POST error:", errorMessage);
         return NextResponse.json(
-            { error: `Server error: ${err.message || err}` },
+            { error: `Server error: ${errorMessage}` },
             { status: 500 }
         );
     }
@@ -66,18 +69,20 @@ export async function DELETE(request: NextRequest) {
             .eq("endpoint", endpoint);
 
         if (error) {
-            console.error("[push-subscribe] Delete error:", error);
+            const errorMessage = getErrorMessage(error);
+            console.error("[push-subscribe] Delete error:", errorMessage);
             return NextResponse.json(
-                { error: "Failed to delete subscription" },
+                { error: `Failed to delete subscription: ${errorMessage}` },
                 { status: 500 }
             );
         }
 
         return NextResponse.json({ success: true });
-    } catch (err) {
-        console.error("[push-subscribe] Error:", err);
+    } catch (err: unknown) {
+        const errorMessage = getErrorMessage(err);
+        console.error("[push-subscribe] DELETE error:", errorMessage);
         return NextResponse.json(
-            { error: "Internal server error" },
+            { error: `Internal server error: ${errorMessage}` },
             { status: 500 }
         );
     }
@@ -102,18 +107,20 @@ export async function GET(request: NextRequest) {
             .eq("teacher_id", teacherId);
 
         if (error) {
-            console.error("[push-subscribe] Get error:", error);
+            const errorMessage = getErrorMessage(error);
+            console.error("[push-subscribe] Get error:", errorMessage);
             return NextResponse.json(
-                { error: "Failed to get subscriptions" },
+                { error: `Failed to get subscriptions: ${errorMessage}` },
                 { status: 500 }
             );
         }
 
         return NextResponse.json({ subscriptions: data || [] });
-    } catch (err) {
-        console.error("[push-subscribe] Error:", err);
+    } catch (err: unknown) {
+        const errorMessage = getErrorMessage(err);
+        console.error("[push-subscribe] GET error:", errorMessage);
         return NextResponse.json(
-            { error: "Internal server error" },
+            { error: `Internal server error: ${errorMessage}` },
             { status: 500 }
         );
     }

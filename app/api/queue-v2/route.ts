@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { getErrorMessage } from "@/lib/errorUtils";
 
 export const runtime = "nodejs";
 
@@ -34,9 +35,10 @@ export async function GET() {
         }));
 
         return NextResponse.json({ ok: true, tickets });
-    } catch (err: any) {
-        console.error("[queue-v2 GET]", err);
-        return NextResponse.json({ ok: false, error: err.message }, { status: 500 });
+    } catch (err: unknown) {
+        const errorMessage = getErrorMessage(err);
+        console.error("[queue-v2 GET]", errorMessage);
+        return NextResponse.json({ ok: false, error: errorMessage }, { status: 500 });
     }
 }
 
@@ -94,9 +96,10 @@ export async function POST(req: NextRequest) {
         console.log("[queue-v2 POST] Created ticket:", ticket.no);
 
         return NextResponse.json({ ok: true, ticket });
-    } catch (err: any) {
-        console.error("[queue-v2 POST]", err);
-        return NextResponse.json({ ok: false, error: err.message }, { status: 500 });
+    } catch (err: unknown) {
+        const errorMessage = getErrorMessage(err);
+        console.error("[queue-v2 POST]", errorMessage);
+        return NextResponse.json({ ok: false, error: errorMessage }, { status: 500 });
     }
 }
 
@@ -127,9 +130,10 @@ export async function PUT(req: NextRequest) {
         console.log("[queue-v2 PUT] Updated ticket:", id, "->", status);
 
         return NextResponse.json({ ok: true, ticket: data });
-    } catch (err: any) {
-        console.error("[queue-v2 PUT]", err);
-        return NextResponse.json({ ok: false, error: err.message }, { status: 500 });
+    } catch (err: unknown) {
+        const errorMessage = getErrorMessage(err);
+        console.error("[queue-v2 PUT]", errorMessage);
+        return NextResponse.json({ ok: false, error: errorMessage }, { status: 500 });
     }
 }
 
@@ -161,8 +165,9 @@ export async function DELETE(req: NextRequest) {
         }
 
         return NextResponse.json({ ok: true });
-    } catch (err: any) {
-        console.error("[queue-v2 DELETE]", err);
-        return NextResponse.json({ ok: false, error: err.message }, { status: 500 });
+    } catch (err: unknown) {
+        const errorMessage = getErrorMessage(err);
+        console.error("[queue-v2 DELETE]", errorMessage);
+        return NextResponse.json({ ok: false, error: errorMessage }, { status: 500 });
     }
 }

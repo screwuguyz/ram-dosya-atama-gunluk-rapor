@@ -151,19 +151,30 @@ export function useQueueSync() {
                 .on(
                     "postgres_changes",
                     { event: "*", schema: "public", table: "queue_tickets" },
-                    (payload) => {
+                    (payload: any) => {
                         console.log("[useQueueSync] Realtime event:", payload.eventType);
 
                         if (payload.eventType === "INSERT") {
+                            const record = payload.new;
+
+                            // Type guard and validation
+                            if (!record || typeof record !== 'object' || !record.id) {
+                                console.warn("[useQueueSync] Invalid INSERT payload", record);
+                                return;
+                            }
+
                             const newTicket: QueueTicket = {
-                                id: payload.new.id,
-                                no: payload.new.no,
-                                name: payload.new.name,
-                                status: payload.new.status,
-                                calledBy: payload.new.called_by,
-                                createdAt: payload.new.created_at,
-                                updatedAt: payload.new.updated_at,
+                                id: String(record.id),
+                                no: Number(record.no ?? 0),
+                                name: String(record.name || 'Misafir'),
+                                status: ['waiting', 'called', 'done'].includes(record.status)
+                                    ? record.status
+                                    : 'waiting',
+                                calledBy: record.called_by ? String(record.called_by) : undefined,
+                                createdAt: String(record.created_at ?? new Date().toISOString()),
+                                updatedAt: String(record.updated_at ?? new Date().toISOString()),
                             };
+
                             // 3 saniye gecikme - yazıcının fişi basması için zaman tanı
                             setTimeout(() => {
                                 setTickets(prev => {
@@ -174,19 +185,35 @@ export function useQueueSync() {
                             }, 3000);
                         }
                         else if (payload.eventType === "UPDATE") {
+                            const record = payload.new;
+
+                            if (!record || typeof record !== 'object' || !record.id) {
+                                console.warn("[useQueueSync] Invalid UPDATE payload", record);
+                                return;
+                            }
+
                             setTickets(prev => prev.map(t =>
-                                t.id === payload.new.id
+                                t.id === String(record.id)
                                     ? {
                                         ...t,
-                                        status: payload.new.status,
-                                        calledBy: payload.new.called_by,
-                                        updatedAt: payload.new.updated_at,
+                                        status: ['waiting', 'called', 'done'].includes(record.status)
+                                            ? record.status
+                                            : t.status,
+                                        calledBy: record.called_by ? String(record.called_by) : undefined,
+                                        updatedAt: String(record.updated_at ?? new Date().toISOString()),
                                     }
                                     : t
                             ));
                         }
                         else if (payload.eventType === "DELETE") {
-                            setTickets(prev => prev.filter(t => t.id !== payload.old.id));
+                            const record = payload.old;
+
+                            if (!record || typeof record !== 'object' || !record.id) {
+                                console.warn("[useQueueSync] Invalid DELETE payload", record);
+                                return;
+                            }
+
+                            setTickets(prev => prev.filter(t => t.id !== String(record.id)));
                         }
                     }
                 )
