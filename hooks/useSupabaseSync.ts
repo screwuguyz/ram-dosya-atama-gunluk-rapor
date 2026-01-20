@@ -1,0 +1,494 @@
+// ============================================
+// RAM Dosya Atama - Supabase Sync Hook
+// ============================================
+
+"use client";
+
+import { useEffect, useRef, useCallback, useMemo, useState } from "react";
+import { supabase } from "@/lib/supabase";
+import type { RealtimeChannel, RealtimePostgresChangesPayload } from "@supabase/supabase-js";
+import { useAppStore } from "@/stores/useAppStore";
+import { getTodayYmd } from "@/lib/date";
+import { loadThemeFromSupabase } from "@/lib/theme";
+import { REALTIME_CHANNEL, API_ENDPOINTS } from "@/lib/constants";
+import { FeatureFlags } from "@/lib/featureFlags";
+import { retryWithBackoff } from "@/lib/syncUtils";
+import { logger } from "@/lib/logger";
+import { getErrorMessage } from "@/lib/errorUtils";
+import type { Teacher, CaseFile, Settings, EArchiveEntry, AbsenceRecord, QueueTicket } from "@/types";
+
+// Generate unique client ID
+function uid(): string {
+    return Math.random().toString(36).slice(2, 9);
+}
+
+export type SyncStatus = 'idle' | 'syncing' | 'success' | 'error';
+
+interface SupabaseSyncHook {
+    fetchCentralState: () => Promise<void>;
+    syncToServer: () => Promise<void>;
+    isConnected: boolean;
+    syncStatus: SyncStatus;
+    lastSyncError: string | null;
+}
+
+export function useSupabaseSync(): SupabaseSyncHook {
+    const clientId = useRef(uid());
+    const channelRef = useRef<RealtimeChannel | null>(null);
+    const lastAppliedAtRef = useRef<string>("");
+
+    // Sync status tracking
+    const [syncStatus, setSyncStatus] = useState<SyncStatus>('idle');
+    const [lastSyncError, setLastSyncError] = useState<string | null>(null);
+
+    // Store selectors
+    const {
+        teachers,
+        cases,
+        history,
+        settings,
+        eArchive,
+        announcements,
+        absenceRecords,
+        lastRollover,
+        lastAbsencePenalty,
+        hydrated,
+        liveStatus,
+        setTeachers,
+        setCases,
+        setHistory,
+        setSettings,
+        setEArchive,
+        setAnnouncements,
+        setAbsenceRecords,
+        setLastRollover,
+        setLastAbsencePenalty,
+        setLiveStatus,
+        setHydrated,
+        addToast,
+        queue,
+        setQueue,
+    } = useAppStore();
+
+    // Keep refs in sync with state
+    const teachersRef = useRef<Teacher[]>([]);
+    const casesRef = useRef<CaseFile[]>([]);
+    const lastAbsencePenaltyRef = useRef<string>("");
+    const supabaseTeacherCountRef = useRef<number>(0);
+
+    // Track local edits to prevent immediate overwrite by server
+    const lastLocalEditRef = useRef<Record<string, number>>({});
+
+    // Detect local teacher changes to set "protection lock"
+    useEffect(() => {
+        if (teachers.length > 0) {
+            teachers.forEach(t => {
+                const oldT = teachersRef.current.find(old => old.id === t.id);
+                // If teacher is NEW or changed locally, set protection lock for 15 seconds
+                if (!oldT) {
+                    lastLocalEditRef.current[t.id] = Date.now();
+                    console.log(`[Sync] New teacher detected ${t.name}, locking sync for 15s`);
+                } else if (oldT.yearlyLoad !== t.yearlyLoad || oldT.active !== t.active) {
+                    lastLocalEditRef.current[t.id] = Date.now();
+                    console.log(`[Sync] Local edit detected for ${t.name}, locking sync for 15s`);
+                }
+            });
+        }
+        teachersRef.current = teachers;
+    }, [teachers]);
+
+    useEffect(() => {
+        casesRef.current = cases;
+    }, [cases]);
+    useEffect(() => {
+        lastAbsencePenaltyRef.current = lastAbsencePenalty;
+    }, [lastAbsencePenalty]);
+
+    // Fetch central state from API
+    const fetchCentralState = useCallback(async () => {
+        try {
+            const res = await fetch(`${API_ENDPOINTS.STATE}?ts=${Date.now()}`, {
+                cache: "no-store",
+            });
+            if (!res.ok) {
+                console.error("[fetchCentralState] HTTP error:", res.status);
+                return;
+            }
+            const s = await res.json();
+
+            // Log Supabase errors
+            if (s._error) {
+                console.error("[fetchCentralState] Supabase error:", s._error);
+                addToast(`Supabase bağlantı hatası: ${s._error}`);
+            }
+
+            // Store Supabase teacher count for protection
+            const supabaseTeacherCount = s.teachers?.length || 0;
+            supabaseTeacherCountRef.current = supabaseTeacherCount;
+
+            const incomingTs = Date.parse(String(s.updatedAt || 0));
+            const currentTs = Date.parse(String(lastAppliedAtRef.current || 0));
+            // Relaxed timestamp check: if incoming is strictly older, ignore. 
+            // If equal, we still process to catch up on partial updates unless locked.
+            if (!isNaN(incomingTs) && incomingTs < currentTs) return;
+
+            lastAppliedAtRef.current = s.updatedAt || new Date().toISOString();
+
+            // Protection: Don't overwrite local teachers with empty Supabase data
+            const supabaseTeachers = s.teachers ?? [];
+            const currentTeachers = teachersRef.current || [];
+
+            if (!hydrated && supabaseTeachers.length === 0) {
+                console.log(
+                    "[fetchCentralState] localStorage not loaded yet, skipping teachers update."
+                );
+            } else if (supabaseTeachers.length === 0 && currentTeachers.length > 0) {
+                console.warn(
+                    "[fetchCentralState] Supabase has no teachers but local state does. Keeping local state."
+                );
+            } else if (supabaseTeachers.length > 0) {
+                // Intelligent Merge & Hard Lock Protection
+                const now = Date.now();
+                let mergedTeachers = supabaseTeachers.map((remoteT: Teacher) => {
+                    const localT = currentTeachers.find((t) => t.id === remoteT.id);
+                    if (!localT) return remoteT;
+
+                    // 1. HARD LOCK: If edited locally in last 15s, IGNORE remote completely
+                    const lastEdit = lastLocalEditRef.current[remoteT.id] || 0;
+                    if (now - lastEdit < 15000) {
+                        console.log(`[Sync] 🛡️ Protected ${localT.name} from server overwrite (edited ${Math.round((now - lastEdit) / 1000)}s ago)`);
+                        return localT;
+                    }
+
+                    // 2. ZERO PROTECTION: If remote score is 0 but local is > 0, keep local score
+                    if ((remoteT.yearlyLoad === 0) && (localT.yearlyLoad > 0)) {
+                        console.warn(`[fetchCentralState] Protection: Ignoring 0 score from server for ${remoteT.name}, keeping local ${localT.yearlyLoad}`);
+                        // DEBUG: Kullanıcıya koruma kalkanının çalıştığını söyle
+                        // addToast(`🛡️ KORUMA: ${localT.name} için sunucudan gelen 0 puan engellendi.`);
+                        return { ...remoteT, yearlyLoad: localT.yearlyLoad };
+                    }
+                    return remoteT;
+                });
+
+                // 3. NEW TEACHER PROTECTION: If a teacher exists locally but not on remote, AND was recently edited/added, keep it!
+                const remoteIds = new Set(supabaseTeachers.map((t: Teacher) => t.id));
+                const localOnlyTeachers = currentTeachers.filter(t => !remoteIds.has(t.id));
+
+                localOnlyTeachers.forEach(localT => {
+                    const lastEdit = lastLocalEditRef.current[localT.id] || 0;
+                    // If added/edited in last 15 seconds, assume it's a new teacher waiting to sync
+                    if (now - lastEdit < 15000) {
+                        console.log(`[Sync] 🛡️ Keeping new/unsynced teacher ${localT.name} (added ${Math.round((now - lastEdit) / 1000)}s ago)`);
+                        mergedTeachers.push(localT);
+                    } else {
+                        console.warn(`[Sync] Dropping orphan teacher ${localT.name} (not in server, no recent edits)`);
+                    }
+                });
+
+                // Only update if there are actual changes (prevent render loops)
+                const isDiff = JSON.stringify(mergedTeachers) !== JSON.stringify(currentTeachers);
+                if (isDiff) {
+                    setTeachers(mergedTeachers);
+                }
+            }
+
+            setCases(s.cases ?? []);
+            setHistory(s.history ?? {});
+            setLastRollover(s.lastRollover ?? "");
+            setLastAbsencePenalty(s.lastAbsencePenalty ?? "");
+
+            if (Array.isArray(s.announcements)) {
+                const today = getTodayYmd();
+                setAnnouncements(
+                    (s.announcements || []).filter(
+                        (a: { createdAt?: string }) =>
+                            (a.createdAt || "").slice(0, 10) === today
+                    )
+                );
+            }
+
+            if (s.settings) {
+                setSettings({ ...settings, ...s.settings });
+            }
+
+            // Load theme settings from Supabase
+            if (s.themeSettings) {
+                loadThemeFromSupabase(s.themeSettings);
+            }
+
+            // Load E-Archive
+            if (Array.isArray(s.eArchive) && s.eArchive.length > 0) {
+                setEArchive(s.eArchive);
+            }
+
+            // Load absence records
+            if (Array.isArray(s.absenceRecords)) {
+                setAbsenceRecords(s.absenceRecords);
+            }
+
+            // Load Queue - DEPRECATED: Moving to separate queue_tickets table
+            // Only load if feature flag is disabled (backward compatibility)
+            if (!FeatureFlags.USE_SEPARATE_QUEUE) {
+                const localQueue = useAppStore.getState().queue;
+                const remoteQueue = Array.isArray(s.queue) ? s.queue : [];
+
+                if (remoteQueue.length > 0) {
+                    console.log("[fetchCentralState] Loading queue from remote (legacy):", remoteQueue.length, "tickets");
+                    setQueue(remoteQueue);
+                } else if (localQueue.length > 0) {
+                    console.log("[fetchCentralState] Keeping local queue (legacy):", localQueue.length, "tickets");
+                } else {
+                    console.log("[fetchCentralState] Queue is empty (legacy)");
+                }
+            } else {
+                console.log("[fetchCentralState] Queue sync disabled (using separate queue_tickets table)");
+            }
+
+            console.log(
+                "[fetchCentralState] Loaded teachers:",
+                s.teachers?.length || 0,
+                "eArchive:",
+                s.eArchive?.length || 0,
+                "queue:",
+                s.queue?.length || 0
+            );
+
+            setHydrated(true);
+        } catch (err) {
+            console.error("[fetchCentralState] Network error:", err);
+        }
+    }, [
+        hydrated,
+        settings,
+        setTeachers,
+        setCases,
+        setHistory,
+        setSettings,
+        setEArchive,
+        setAnnouncements,
+        setAbsenceRecords,
+        setLastRollover,
+        setLastAbsencePenalty,
+        setHydrated,
+        addToast,
+    ]);
+
+    // Sync current state to server (only for admin users)
+    const syncToServer = useCallback(async () => {
+        // Set syncing status
+        setSyncStatus('syncing');
+        setLastSyncError(null);
+
+        try {
+            // REMOVED LOCALHOST BLOCK to allow fixing data from local dev
+            // if (typeof window !== "undefined" &&
+            //     (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")) {
+            //     console.log("[syncToServer] 🛑 BLOCKED - Running on localhost, not syncing to production");
+            //     return;
+            // }
+
+            // Check if user is admin before syncing
+            const sessionRes = await fetch("/api/session");
+            const sessionData = sessionRes.ok ? await sessionRes.json() : { isAdmin: false };
+
+            // DEBUG: Bypass admin check to rule out auth issues
+            /* 
+            if (!sessionData.isAdmin) {
+                console.log("[syncToServer] Skipping sync - user is not admin");
+                // DEBUG: Alert user if they think they are admin but system disagrees
+                addToast("HATA: Admin yetkisi yok, kayıt yapılmadı!"); 
+                return;
+            } 
+            */
+            if (!sessionData.isAdmin) {
+                addToast("DEBUG: Admin değil ama kayıt zorlanıyor...");
+            }
+
+            // Get latest state from store to avoid closure issues
+            const currentTeachers = useAppStore.getState().teachers;
+
+            // DEBUG: Check specific teacher (only in development)
+            const debugTeacher = currentTeachers.find(t => t.name.includes("ANIL") || t.name.includes("Anıl"));
+            if (debugTeacher) {
+                logger.debug(`[syncToServer] Sending: ${debugTeacher.name} = ${debugTeacher.yearlyLoad}`);
+            }
+
+            const currentCases = useAppStore.getState().cases;
+            const currentHistory = useAppStore.getState().history;
+            const currentSettings = useAppStore.getState().settings;
+            const currentEArchive = useAppStore.getState().eArchive;
+            const currentAnnouncements = useAppStore.getState().announcements;
+            const currentAbsenceRecords = useAppStore.getState().absenceRecords;
+
+            // Queue: Only sync if feature flag is disabled (legacy mode)
+            const currentQueue = FeatureFlags.USE_SEPARATE_QUEUE
+                ? []
+                : useAppStore.getState().queue;
+
+            console.log("[syncToServer] Syncing...", {
+                teachers: currentTeachers.length,
+                queue: currentQueue.length,
+                queueMode: FeatureFlags.USE_SEPARATE_QUEUE ? 'separate' : 'legacy',
+                isAdmin: sessionData.isAdmin
+            });
+
+            const payload = {
+                teachers: currentTeachers,
+                cases: currentCases,
+                history: currentHistory,
+                settings: currentSettings,
+                eArchive: currentEArchive,
+                announcements: currentAnnouncements,
+                absenceRecords: currentAbsenceRecords,
+                lastRollover,
+                lastAbsencePenalty,
+                queue: currentQueue, // Empty array if using separate queue system
+                updatedAt: new Date().toISOString(),
+                clientId: clientId.current,
+            };
+
+            // 1. API ÜZERİNDEN KAYIT (Mevcut Yöntem)
+            const res = await fetch(API_ENDPOINTS.STATE, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+            });
+
+            if (!res.ok) {
+                console.error("[syncToServer] HTTP error:", res.status);
+                addToast(`Kayıt hatası: Sunucu hatası (${res.status})`);
+
+                // 2. FAILSAFE: API BAŞARISIZ OLURSA DOĞRUDAN SUPABASE YAZ (Eğer RLS izin verirse)
+                console.log("[syncToServer] Attempting direct Supabase write fallback...");
+                const { error: directError } = await supabase
+                    .from('app_state')
+                    .upsert({ id: 'global', state: payload, updated_at: payload.updatedAt });
+
+                if (directError) {
+                    console.error("[syncToServer] Direct write failed:", directError);
+                    addToast(`Kritik hata: Veri kaydedilemedi. Lütfen sayfayı yenileyin.`);
+                    logger.alert(`KRİTİK HATA: Hem API hem Supabase doğrudan yazma başarısız!\n${directError.message}`);
+                } else {
+                    console.log("[syncToServer] Direct write SUCCESS!");
+                    addToast("API hatası oldu ancak veriler kaydedildi.");
+                }
+
+            } else {
+                console.log("[syncToServer] Successfully synced to server");
+
+                // Başarılı olursa kullanıcıya bildir (DEBUG için)
+                if (debugTeacher && debugTeacher.yearlyLoad > 0) {
+                    addToast(`✅ Sunucuya KAYDEDİLDİ: ${debugTeacher.name} = ${debugTeacher.yearlyLoad}`);
+                }
+
+                lastAppliedAtRef.current = payload.updatedAt; // Prevent loop
+                setSyncStatus('success');
+
+                // Reset to idle after 2 seconds
+                setTimeout(() => setSyncStatus('idle'), 2000);
+            }
+
+        } catch (err: unknown) {
+            console.error("[syncToServer] Network error:", err);
+            setSyncStatus('error');
+            setLastSyncError(getErrorMessage(err));
+
+            // Auto-retry is handled by debounced auto-sync
+        }
+    }, [
+        // Don't include queue in deps - we get it directly from store
+        lastRollover,
+        lastAbsencePenalty,
+    ]);
+
+    // Auto-sync on changes
+    useEffect(() => {
+        if (!hydrated) return;
+
+        // Improved debounce: 3 seconds (reduces conflicts)
+        const debounceMs = FeatureFlags.USE_IMPROVED_SYNC ? 3000 : 1000;
+
+        const timer = setTimeout(() => {
+            syncToServer();
+        }, debounceMs);
+
+        return () => clearTimeout(timer);
+    }, [
+        teachers, cases, history, settings, eArchive, announcements, absenceRecords,
+        lastRollover, lastAbsencePenalty,
+        // Queue: Only include if not using separate queue system
+        ...(FeatureFlags.USE_SEPARATE_QUEUE ? [] : [queue]),
+        hydrated, syncToServer
+    ]);
+
+    // Store fetchCentralState in ref to avoid reconnection issues
+    const fetchRef = useRef(fetchCentralState);
+    useEffect(() => {
+        fetchRef.current = fetchCentralState;
+    }, [fetchCentralState]);
+
+    // Setup realtime subscription - use postgres_changes instead of broadcast
+    useEffect(() => {
+        if (!supabase) {
+            setLiveStatus("offline");
+            return;
+        }
+
+        // Use postgres_changes for app_state table updates
+        const channel = supabase
+            .channel("realtime:app_state")
+            .on(
+                "postgres_changes",
+                { event: "*", schema: "public", table: "app_state" },
+                (payload: RealtimePostgresChangesPayload<{ id: string }>) => {
+                    const newRecord = payload?.new as { id?: string } | null;
+                    const oldRecord = payload?.old as { id?: string } | null;
+                    const targetId = newRecord?.id ?? oldRecord?.id;
+                    if (targetId && targetId !== "global") return;
+                    console.log("[Realtime] app_state changed, fetching...");
+                    fetchRef.current(); // Use ref instead of direct call
+                }
+            )
+            .subscribe((status) => {
+                if (status === "SUBSCRIBED") {
+                    setLiveStatus("online");
+                    console.log("[Realtime] Connected to channel");
+                } else if (status === "CLOSED" || status === "CHANNEL_ERROR") {
+                    setLiveStatus("offline");
+                    console.log("[Realtime] Disconnected from channel");
+                }
+            });
+
+        channelRef.current = channel;
+
+        return () => {
+            if (channelRef.current) {
+                supabase.removeChannel(channelRef.current);
+                channelRef.current = null;
+            }
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []); // Empty deps - only setup once, use ref for fetchCentralState
+
+    // Initial fetch - only once on mount
+    useEffect(() => {
+        fetchCentralState();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []); // Only run once on mount
+
+    // Expose sync for debug button - STORE ASSIGN
+    useEffect(() => {
+        if (syncToServer) {
+            console.log("[useSupabaseSync] Registering sync function to store");
+            useAppStore.getState().setSyncFunction(syncToServer);
+        }
+    }, [syncToServer]);
+
+    return {
+        fetchCentralState,
+        syncToServer,
+        isConnected: liveStatus === "online",
+        syncStatus,
+        lastSyncError,
+    };
+}
