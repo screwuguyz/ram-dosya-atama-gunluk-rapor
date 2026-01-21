@@ -284,20 +284,12 @@ export function useSupabaseSync(onRealtimeEvent?: (payload: any) => void): Supab
             } 
             */
             if (!sessionData.isAdmin) {
-                addToast("DEBUG: Admin değil ama kayıt zorlanıyor...");
+                console.warn("[syncToServer] User is not admin, but attempting sync anyway (Store Assign feature)");
             }
 
             // Get latest state from store to avoid closure issues
             const currentQueue = useAppStore.getState().queue;
             const currentTeachers = useAppStore.getState().teachers;
-
-            // DEBUG: Check specific teacher
-            const debugTeacher = currentTeachers.find(t => t.name.includes("ANIL") || t.name.includes("Anıl"));
-            if (debugTeacher) {
-                // Sadece kullanıcıya bilgi vermek için alert (geçici)
-                alert(`DEBUG: Sunucuya gönderilecek puan: ${debugTeacher.name} = ${debugTeacher.yearlyLoad}`);
-                console.log(`[syncToServer] Sending: ${debugTeacher.name} = ${debugTeacher.yearlyLoad}`);
-            }
 
             const currentCases = useAppStore.getState().cases;
             const currentHistory = useAppStore.getState().history;
@@ -346,20 +338,14 @@ export function useSupabaseSync(onRealtimeEvent?: (payload: any) => void): Supab
 
                 if (directError) {
                     console.error("[syncToServer] Direct write failed:", directError);
-                    alert(`KRİTİK HATA: Hem API hem Supabase doğrudan yazma başarısız!\n${directError.message}`);
+                    addToast(`Veritabanı yazma hatası: ${directError.message}`);
                 } else {
                     console.log("[syncToServer] Direct write SUCCESS!");
-                    alert("API hatası aldı ama doğrudan veritabanına yazıldı!");
+                    addToast("API hatası nedeniyle doğrudan veritabanına yedeklendi.");
                 }
 
             } else {
                 console.log("[syncToServer] Successfully synced to server");
-
-                // Başarılı olursa kullanıcıya bildir (DEBUG için)
-                if (debugTeacher && debugTeacher.yearlyLoad > 0) {
-                    addToast(`✅ Sunucuya KAYDEDİLDİ: ${debugTeacher.name} = ${debugTeacher.yearlyLoad}`);
-                }
-
                 lastAppliedAtRef.current = payload.updatedAt; // Prevent loop
             }
 
