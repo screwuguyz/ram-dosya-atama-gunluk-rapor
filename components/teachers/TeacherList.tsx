@@ -293,53 +293,7 @@ export default function TeacherList() {
                         <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
                         Aktif Öğretmenler ({activeTeachers.length})
                     </h3>
-                    <div className="flex gap-2">
-                        <span className="text-xs font-bold text-red-500 border border-red-500 px-2 py-1 rounded">DEBUG v7 (NEW PROTECT)</span>
-                        <Button
-                            size="sm"
-                            variant="destructive"
-                            onClick={() => {
-                                const state = useAppStore.getState();
-                                const t = state.teachers.find(t => t.name.includes("ANIL") || t.name.includes("Anıl"));
-                                const score = t ? t.yearlyLoad : "Bulunamadı";
 
-                                alert(`Zorla Kayıt Başlatılıyor...\nLocal Puan: ${score}`);
-
-                                const syncFn = state.syncFunction;
-                                if (syncFn) {
-                                    syncFn();
-                                    // alert("Zorla kayıt tetiklendi (Store üzerinden)!");
-                                } else {
-                                    alert("Sync fonksiyonu hala yüklenmedi! Lütfen bekleyin...");
-                                }
-                            }}
-                        >
-                            💾 ZORLA KAYDET
-                        </Button>
-                        <Button
-                            size="sm"
-                            variant="destructive"
-                            onClick={() => {
-                                const state = useAppStore.getState();
-                                const t = state.teachers.find(t => t.name.includes("ANIL") || t.name.includes("Anıl") || t.name === state.teachers[state.teachers.length - 1].name);
-                                const localScore = t ? t.yearlyLoad : "Yok";
-                                const name = t ? t.name : "Son eklenen";
-
-                                alert(`🔎 DETAYLI ANALİZ\n\nÖğretmen: ${name}\nLOCAL (Store) Puan: ${localScore}\n\nŞimdi sunucu kontrol ediliyor...`);
-
-                                fetch(`/api/state?ts=${Date.now()}`)
-                                    .then(res => res.json())
-                                    .then(data => {
-                                        const serverT = data.teachers?.find((st: any) => st.id === t?.id);
-                                        const serverScore = serverT ? serverT.yearlyLoad : "Sunucuda YOK";
-                                        alert(`📊 SONUÇ:\n\nÖğretmen: ${name}\n\n🏠 LOCAL: ${localScore}\n☁️ SERVER: ${serverScore}\n\nEğer Server 0 veya Yok ise, ve Local 77 ise -> Koruma devreye girmeliydi.`);
-                                    })
-                                    .catch(err => alert("Sunucu hatası: " + err));
-                            }}
-                        >
-                            🕵️ PUAN DEBUG
-                        </Button>
-                    </div>
                 </div>
                 <div className="grid gap-3">
                     {activeTeachers.map((t) => {

@@ -29,6 +29,7 @@ type StateShape = {
   absenceRecords?: AbsenceRecord[];
   queue?: QueueTicket[];
   updatedAt?: string;
+  adminSessionId?: string; // NEW: Single Admin Session ID
 };
 
 const DEFAULT_STATE: StateShape = {
@@ -43,6 +44,7 @@ const DEFAULT_STATE: StateShape = {
   absenceRecords: [],
   queue: [],
   updatedAt: undefined,
+  adminSessionId: undefined,
 };
 
 // ============================================
@@ -140,6 +142,7 @@ export async function POST(req: NextRequest) {
     absenceRecords: Array.isArray(body.absenceRecords) ? body.absenceRecords : currentState.absenceRecords,
     queue: Array.isArray(body.queue) ? body.queue : currentState.queue,
     updatedAt: body.updatedAt ? String(body.updatedAt) : new Date().toISOString(),
+    adminSessionId: body.adminSessionId !== undefined ? String(body.adminSessionId) : currentState.adminSessionId,
   };
 
   // LOCAL_MODE: Write to JSON file

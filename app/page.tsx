@@ -119,6 +119,7 @@ export default function DosyaAtamaApp() {
   const lastAppliedAtRef = React.useRef<string>("")
   const teachersRef = React.useRef<Teacher[]>([]);
   const casesRef = React.useRef<CaseFile[]>([]);
+  const adminSessionIdRef = React.useRef<string | null>(null);
 
   // ... (Refs continue)
 
@@ -231,10 +232,22 @@ export default function DosyaAtamaApp() {
       if (Array.isArray(s.queue)) setQueue(s.queue);
 
       setCentralLoaded(true);
+
+      // SINGLE ADMIN SESSION CHECK (Polling / Fetch)
+      // Check if server session ID differs from ours (if we have one and we are admin)
+      if (isAdmin && adminSessionIdRef.current) {
+        const serverSessionId = s.adminSessionId;
+        if (serverSessionId && serverSessionId !== adminSessionIdRef.current) {
+          console.warn("[Session] Session ID mismatch! Remote:", serverSessionId, "Local:", adminSessionIdRef.current);
+          alert("Oturumunuz başka bir cihazda açıldığı için sonlandırıldı.");
+          doLogout();
+        }
+      }
+
     } catch (err) {
       console.error(err);
     }
-  }, [hydrated, setQueue, setTeachers, setCases, setHistory, setLastRollover, setLastAbsencePenalty, setAnnouncements, updateSettings, setEArchive, setAbsenceRecords]);
+  }, [hydrated, setQueue, setTeachers, setCases, setHistory, setLastRollover, setLastAbsencePenalty, setAnnouncements, updateSettings, setEArchive, setAbsenceRecords, isAdmin]);
 
   // RESTORED: Initial Fetch
   useEffect(() => {
@@ -248,27 +261,43 @@ export default function DosyaAtamaApp() {
 
     // LOCAL_MODE: Poll every 5 seconds
     if (isLocalMode) {
-      console.log("[LOCAL_MODE] Using 5-second polling instead of Supabase realtime");
       const interval = setInterval(() => {
         fetchCentralState();
       }, 5000);
       return () => clearInterval(interval);
     }
 
-    // SUPABASE MODE: Use realtime subscription
-    if (process.env.NEXT_PUBLIC_DISABLE_REALTIME === "1") return;
-    const channel = supabase
-      .channel("realtime:app_state")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "app_state" },
-        (payload: any) => {
-          if (payload?.new?.id === "global") fetchCentralState();
+    // SUPABASE REALTIME
+    const sync = useSupabaseSync((payload) => {
+      // payload.new contains the updated record "state" field
+      // but payload structure depends on the "table" and events
+      // Our hook simplifies this.
+      console.log("[Realtime] Update received", payload);
+
+      // SINGLE ADMIN SESSION CHECK
+      // If we are admin, check if the session ID has changed
+      if (isAdmin && adminSessionIdRef.current) {
+        const remoteSessionId = payload?.new?.state?.adminSessionId;
+        if (remoteSessionId && remoteSessionId !== adminSessionIdRef.current) {
+          console.warn("[Session] Session ID mismatch! Remote:", remoteSessionId, "Local:", adminSessionIdRef.current);
+          alert("Oturumunuz başka bir cihazda açıldığı için sonlandırıldı.");
+          doLogout();
+          return;
         }
-      )
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [fetchCentralState]);
+      }
+
+      if (payload.new && payload.new.state) {
+        // ... merge logic is complicated, mostly we trust fetchCentralState checks
+        // For now, let's just re-fetch to be safe and leverage dedupe logic
+        fetchCentralState();
+      }
+    });
+
+    return () => {
+      // cleanup if needed
+    };
+  }, [fetchCentralState, isAdmin]);
+
 
   // RESTORED: Manual Sync Loop (The "Old System" that worked)
   // RESTORED: Manual Sync Loop (The "Old System" that worked)
@@ -1017,6 +1046,23 @@ export default function DosyaAtamaApp() {
         setLoginEmail("");
         setLoginPassword("");
         setLoginRemember(true);
+
+        // SINGLE ADMIN SESSION: Generate new ID and save
+        const newSessionId = uid();
+        adminSessionIdRef.current = newSessionId;
+        console.log("[Session] New Admin Session started:", newSessionId);
+
+        // Save to server immediately
+        await fetch("/api/state", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            adminSessionId: newSessionId,
+            // Send current state to ensure valid merge
+            updatedAt: new Date().toISOString()
+          })
+        });
+
       } else {
         alert("Giriş başarısız. E-posta/şifreyi kontrol edin.");
       }
