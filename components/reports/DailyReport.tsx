@@ -229,12 +229,14 @@ export default function DailyReportView({
 
     // Seçili yılın toplam puanını hesapla (Dinamik Yıllık Yük)
     let calculatedYearlyLoad = 0;
+    const seenYearlyIds = new Set<string>(); // DEDUPE: Aynı case'i iki kez sayma
 
     // 1. History'den topla (tüm puanları dahil et: dosya atamaları + sistem puanları)
     Object.entries(history).forEach(([date, dayCases]) => {
       if (date.startsWith(String(year))) {
         dayCases.forEach(c => {
-          if (c.assignedTo === t.id) {
+          if (c.assignedTo === t.id && c.id && !seenYearlyIds.has(c.id)) {
+            seenYearlyIds.add(c.id);
             calculatedYearlyLoad += c.score;
           }
         });
@@ -244,7 +246,8 @@ export default function DailyReportView({
     // 2. Bugünün cases'lerinden topla (Eğer seçili yıl, bugünün yılıysa)
     if (String(year) === todayYmd.slice(0, 4)) {
       cases.forEach(c => {
-        if (c.assignedTo === t.id && c.createdAt.startsWith(String(year))) {
+        if (c.assignedTo === t.id && c.createdAt.startsWith(String(year)) && c.id && !seenYearlyIds.has(c.id)) {
+          seenYearlyIds.add(c.id);
           calculatedYearlyLoad += c.score;
         }
       });
