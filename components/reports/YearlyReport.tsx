@@ -36,8 +36,16 @@ export default function YearlyReport({ teachers, cases, history }: Props) {
   // Tüm dosyaları birleştir
   const allCases = useMemo(() => {
     const fromHistory = Object.values(history).flat();
-    // Backup bonuslar dahil ediliyor -> ARTIK EDİLMİYOR (Fix)
-    return [...cases, ...fromHistory].filter(c => !c.absencePenalty && !c.backupBonus);
+    const fromToday = cases || [];
+    const combined = [...fromToday, ...fromHistory];
+
+    // DEDUPE: Same case ID should only count once
+    const seen = new Set<string>();
+    return combined.filter(c => {
+      if (!c.id || seen.has(c.id)) return false;
+      seen.add(c.id);
+      return true;
+    });
   }, [cases, history]);
 
   // Yıllık veriler

@@ -39,8 +39,20 @@ export default function TeacherPerformanceReport({ teachers, cases, history }: P
   // Tüm dosyaları birleştir
   const allCases = useMemo(() => {
     const fromHistory = Object.values(history).flat();
-    // Backup bonuslar da artık dahil ediliyor (kurtarılan veriler için)
-    return [...cases, ...fromHistory].filter(c => !c.absencePenalty);
+    const fromToday = cases || [];
+    const combined = [...fromToday, ...fromHistory];
+
+    // DEDUPE: Same case ID should only count once
+    const seen = new Set<string>();
+    const deduped = combined.filter(c => {
+      if (!c.id || seen.has(c.id)) return false;
+      seen.add(c.id);
+      return true;
+    });
+
+    // Backup bonuslar dahil ediliyor, devamsızlık cezaları genelde performansa girmez ama 
+    // istatistiksel doğruluk için ham veriyi tutmakta fayda var.
+    return deduped;
   }, [cases, history]);
 
   // Filtrelenmiş dosyalar

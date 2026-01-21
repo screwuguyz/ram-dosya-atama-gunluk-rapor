@@ -25,7 +25,15 @@ export default function MonthlyReport({ teachers, cases = [], history = {} }: Pr
   const allCases = useMemo(() => {
     const fromHistory = Object.values(history).flat();
     const fromToday = cases || [];
-    return [...fromHistory, ...fromToday];
+    const combined = [...fromHistory, ...fromToday];
+
+    // DEDUPE: Same case ID should only count once
+    const seen = new Set<string>();
+    return combined.filter(c => {
+      if (!c.id || seen.has(c.id)) return false;
+      seen.add(c.id);
+      return true;
+    });
   }, [cases, history]);
 
   // Her öğretmen için aylık puanları hesapla (Daily Report ile aynı mantık)

@@ -1049,20 +1049,27 @@ export default function DosyaAtamaApp() {
   function countCasesThisMonth(tid: string): number {
     const now = new Date();
     const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    const seenIds = new Set<string>();
     let count = 0;
 
     // History'den bu ayın dosyalarını say
     Object.entries(history).forEach(([date, dayCases]) => {
       if (date.startsWith(ym)) {
         dayCases.forEach(c => {
-          if (c.assignedTo === tid && !c.absencePenalty && !c.backupBonus) count++;
+          if (c.assignedTo === tid && !c.absencePenalty && !c.backupBonus && c.id && !seenIds.has(c.id)) {
+            seenIds.add(c.id);
+            count++;
+          }
         });
       }
     });
 
     // Bugünün cases'lerinden de say
     cases.forEach(c => {
-      if (c.assignedTo === tid && c.createdAt.startsWith(ym) && !c.absencePenalty && !c.backupBonus) count++;
+      if (c.assignedTo === tid && c.createdAt.startsWith(ym) && !c.absencePenalty && !c.backupBonus && c.id && !seenIds.has(c.id)) {
+        seenIds.add(c.id);
+        count++;
+      }
     });
 
     return count;
@@ -1071,13 +1078,15 @@ export default function DosyaAtamaApp() {
   // Gerçek yıllık yükü hesapla (cases + history'den)
   function getRealYearlyLoad(tid: string): number {
     const currentYear = new Date().getFullYear();
+    const seenIds = new Set<string>();
     let total = 0;
 
     // History'den bu yılın puanlarını topla
     Object.entries(history).forEach(([date, dayCases]) => {
       if (date.startsWith(String(currentYear))) {
         dayCases.forEach(c => {
-          if (c.assignedTo === tid) {
+          if (c.assignedTo === tid && c.id && !seenIds.has(c.id)) {
+            seenIds.add(c.id);
             total += c.score;
           }
         });
@@ -1086,7 +1095,8 @@ export default function DosyaAtamaApp() {
 
     // Bugünün cases'lerinden de topla
     cases.forEach(c => {
-      if (c.assignedTo === tid && c.createdAt.startsWith(String(currentYear))) {
+      if (c.assignedTo === tid && c.createdAt.startsWith(String(currentYear)) && c.id && !seenIds.has(c.id)) {
+        seenIds.add(c.id);
         total += c.score;
       }
     });
@@ -1678,16 +1688,17 @@ export default function DosyaAtamaApp() {
     if (lastAbsencePenaltyRef.current === day) return;
 
     // Çalışan öğretmenler: aktif, o gün devamsız DEĞİL ve o gün yedek DEĞİL
-    // absentDay === day kontrolü: öğretmen o gün için devamsız işaretlenmişse çalışmıyor sayılır
+    // useAppStore.getState() kullanmak closure stale state sorununu önler
     const currentTeachers = useAppStore.getState().teachers;
     const currentCases = useAppStore.getState().cases;
     const currentAbsenceRecords = useAppStore.getState().absenceRecords;
+    const settingsCurrent = useAppStore.getState().settings;
 
     const workingTeachers = currentTeachers.filter((t) =>
       t.active &&
-      !t.isPhysiotherapist && // Fizyoterapistleri hariç tut
-      !currentAbsenceRecords.some(r => r.teacherId === t.id && r.date === day) && // O gün için devamsız değil
-      !t.isAbsent && // Şu an devamsız değil
+      !t.isPhysiotherapist &&
+      !currentAbsenceRecords.some(r => r.teacherId === t.id && r.date === day) &&
+      !t.isAbsent &&
       t.backupDay !== day
     );
     const workingIds = new Set(workingTeachers.map((t) => t.id));
@@ -1707,7 +1718,7 @@ export default function DosyaAtamaApp() {
     }
 
     const minScore = pointsByTeacher.size ? Math.min(...pointsByTeacher.values()) : 0;
-    const { absencePenaltyAmount } = settingsRef.current;
+    const { absencePenaltyAmount } = settingsCurrent;
     const penaltyScore = Math.max(0, minScore - absencePenaltyAmount);
 
     // Devamsız öğretmenler: o gün için devamsız işaretlenmiş VEYA şu an devamsız olan aktif öğretmenler
@@ -1722,10 +1733,10 @@ export default function DosyaAtamaApp() {
       return;
     }
 
-    const existingPenaltyCases = casesRef.current.filter(
+    const existingPenaltyCases = currentCases.filter(
       (c) => c.absencePenalty && c.createdAt.slice(0, 10) === day
     );
-    const keepNonPenalty = casesRef.current.filter(
+    const keepNonPenalty = currentCases.filter(
       (c) => !(c.absencePenalty && c.createdAt.slice(0, 10) === day)
     );
 
@@ -1779,7 +1790,7 @@ export default function DosyaAtamaApp() {
     if (changedCases) {
       const nextCases = [...newPenaltyCases, ...keepNonPenalty];
       setCases(nextCases);
-      casesRef.current = nextCases;
+      casesRef.current = nextCases; // Update Ref for doRollover
     }
 
     if (loadDelta.size > 0) {
@@ -1796,16 +1807,18 @@ export default function DosyaAtamaApp() {
         };
       });
       setTeachers(nextTeachers);
+      teachersRef.current = nextTeachers; // Update Ref for doRollover
     }
 
     setLastAbsencePenalty(day);
     lastAbsencePenaltyRef.current = day;
-  }, [isAdmin, centralLoaded, hydrated, setCases, setTeachers, setLastAbsencePenalty]);
+  }, [centralLoaded, hydrated, setCases, setTeachers, setLastAbsencePenalty]);
 
   // ---- Başkan yedek: bugün dosya alma, yarın bonusla başlat
   const applyBackupBonusForDay = React.useCallback((day: string) => {
     const currentTeachers = useAppStore.getState().teachers;
     const currentCases = useAppStore.getState().cases;
+    const settingsCurrent = useAppStore.getState().settings;
 
     const backups = currentTeachers.filter((t) => t.active && t.backupDay === day);
     if (!backups.length) return;
@@ -1820,7 +1833,7 @@ export default function DosyaAtamaApp() {
     }
 
     // Ayarlardan bonus miktarını al
-    const { backupBonusAmount } = settingsRef.current;
+    const { backupBonusAmount } = settingsCurrent;
     const maxScore = pointsByTeacher.size ? Math.max(...pointsByTeacher.values()) : 0;
 
     // Bonus hesapla (her zaman en yüksek + X)
@@ -1865,9 +1878,11 @@ export default function DosyaAtamaApp() {
     // Cases güncelle
     const nextCases = [...newBonusCases, ...keepNonBonus];
     setCases(nextCases);
+    casesRef.current = nextCases; // Update Ref for doRollover
 
     // Teachers güncelle
     const nextTeachers = currentTeachers.map((t) => {
+      // backupDay === day ise bonus alacak kişidir
       if (t.backupDay !== day) return t;
       const delta = loadDelta.get(t.id) || 0;
       const nextMonthly = { ...(t.monthly || {}) };
@@ -1880,22 +1895,25 @@ export default function DosyaAtamaApp() {
       };
     });
     setTeachers(nextTeachers);
+    teachersRef.current = nextTeachers; // Update Ref for doRollover
   }, [setTeachers, setCases]);
 
   // ---- ROLLOVER: Gece 00:00 arşivle & sıfırla
   function doRollover() {
-    const dayOfCases = cases[0]?.createdAt.slice(0, 10) || getTodayYmd();
-
-    // ✅ GÜVENLIK: Rollover öncesi, şu an izinli olan öğretmenlerin absenceRecords'ta o gün için kaydı yoksa ekle
-    // Bu sayede site kapansa bile ertesi gün açıldığında izin puanı doğru hesaplanır
+    // State'i en güncel haliyle al
+    const currentCases = useAppStore.getState().cases;
+    const currentHistory = useAppStore.getState().history;
     const currentTeachers = useAppStore.getState().teachers;
     const currentAbsenceRecords = useAppStore.getState().absenceRecords;
+
+    const dayOfCases = currentCases[0]?.createdAt.slice(0, 10) || getTodayYmd();
+
+    // ✅ GÜVENLIK: Rollover öncesi, şu an izinli olan öğretmenlerin absenceRecords'ta o gün için kaydı yoksa ekle
     const updatedAbsenceRecords = [...currentAbsenceRecords];
     let recordsChanged = false;
 
     currentTeachers.forEach(t => {
       if (t.active && t.isAbsent && !t.isPhysiotherapist) {
-        // Bu öğretmen şu an izinli, o gün için kayıt var mı?
         const hasRecord = updatedAbsenceRecords.some(r => r.teacherId === t.id && r.date === dayOfCases);
         if (!hasRecord) {
           updatedAbsenceRecords.push({ teacherId: t.id, date: dayOfCases });
@@ -1909,24 +1927,32 @@ export default function DosyaAtamaApp() {
       setAbsenceRecords(updatedAbsenceRecords);
     }
 
+    // Puanları hesapla (Ref'ler güncellenir)
     applyAbsencePenaltyForDay(dayOfCases);
     applyBackupBonusForDay(dayOfCases);
-    const sourceCases = casesRef.current.length ? casesRef.current : cases;
-    const nextHistory: Record<string, CaseFile[]> = { ...history };
+
+    // Not: apply... fonksiyonları casesRef.current ve teachersRef.current'ı güncelledi
+    const sourceCases = casesRef.current;
+    const nextHistory: Record<string, CaseFile[]> = { ...currentHistory };
+
     for (const c of sourceCases) {
-      const day = c.createdAt.slice(0, 10); // ISO gün
-      nextHistory[day] = [...(nextHistory[day] || []), c];
+      const day = c.createdAt.slice(0, 10);
+      const dayCases = nextHistory[day] || [];
+      // DEDUPE: Even if already in history (multiple rollover trigger), don't double add
+      if (!dayCases.some(ex => ex.id === c.id)) {
+        nextHistory[day] = [...dayCases, c];
+      }
     }
+
     setHistory(nextHistory);
-    setCases([]); // bugünkü liste sıfırlansın (kilitler de sıfırlanır)
+    setCases([]); // bugünkü liste sıfırlansın
     setLastRollover(getTodayYmd());
 
-    // ✅ Rollover sonrası tüm öğretmenlerin isAbsent ve isTester durumunu sıfırla (yeni gün başladı)
-    // NOT: useAppStore.getState().teachers kullanılmalı çünkü applyBackupBonusForDay ve 
-    // applyAbsencePenaltyForDay içinde teachers güncellenmiş olabilir
+    // Yeni gün için durumları sıfırla
     const latestTeachers = useAppStore.getState().teachers;
     const resetTeachers = latestTeachers.map(t => ({ ...t, isAbsent: false, isTester: false }));
     setTeachers(resetTeachers);
+    teachersRef.current = resetTeachers;
   }
 
   // Uygulama açıldığında kaçırılmış rollover varsa uygula, sonra bir sonraki gece için zamanla
@@ -2010,7 +2036,17 @@ export default function DosyaAtamaApp() {
       .filter(([day]) => day.startsWith(ym))
       .flatMap(([, arr]) => arr);
     const inToday = cases.filter(c => c.createdAt.slice(0, 7) === ym);
-    return [...inHistory, ...inToday].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+    const combined = [...inHistory, ...inToday];
+
+    // DEDUPE: Same ID should only count once
+    const seen = new Set<string>();
+    const deduped = combined.filter(c => {
+      if (!c.id || seen.has(c.id)) return false;
+      seen.add(c.id);
+      return true;
+    });
+
+    return deduped.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   }
 
   // Ay seçimleri: arşivdeki aylar + bugünkü ay

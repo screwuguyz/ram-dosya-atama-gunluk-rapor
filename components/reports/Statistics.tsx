@@ -55,7 +55,16 @@ export default function Statistics({ teachers, cases, history }: Props) {
   // Tüm dosyaları birleştir (bugün + history)
   const allCases = useMemo(() => {
     const fromHistory = Object.values(history).flat();
-    return [...cases, ...fromHistory].filter(c => !c.absencePenalty && !c.backupBonus);
+    const fromToday = cases || [];
+    const combined = [...fromToday, ...fromHistory];
+
+    // DEDUPE: Same case ID should only count once
+    const seen = new Set<string>();
+    return combined.filter(c => {
+      if (!c.id || seen.has(c.id)) return false;
+      seen.add(c.id);
+      return true;
+    });
   }, [cases, history]);
 
   // Seçili hafta verileri
