@@ -109,7 +109,7 @@ export default function TeacherDashboard({
 
     // --- Prediction Logic ---
     const predictedAssignments = useMemo(() => {
-        // Get eligible teachers
+        // Get eligible teachers (matching lib/scoring.ts logic)
         const eligibleTeachers = teachers.filter(t =>
             t.active &&
             !t.isAbsent &&
@@ -128,54 +128,70 @@ export default function TeacherDashboard({
             }
         });
 
-        // Sort teachers by: 1) yearly load, 2) today's count
-        const sortedTeachers = [...eligibleTeachers].sort((a, b) => {
-            const aLoad = a.yearlyLoad;
-            const bLoad = b.yearlyLoad;
-            if (aLoad !== bLoad) return aLoad - bLoad;
+        // Calculate monthly counts (matching lib/scoring.ts)
+        const getMonthlyCount = (teacherId: string): number => {
+            const now = new Date();
+            const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+            let count = 0;
 
-            const aToday = todayCounts[a.id] || 0;
-            const bToday = todayCounts[b.id] || 0;
-            return aToday - bToday;
-        });
+            // From history
+            Object.entries(history).forEach(([date, dayCases]) => {
+                if (date.startsWith(ym)) {
+                    dayCases.forEach(c => {
+                        if (c.assignedTo === teacherId && !c.absencePenalty) count++;
+                    });
+                }
+            });
+
+            // From today's cases
+            cases.forEach(c => {
+                if (c.assignedTo === teacherId && c.createdAt.startsWith(ym) && !c.absencePenalty) count++;
+            });
+
+            return count;
+        };
 
         // Simulate assignments for pending entries (max 5)
         const predictions: { entry: PdfAppointment; teacher: Teacher; position: number }[] = [];
-        const simulatedCounts = { ...todayCounts };
-        let lastAssignedIdx = -1;
+        const simulatedTodayCounts = { ...todayCounts };
+        const simulatedYearlyLoads: Record<string, number> = {};
+        teachers.forEach(t => { simulatedYearlyLoads[t.id] = t.yearlyLoad; });
 
         pendingEntries.slice(0, 5).forEach((entry, idx) => {
-            // Find best teacher (rotation: avoid same teacher consecutively)
-            let candidateTeachers = sortedTeachers.filter(t =>
-                (simulatedCounts[t.id] || 0) < 2 // Daily limit
-            );
+            // Sort teachers matching lib/scoring.ts: 1) Yearly load, 2) Daily count, 3) Monthly count, 4) ID
+            const sorted = [...eligibleTeachers].sort((a, b) => {
+                // 1. Yearly load (simulated)
+                const aLoad = simulatedYearlyLoads[a.id] || a.yearlyLoad;
+                const bLoad = simulatedYearlyLoads[b.id] || b.yearlyLoad;
+                if (aLoad !== bLoad) return aLoad - bLoad;
 
-            // Rotation: prefer different teacher
-            if (candidateTeachers.length > 1 && lastAssignedIdx >= 0) {
-                const lastTeacher = sortedTeachers[lastAssignedIdx];
-                candidateTeachers = candidateTeachers.filter(t => t.id !== lastTeacher.id);
-                if (candidateTeachers.length === 0) {
-                    candidateTeachers = sortedTeachers.filter(t => (simulatedCounts[t.id] || 0) < 2);
-                }
-            }
+                // 2. Daily count (simulated)
+                const aDaily = simulatedTodayCounts[a.id] || 0;
+                const bDaily = simulatedTodayCounts[b.id] || 0;
+                if (aDaily !== bDaily) return aDaily - bDaily;
 
-            // Re-sort by simulated load
-            candidateTeachers.sort((a, b) => {
-                const aLoad = a.yearlyLoad + (simulatedCounts[a.id] || 0) * 5;
-                const bLoad = b.yearlyLoad + (simulatedCounts[b.id] || 0) * 5;
-                return aLoad - bLoad;
+                // 3. Monthly count
+                const aMonthly = getMonthlyCount(a.id);
+                const bMonthly = getMonthlyCount(b.id);
+                if (aMonthly !== bMonthly) return aMonthly - bMonthly;
+
+                // 4. ID for consistency
+                return a.id.localeCompare(b.id);
             });
 
-            if (candidateTeachers.length > 0) {
-                const chosen = candidateTeachers[0];
+            // Filter by daily limit (settings.dailyLimit = 2)
+            const available = sorted.filter(t => (simulatedTodayCounts[t.id] || 0) < 2);
+
+            if (available.length > 0) {
+                const chosen = available[0];
                 predictions.push({ entry, teacher: chosen, position: idx + 1 });
-                simulatedCounts[chosen.id] = (simulatedCounts[chosen.id] || 0) + 1;
-                lastAssignedIdx = sortedTeachers.findIndex(t => t.id === chosen.id);
+                simulatedTodayCounts[chosen.id] = (simulatedTodayCounts[chosen.id] || 0) + 1;
+                simulatedYearlyLoads[chosen.id] = (simulatedYearlyLoads[chosen.id] || 0) + 5; // Score per file
             }
         });
 
         return predictions;
-    }, [teachers, cases, pendingEntries, todayYmd]);
+    }, [teachers, cases, pendingEntries, todayYmd, history]);
 
     return (
         <div className="space-y-8 animate-fade-in-up p-6">
