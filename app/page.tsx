@@ -22,13 +22,10 @@ import YearlyReport from "@/components/reports/YearlyReport";
 import TeacherPerformanceReport from "@/components/reports/TeacherPerformanceReport";
 import FileTypeAnalysis from "@/components/reports/FileTypeAnalysis";
 import BackupManager from "@/components/BackupManager";
-import ThemeSettings from "@/components/ThemeSettings";
-import DashboardWidgets from "@/components/DashboardWidgets";
-import ThemeToggle from "@/components/ThemeToggle";
 // Theme imports removed (handled by hook)
 import AssignedArchiveView from "@/components/archive/AssignedArchive";
 import AssignedArchiveSingleDayView from "@/components/archive/AssignedArchiveSingleDay";
-import { Trash2, Search, UserMinus, Plus, FileSpreadsheet, Inbox, X, ChevronLeft, ChevronRight, Volume2, VolumeX } from "lucide-react";
+import { Trash2, Search, UserMinus, Plus, FileSpreadsheet, Inbox, X, ChevronLeft, ChevronRight, Volume2 } from "lucide-react";
 
 
 
@@ -52,7 +49,7 @@ import { useAppStore } from "@/stores/useAppStore";
 import type { Teacher, CaseFile, EArchiveEntry, Announcement, PdfAppointment } from "@/types";
 import { uid, humanType, csvEscape } from "@/lib/utils";
 import { nowISO, getTodayYmd, ymdLocal, ymOf } from "@/lib/date";
-import { LS_KEYS, APP_VERSION, DEFAULT_SETTINGS } from "@/lib/constants";
+import { LS_KEYS, APP_VERSION } from "@/lib/constants";
 import TeacherList from "@/components/teachers/TeacherList";
 import PhysiotherapistList from "@/components/teachers/PhysiotherapistList";
 import CaseList from "@/components/cases/CaseList";
@@ -93,6 +90,15 @@ const LS_LAST_SEEN_VERSION = LS_KEYS.LAST_SEEN_VERSION;
 // DailyAppointmentsCard bileşeni @/components/appointments/DailyAppointmentsCard.tsx dosyasına taşındı.
 
 const MAX_DAILY_CASES = 2;
+
+const ADMIN_TABS = [
+  { id: "files", icon: "📁", label: "Dosya Atama" },
+  { id: "teachers", icon: "👨‍🏫", label: "Öğretmenler" },
+  { id: "physiotherapists", icon: "🩺", label: "Fizyoterapist" },
+  { id: "reports", icon: "📊", label: "Raporlar" },
+  { id: "announcements", icon: "📢", label: "Duyuru" },
+  { id: "backup", icon: "💾", label: "Yedekleme" },
+] as const;
 
 export default function DosyaAtamaApp() {
   // Queue state from store
@@ -2447,7 +2453,7 @@ export default function DosyaAtamaApp() {
         <div className="absolute top-40 left-40 w-80 h-80 bg-purple-200 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-4000"></div>
       </div>
 
-      <ThemeToggle />
+
       <div className="container mx-auto p-4 space-y-6 relative z-10">
         {/* Üst araç çubuğu: rapor ve giriş */}
         {/* ÜST BAR (sticky + cam) - MOBİL OPTİMİZE */}
@@ -2613,17 +2619,10 @@ export default function DosyaAtamaApp() {
             {/* Tab Navigation - Modern Tasarım */}
             <div className="border-b bg-gradient-to-r from-slate-50 via-white to-slate-50">
               <div className="flex items-center gap-1 p-2 overflow-x-auto no-scrollbar">
-                {[
-                  { id: "files", icon: "📁", label: "Dosya Atama" },
-                  { id: "teachers", icon: "👨‍🏫", label: "Öğretmenler" },
-                  { id: "physiotherapists", icon: "🩺", label: "Fizyoterapist" },
-                  { id: "reports", icon: "📊", label: "Raporlar" },
-                  { id: "announcements", icon: "📢", label: "Duyuru" },
-                  { id: "backup", icon: "💾", label: "Yedekleme" },
-                ].map((tab) => (
+                {ADMIN_TABS.map((tab) => (
                   <button
                     key={tab.id}
-                    onClick={() => setAdminTab(tab.id as any)}
+                    onClick={() => setAdminTab(tab.id)}
                     className={`
                       relative flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium
                       transition-all duration-200 ease-out whitespace-nowrap
