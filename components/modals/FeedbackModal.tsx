@@ -1,172 +1,112 @@
-// ============================================
-// Öneri/Şikayet Modal
-// ============================================
-
-"use client";
 
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
-import { X, Send, Loader2 } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAppStore } from "@/stores/useAppStore";
-import { API_ENDPOINTS } from "@/lib/constants";
 
 interface FeedbackModalProps {
-    isOpen: boolean;
+    open: boolean;
     onClose: () => void;
 }
 
-export default function FeedbackModal({ isOpen, onClose }: FeedbackModalProps) {
+export default function FeedbackModal({ open, onClose }: FeedbackModalProps) {
     const [name, setName] = useState("");
     const [email, setEmail] = useState("");
-    const [type, setType] = useState<"oneri" | "sikayet">("oneri");
+    const [type, setType] = useState<string>("oneri");
     const [message, setMessage] = useState("");
     const [sending, setSending] = useState(false);
-    const addToast = useAppStore((state) => state.addToast);
 
-    if (!isOpen) return null;
+    const addToast = useAppStore(s => s.addToast);
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
+    if (!open) return null;
 
-        if (!message.trim()) {
-            addToast("Lütfen mesajınızı yazın.");
+    async function handleSubmit() {
+        const payload = { name: name.trim(), email: email.trim(), type, message: message.trim() };
+
+        // page.tsx logic was: if (!payload.name || !payload.email || payload.message.length < 10)
+        if (!payload.name || !payload.email || payload.message.length < 10) {
+            addToast("Hata: Lütfen ad, e-posta ve en az 10 karakterlik mesaj girin.");
             return;
         }
 
         setSending(true);
-
         try {
-            const res = await fetch(API_ENDPOINTS.FEEDBACK, {
+            const res = await fetch("/api/feedback", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    name: name.trim() || "Anonim",
-                    email: email.trim() || null,
-                    type,
-                    message: message.trim(),
-                }),
+                body: JSON.stringify(payload)
             });
 
             if (res.ok) {
-                addToast("Geri bildiriminiz alındı. Teşekkürler!");
+                addToast("Başarı: Gönderildi. Teşekkür ederiz!");
+                onClose();
+                // Reset form
                 setName("");
                 setEmail("");
                 setMessage("");
                 setType("oneri");
-                onClose();
             } else {
-                const data = await res.json().catch(() => ({}));
-                addToast(data.error || "Gönderim başarısız oldu.");
+                const j = await res.json().catch(() => ({}));
+                addToast("Hata: Gönderilemedi: " + (j?.error || res.statusText));
             }
-        } catch (err) {
-            console.error("Feedback error:", err);
-            addToast("Bir hata oluştu. Lütfen tekrar deneyin.");
+        } catch {
+            addToast("Hata: Ağ hatası: Gönderilemedi");
         } finally {
             setSending(false);
         }
-    };
+    }
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-            <div
-                className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 animate-slide-in-up"
-                onClick={(e) => e.stopPropagation()}
-            >
-                {/* Header */}
-                <div className="flex items-center justify-between p-4 border-b border-slate-100">
-                    <h2 className="text-lg font-semibold text-slate-800">
-                        💬 Öneri / Şikayet
-                    </h2>
-                    <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={onClose}
-                        className="text-slate-500 hover:text-slate-700"
-                    >
-                        <X className="h-5 w-5" />
-                    </Button>
-                </div>
-
-                {/* Form */}
-                <form onSubmit={handleSubmit} className="p-4 space-y-4">
-                    <div className="grid grid-cols-2 gap-3">
-                        <div className="space-y-1.5">
-                            <Label htmlFor="fb-name">Ad Soyad</Label>
-                            <Input
-                                id="fb-name"
-                                placeholder="Opsiyonel"
-                                value={name}
-                                onChange={(e) => setName(e.target.value)}
-                            />
+        <div className="fixed inset-0 h-screen w-screen bg-black/30 backdrop-blur-sm flex items-center justify-center z-[99999]" onClick={onClose}>
+            <Card className="w-[420px] shadow-2xl border-0" onClick={(e) => e.stopPropagation()}>
+                <CardHeader className="bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-t-lg">
+                    <CardTitle className="text-white flex items-center gap-2">
+                        <span className="text-2xl">💬</span>
+                        <span>Öneri / Şikayet</span>
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                    <div className="grid grid-cols-1 gap-3">
+                        <div>
+                            <Label>Ad Soyad</Label>
+                            <Input value={name} onChange={e => setName(e.target.value)} placeholder="Ad Soyad" />
                         </div>
-                        <div className="space-y-1.5">
-                            <Label htmlFor="fb-email">E-posta</Label>
-                            <Input
-                                id="fb-email"
-                                type="email"
-                                placeholder="Opsiyonel"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
+                        <div>
+                            <Label>E‑posta</Label>
+                            <Input value={email} onChange={e => setEmail(e.target.value)} placeholder="ornek@eposta.com" />
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <Label className="whitespace-nowrap">Tür</Label>
+                            <Select value={type} onValueChange={setType}>
+                                <SelectTrigger className="w-[160px]"><SelectValue placeholder="Tür seç" /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="oneri">Öneri</SelectItem>
+                                    <SelectItem value="sikayet">Şikayet</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div>
+                            <Label>Mesaj</Label>
+                            <textarea
+                                className="w-full border rounded-md p-2 text-sm min-h-28"
+                                value={message}
+                                onChange={e => setMessage(e.target.value)}
+                                placeholder="Mesajınızı yazın..."
                             />
                         </div>
                     </div>
-
-                    <div className="space-y-1.5">
-                        <Label htmlFor="fb-type">Tür</Label>
-                        <Select
-                            value={type}
-                            onValueChange={(v) => setType(v as "oneri" | "sikayet")}
-                        >
-                            <SelectTrigger>
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="oneri">💡 Öneri</SelectItem>
-                                <SelectItem value="sikayet">⚠️ Şikayet</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
-
-                    <div className="space-y-1.5">
-                        <Label htmlFor="fb-message">Mesajınız</Label>
-                        <textarea
-                            id="fb-message"
-                            className="w-full min-h-[120px] p-3 border border-slate-200 rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                            placeholder="Görüşlerinizi buraya yazın..."
-                            value={message}
-                            onChange={(e) => setMessage(e.target.value)}
-                        />
-                    </div>
-
-                    <div className="flex justify-end gap-2 pt-2">
-                        <Button type="button" variant="outline" onClick={onClose}>
-                            İptal
-                        </Button>
-                        <Button type="submit" disabled={sending || !message.trim()}>
-                            {sending ? (
-                                <>
-                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                    Gönderiliyor...
-                                </>
-                            ) : (
-                                <>
-                                    <Send className="h-4 w-4 mr-2" />
-                                    Gönder
-                                </>
-                            )}
+                    <div className="flex justify-end gap-2 pt-1">
+                        <Button variant="outline" onClick={onClose}>Kapat</Button>
+                        <Button onClick={handleSubmit} disabled={sending}>
+                            {sending ? "Gönderiliyor..." : "Gönder"}
                         </Button>
                     </div>
-                </form>
-            </div>
+                    <div className="text-[11px] text-muted-foreground">Gönderimler <strong>ataafurkan@gmail.com</strong> adresine iletilir.</div>
+                </CardContent>
+            </Card>
         </div>
     );
 }

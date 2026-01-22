@@ -9,7 +9,7 @@ import { supabase } from "@/lib/supabase";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { useAppStore } from "@/stores/useAppStore";
 import { getTodayYmd } from "@/lib/date";
-import { loadThemeFromSupabase } from "@/lib/theme";
+import { loadThemeFromSupabase, getThemeMode } from "@/lib/theme";
 import { REALTIME_CHANNEL, API_ENDPOINTS } from "@/lib/constants";
 import type { Teacher, CaseFile, Settings, EArchiveEntry, AbsenceRecord, QueueTicket } from "@/types";
 
@@ -180,8 +180,38 @@ export function useSupabaseSync(onRealtimeEvent?: (payload: any) => void): Supab
                 }
             }
 
-            setCases(s.cases ?? []);
-            setHistory(s.history ?? {});
+            // CASE ORPHAN PROTECTION: Local'de olup sunucuda olmayan case'leri koru
+            // Sadece son 60 saniyede oluşturulan dosyaları koru (yeni eklenmiş ama henüz sync olmamış)
+            const incomingCases = s.cases || [];
+            const currentCases = casesRef.current || [];
+            const incomingCaseIds = new Set(incomingCases.map((c: CaseFile) => c.id));
+            const sixtySecondsAgo = new Date(Date.now() - 60000).toISOString();
+
+            const orphanCases = currentCases.filter(c =>
+                !incomingCaseIds.has(c.id) &&
+                c.createdAt > sixtySecondsAgo // Sadece çok yeni case'leri koru
+            );
+
+            if (orphanCases.length > 0) {
+                console.log(`[fetchCentralState] Protection: Keeping ${orphanCases.length} recent local cases not yet in server`);
+                setCases([...incomingCases, ...orphanCases]);
+            } else {
+                setCases(incomingCases);
+            }
+
+            // HISTORY DEDUPE: Remove duplicate entries from history (same id in same day)
+            const rawHistory = s.history ?? {};
+            const cleanedHistory: Record<string, CaseFile[]> = {};
+            Object.keys(rawHistory).forEach(date => {
+                const dayCases = rawHistory[date] || [];
+                const seen = new Set<string>();
+                cleanedHistory[date] = dayCases.filter((c: CaseFile) => {
+                    if (!c.id || seen.has(c.id)) return false;
+                    seen.add(c.id);
+                    return true;
+                });
+            });
+            setHistory(cleanedHistory);
             setLastRollover(s.lastRollover ?? "");
             setLastAbsencePenalty(s.lastAbsencePenalty ?? "");
 
@@ -318,6 +348,7 @@ export function useSupabaseSync(onRealtimeEvent?: (payload: any) => void): Supab
                 queue: currentQueue, // Use latest queue from store
                 updatedAt: new Date().toISOString(),
                 clientId: clientId.current,
+                themeSettings: { themeMode: getThemeMode(), colorScheme: "default" }, // Feature Parity with page.tsx
             };
 
             // 1. API ÜZERİNDEN KAYIT (Mevcut Yöntem)

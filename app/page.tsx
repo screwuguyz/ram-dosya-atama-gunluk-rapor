@@ -25,19 +25,26 @@ import BackupManager from "@/components/BackupManager";
 import ThemeSettings from "@/components/ThemeSettings";
 import DashboardWidgets from "@/components/DashboardWidgets";
 import ThemeToggle from "@/components/ThemeToggle";
-import { setSupabaseSyncCallback, loadThemeFromSupabase, getThemeMode } from "@/lib/theme";
+// Theme imports removed (handled by hook)
 import AssignedArchiveView from "@/components/archive/AssignedArchive";
 import AssignedArchiveSingleDayView from "@/components/archive/AssignedArchiveSingleDay";
 import { Trash2, Search, UserMinus, Plus, FileSpreadsheet, Inbox, X, ChevronLeft, ChevronRight, Volume2, VolumeX } from "lucide-react";
-import confetti from "canvas-confetti";
+
 
 
 // === YENİ MODÜLER BİLEŞENLER ===
 import AnnouncementPopupModal from "@/components/modals/AnnouncementPopupModal";
 import CalendarView from "@/components/reports/CalendarView";
-import QuickSearch from "@/components/search/QuickSearch";
 import MiniWidgets from "@/components/dashboard/MiniWidgets";
 import DailyAppointmentsCard from "@/components/appointments/DailyAppointmentsCard";
+import Header from "@/components/dashboard/Header";
+import TestDialog from "@/components/modals/TestDialog";
+import RulesModal from "@/components/modals/RulesModal";
+import PdfPanel from "@/components/modals/PdfPanel";
+import LoginModal from "@/components/modals/LoginModal";
+import SettingsModal from "@/components/modals/SettingsModal";
+import FeedbackModal from "@/components/modals/FeedbackModal";
+import VersionPopup from "@/components/modals/VersionPopup";
 // FloatingAnimations components removed by user request
 // Monthly Recap removed by user request
 import { useAppStore } from "@/stores/useAppStore";
@@ -45,7 +52,7 @@ import { useAppStore } from "@/stores/useAppStore";
 import type { Teacher, CaseFile, EArchiveEntry, Announcement, PdfAppointment } from "@/types";
 import { uid, humanType, csvEscape } from "@/lib/utils";
 import { nowISO, getTodayYmd, ymdLocal, ymOf } from "@/lib/date";
-import { LS_KEYS, APP_VERSION, CHANGELOG, DEFAULT_SETTINGS } from "@/lib/constants";
+import { LS_KEYS, APP_VERSION, DEFAULT_SETTINGS } from "@/lib/constants";
 import TeacherList from "@/components/teachers/TeacherList";
 import PhysiotherapistList from "@/components/teachers/PhysiotherapistList";
 import CaseList from "@/components/cases/CaseList";
@@ -53,6 +60,9 @@ import { logger } from "@/lib/logger";
 import { notifyTeacher } from "@/lib/notifications";
 import { caseDescription } from "@/lib/scoring";
 import { useSupabaseSync } from "@/hooks/useSupabaseSync";
+import { useRollover } from "@/hooks/useRollover";
+import { useAssignment } from "@/hooks/useAssignment";
+import { useAudio } from "@/hooks/useAudio";
 
 
 
@@ -82,6 +92,7 @@ const LS_LAST_SEEN_VERSION = LS_KEYS.LAST_SEEN_VERSION;
 
 // DailyAppointmentsCard bileşeni @/components/appointments/DailyAppointmentsCard.tsx dosyasına taşındı.
 
+const MAX_DAILY_CASES = 2;
 
 export default function DosyaAtamaApp() {
   // Queue state from store
@@ -123,146 +134,18 @@ export default function DosyaAtamaApp() {
 
   // ... (Refs continue)
 
-  // RESTORED: Manual Fetch with ZERO PROTECTION
-  const [centralLoaded, setCentralLoaded] = useState(false);
-  const fetchCentralState = React.useCallback(async () => {
-    try {
-      const res = await fetch(`/api/state?ts=${Date.now()}`, { cache: "no-store" });
-      if (!res.ok) return;
+  // ... (Refs continue)
 
-      const s = await res.json();
-      if (s._error) {
-        logger.error("[fetchCentralState] Supabase error:", s._error);
-        return;
-      }
+  // =========================================================================================
+  // SUPABASE SYNC & DATA MANAGEMENT (REFACTORED)
+  // =========================================================================================
 
-      const incomingTs = Date.parse(String(s.updatedAt || 0));
-      const currentTs = Date.parse(String(lastAppliedAtRef.current || 0));
-      if (!isNaN(incomingTs) && incomingTs <= currentTs) {
-        return;
-      }
-      lastAppliedAtRef.current = s.updatedAt || new Date().toISOString();
-
-      // ZERO PROTECTION & MERGE LOGIC
-      const incomingTeachers = s.teachers || [];
-      const currentTeachers = teachersRef.current || [];
-
-      // 1. New Teacher Protection: If local has a teacher not in remote (and we have teachers), don't delete immediately
-      // (This is a simple safeguard: if server has 0 teachers but we have some, ignore.
-      // If server has teachers but misses one we just added... that's harder in this simple logic, 
-      // but we will prioritize "Zero Score Protection" first)
-
-      const mergedTeachers = incomingTeachers.map((remoteT: any) => {
-        const localT = currentTeachers.find(t => t.id === remoteT.id);
-        if (localT) {
-          // ZERO SCORE PROTECTION (Expanded to include null/undefined)
-          const remoteLoad = remoteT.yearlyLoad || 0;
-          if (remoteLoad <= 0 && localT.yearlyLoad > 0) {
-            // console.log(`[Protection] Keeping local score ${localT.yearlyLoad} for ${localT.name} against server ${remoteLoad}`);
-            toast(`🛡️ Puan Korundu: ${localT.name} (${localT.yearlyLoad})`);
-            return { ...remoteT, yearlyLoad: localT.yearlyLoad };
-          }
-        }
-        return remoteT;
-      });
-
-      // ORPHAN PROTECTION: Keep local teachers that are totally missing from server
-      // (This handles the case where we added a teacher, but server response came back without it yet)
-      const incomingIds = new Set(incomingTeachers.map((t: any) => t.id));
-      const orphanTeachers = currentTeachers.filter(t => !incomingIds.has(t.id));
-
-      if (orphanTeachers.length > 0) {
-        // console.log(`[Protection] Keeping ${orphanTeachers.length} local teachers not yet in server`);
-        mergedTeachers.push(...orphanTeachers);
-      }
-
-      // Simple set
-      if (mergedTeachers.length > 0 || (currentTeachers.length === 0 && incomingTeachers.length === 0)) {
-        setTeachers(mergedTeachers);
-      }
-
-      // CASE ORPHAN PROTECTION: Local'de olup sunucuda olmayan case'leri koru
-      // UPDATED: Sadece son 60 saniyede oluşturulan dosyaları koru (yeni eklenmiş ama henüz sync olmamış)
-      // Bu, silinmiş eski dosyaların geri gelmesini engeller
-      const incomingCases = s.cases || [];
-      const currentCases = casesRef.current || [];
-      const incomingCaseIds = new Set(incomingCases.map((c: any) => c.id));
-      const sixtySecondsAgo = new Date(Date.now() - 60000).toISOString();
-      const orphanCases = currentCases.filter(c =>
-        !incomingCaseIds.has(c.id) &&
-        c.createdAt > sixtySecondsAgo // Sadece çok yeni case'leri koru
-      );
-
-      if (orphanCases.length > 0) {
-        console.log(`[Protection] Keeping ${orphanCases.length} recent local cases not yet in server`);
-        setCases([...incomingCases, ...orphanCases]);
-      } else {
-        setCases(incomingCases);
-      }
-
-      // HISTORY DEDUPE: Remove duplicate entries from history (same id in same day)
-      const rawHistory = s.history ?? {};
-      const cleanedHistory: Record<string, any[]> = {};
-      Object.keys(rawHistory).forEach(date => {
-        const dayCases = rawHistory[date] || [];
-        const seen = new Set<string>();
-        cleanedHistory[date] = dayCases.filter((c: any) => {
-          if (!c.id || seen.has(c.id)) return false;
-          seen.add(c.id);
-          return true;
-        });
-      });
-      setHistory(cleanedHistory);
-
-      setLastRollover(s.lastRollover ?? "");
-      setLastAbsencePenalty(s.lastAbsencePenalty ?? "");
-
-      if (Array.isArray(s.announcements)) {
-        const today = getTodayYmd();
-        const todayAnnouncements = (s.announcements || []).filter((a: any) => (a.createdAt || "").slice(0, 10) === today);
-        setAnnouncements(todayAnnouncements);
-      }
-
-      if (s.settings) updateSettings(s.settings);
-      if (s.themeSettings) loadThemeFromSupabase(s.themeSettings);
-      if (Array.isArray(s.eArchive) && s.eArchive.length > 0) setEArchive(s.eArchive);
-      if (Array.isArray(s.absenceRecords)) setAbsenceRecords(s.absenceRecords);
-
-      // Simple queue sync
-      if (Array.isArray(s.queue)) setQueue(s.queue);
-
-      setCentralLoaded(true);
-
-      // SINGLE ADMIN SESSION CHECK (Polling / Fetch)
-      // Check if server session ID differs from ours (if we have one and we are admin)
-      if (isAdmin && adminSessionIdRef.current) {
-        const serverSessionId = s.adminSessionId;
-        if (serverSessionId && serverSessionId !== adminSessionIdRef.current) {
-          console.warn("[Session] Session ID mismatch! Remote:", serverSessionId, "Local:", adminSessionIdRef.current);
-          alert("Oturumunuz başka bir cihazda açıldığı için sonlandırıldı.");
-          doLogout();
-        }
-      }
-
-    } catch (err) {
-      console.error(err);
-    }
-  }, [hydrated, setQueue, setTeachers, setCases, setHistory, setLastRollover, setLastAbsencePenalty, setAnnouncements, updateSettings, setEArchive, setAbsenceRecords, isAdmin]);
-
-  // RESTORED: Initial Fetch
-  useEffect(() => {
-    fetchCentralState();
-  }, [fetchCentralState]);
-
-  // RESTORED: Realtime Subscription (Supabase mode)
-  // LOCAL_MODE: Use polling instead of realtime
-  // SUPABASE REALTIME HOOK (Must be top level)
-  useSupabaseSync((payload) => {
-    // payload.new contains the updated record "state" field
+  // Use the unified hook for all sync operations
+  const { fetchCentralState, syncToServer, isConnected } = useSupabaseSync((payload) => {
+    // Realtime update callback
     console.log("[Realtime] Update received", payload);
 
     // SINGLE ADMIN SESSION CHECK
-    // If we are admin, check if the session ID has changed
     if (isAdmin && adminSessionIdRef.current) {
       const remoteSessionId = payload?.new?.state?.adminSessionId;
       if (remoteSessionId && remoteSessionId !== adminSessionIdRef.current) {
@@ -279,10 +162,26 @@ export default function DosyaAtamaApp() {
     }
   });
 
+  // Rollover Hook (Handles auto-rollover at midnight)
+  const { doRollover } = useRollover();
+
+  // Assignment Logic Hook
+  const {
+    autoAssign,
+    autoAssignWithTestCheck,
+    getRealYearlyLoad,
+    countCasesToday,
+    countCasesThisMonth,
+    hasTestToday,
+    lastAssignedTeacherToday
+  } = useAssignment();
+
+  // Audio & Effects Hook
+  const { playAssignSound, playEmergencySound, triggerFireworks, playAnnouncementSound } = useAudio();
+
   // LOCAL_MODE: Poll every 5 seconds
   useEffect(() => {
     const isLocalMode = process.env.NEXT_PUBLIC_LOCAL_MODE === "true" || process.env.NEXT_PUBLIC_LOCAL_MODE === "1";
-
     if (isLocalMode) {
       const interval = setInterval(() => {
         fetchCentralState();
@@ -291,62 +190,9 @@ export default function DosyaAtamaApp() {
     }
   }, [fetchCentralState]);
 
-
-  // RESTORED: Manual Sync Loop (The "Old System" that worked)
-  // RESTORED: Manual Sync Loop (The "Old System" that worked)
-  // UPDATED: Exposed to Store + Removed !isAdmin lock for debugging
-  const syncToSupabase = React.useCallback(async () => {
-    if (!isAdmin) return; // Only admin can sync to server
-    if (!hydrated || !centralLoaded) return;
-
-    const nowTs = new Date().toISOString();
-    const payload = {
-      teachers,
-      cases,
-      history,
-      lastRollover,
-      lastAbsencePenalty,
-      announcements,
-      settings,
-      themeSettings: { themeMode: getThemeMode(), colorScheme: "default" },
-      eArchive,
-      absenceRecords,
-      queue,
-      updatedAt: nowTs,
-    };
-
-    // Optimistic update
-    lastAppliedAtRef.current = nowTs;
-
-    try {
-      const res = await fetch("/api/state", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) {
-        console.error("Sync failed:", await res.text());
-        toast("Kayıt başarısız (Sync)");
-      } else {
-        // console.log("Auto-sync success");
-      }
-    } catch (err) {
-      console.error("Sync network error:", err);
-    }
-  }, [teachers, cases, history, lastRollover, lastAbsencePenalty, announcements, settings, eArchive, absenceRecords, queue, isAdmin, hydrated, centralLoaded]);
-
-  // Register sync function to store for "Force Save" button
-  useEffect(() => {
-    useAppStore.setState({ syncFunction: syncToSupabase });
-  }, [syncToSupabase]);
-
-  // Auto-sync effect with debounce
-  useEffect(() => {
-    const t = window.setTimeout(() => {
-      syncToSupabase();
-    }, 1000);
-    return () => { window.clearTimeout(t); };
-  }, [syncToSupabase]);
+  // Removed redundant manual sync logic (syncToSupabase) - The hook handles it now.
+  // Removed redundant auto-sync effect - The hook handles it now.
+  // Removed redundancy centralLoaded state.
 
   const lastAbsencePenaltyRef = React.useRef<string>("");
   const supabaseTeacherCountRef = React.useRef<number>(0);
@@ -356,11 +202,6 @@ export default function DosyaAtamaApp() {
 
 
   // ---- Girdi durumları
-
-  // 🎉 Havai Fişek Animasyonu
-  // 🎉 Havai Fişek Animasyonu
-
-
   const [student, setStudent] = useState("");
   const [fileNo, setFileNo] = useState("");
   const [type, setType] = useState<"YONLENDIRME" | "DESTEK" | "IKISI">("YONLENDIRME");
@@ -380,15 +221,11 @@ export default function DosyaAtamaApp() {
   const [manualReason, setManualReason] = useState<string>("");
 
   const manualAssignRef = React.useRef<HTMLDivElement | null>(null);
-  const pdfInputRef = React.useRef<HTMLInputElement | null>(null);
 
   // Duyuru ve PDF UI State (Data store'dan geliyor)
   const [announcementText, setAnnouncementText] = useState("");
-  const [pdfFile, setPdfFile] = useState<File | null>(null);
-  const [pdfUploading, setPdfUploading] = useState(false);
-  const [pdfUploadError, setPdfUploadError] = useState<string | null>(null);
-  const [pdfLoading, setPdfLoading] = useState(false);
   const [selectedPdfUploadDate, setSelectedPdfUploadDate] = useState<string | null>(null); // Takvimden seçilen tarih için PDF yükleme
+  const [pdfLoading, setPdfLoading] = useState(false);
   const activePdfEntry = useMemo(() => pdfEntries.find(e => e.id === selectedPdfEntryId) || null, [pdfEntries, selectedPdfEntryId]);
 
   // Pending Appointments Count calculation
@@ -421,12 +258,9 @@ export default function DosyaAtamaApp() {
     return pdfEntries.filter(entry => !isEntryAssigned(entry)).length;
   }, [cases, history, pdfEntries]);
 
-  const [isDragging, setIsDragging] = useState(false);
+
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsTab, setSettingsTab] = useState<"general" | "theme" | "widgets">("general");
-
-  // Sound On Ref (Store'dan gelen değeri ref'te tutmak için)
-  const soundOnRef = React.useRef(soundOn);
 
   // Login Modal State
   const [loginOpen, setLoginOpen] = useState(false);
@@ -447,168 +281,18 @@ export default function DosyaAtamaApp() {
 
   // Missing State Definitions
   const [feedbackOpen, setFeedbackOpen] = useState(false);
-  const [fbName, setFbName] = useState("");
-  const [fbEmail, setFbEmail] = useState("");
-  const [fbType, setFbType] = useState<string>("oneri");
-  const [fbMessage, setFbMessage] = useState("");
+  /* Feedback State relocated to FeedbackModal */
+
   const [showVersionPopup, setShowVersionPopup] = useState(false);
 
-  function triggerFireworks() {
-    confetti({
-      particleCount: 100,
-      spread: 70,
-      origin: { y: 0.6 }
-    });
-  }
-
-  // Sound Effect
-  useEffect(() => {
-    // Sound on logic managed by store or here? Store has soundOn.
-    // Logic to resume audio context
-  }, [soundOn]);
-
-  useEffect(() => { soundOnRef.current = soundOn; }, [soundOn]);
   // Keep a ref in sync with settings to avoid stale closures in callbacks
   const settingsRef = React.useRef(settings);
   useEffect(() => { settingsRef.current = settings; }, [settings]);
 
-  // Sesli uyarılar (Web Audio API)
-  const audioCtxRef = React.useRef<AudioContext | null>(null);
-  function getAudioCtx() {
-    if (typeof window === "undefined") return null;
-    if (!audioCtxRef.current) {
-      const Ctx = (window as any).AudioContext || (window as any).webkitAudioContext;
-      if (!Ctx) return null;
-      audioCtxRef.current = new Ctx();
-    }
-    return audioCtxRef.current;
-  }
-  // Kullanıcı etkileşimi ile ses motorunu aç (tarayıcı kısıtları için)
-  function resumeAudioIfNeeded() {
-    const ctx = getAudioCtx();
-    if (ctx && ctx.state === "suspended") {
-      ctx.resume().catch(() => { });
-    }
-  }
-  useEffect(() => {
-    const onInteract = () => {
-      resumeAudioIfNeeded();
-      // Bir kez açılması yeterli, listener'ı kaldır
-      document.removeEventListener("pointerdown", onInteract);
-      document.removeEventListener("keydown", onInteract);
-      document.removeEventListener("touchstart", onInteract);
-    };
-    document.addEventListener("pointerdown", onInteract, { passive: true });
-    document.addEventListener("keydown", onInteract);
-    document.addEventListener("touchstart", onInteract, { passive: true });
-    return () => {
-      document.removeEventListener("pointerdown", onInteract);
-      document.removeEventListener("keydown", onInteract);
-      document.removeEventListener("touchstart", onInteract);
-    };
-  }, []);
+
 
   // Tüm butonlara genel tıklama sesi (özel sesler ayrıca çalınır)
-  useEffect(() => {
-    const onPointerDown = (e: PointerEvent) => {
-      if (!soundOnRef.current) return; // ses kapalıysa hiçbir butonda click sesi çalma
-      const el = e.target as HTMLElement | null;
-      if (!el) return;
-      const btn = el.closest("button");
-      if (!btn) return;
-      if ((btn as HTMLButtonElement).disabled) return;
-      // data-silent ile sessiz işaretlenen butonları atla
-      if ((btn as HTMLElement).getAttribute("data-silent") === "true") return;
-      playClickSound();
-    };
-    document.addEventListener("pointerdown", onPointerDown, { capture: true });
-    return () => document.removeEventListener("pointerdown", onPointerDown, true);
-  }, []);
-  // Modern ses efekti: ADSR envelope ile daha profesyonel ton
-  function playTone(freq: number, durationSec = 0.14, volume = 0.18, type: OscillatorType = "sine", attack = 0.01, decay = 0.05, sustain = 0.7, release = 0.1) {
-    if (!soundOnRef.current) return;
-    const ctx = getAudioCtx();
-    if (!ctx) return;
-    if (ctx.state === "suspended") {
-      ctx.resume().catch(() => { });
-    }
-
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = type;
-    osc.frequency.value = freq;
-
-    const now = ctx.currentTime;
-    const attackEnd = now + attack;
-    const decayEnd = attackEnd + decay;
-    const releaseStart = now + durationSec - release;
-
-    // ADSR envelope
-    gain.gain.setValueAtTime(0, now);
-    gain.gain.linearRampToValueAtTime(volume, attackEnd);
-    gain.gain.linearRampToValueAtTime(volume * sustain, decayEnd);
-    gain.gain.setValueAtTime(volume * sustain, releaseStart);
-    gain.gain.linearRampToValueAtTime(0, now + durationSec);
-
-    osc.connect(gain).connect(ctx.destination);
-    osc.start(now);
-    osc.stop(now + durationSec);
-  }
-
-  // Eski beep fonksiyonu (geriye uyumluluk için)
-  function playBeep(freq: number, durationSec = 0.14, volume = 0.18) {
-    playTone(freq, durationSec, volume, "sine", 0.01, 0.02, 0.8, 0.05);
-  }
-
-  function playAssignSound() {
-    // Modern başarı melodisi (majör akor + yükselen melodi)
-    resumeAudioIfNeeded();
-    const ctx = getAudioCtx();
-    if (!ctx) return;
-
-    // C majör akor (C-E-G) - daha zengin ses
-    playTone(523.25, 0.2, 0.2, "sine", 0.02, 0.05, 0.7, 0.1);  // C5
-    playTone(659.25, 0.2, 0.18, "sine", 0.02, 0.05, 0.7, 0.1); // E5
-    playTone(783.99, 0.2, 0.16, "sine", 0.02, 0.05, 0.7, 0.1);  // G5
-
-    // Yükselen melodi
-    window.setTimeout(() => playTone(659.25, 0.15, 0.18, "sine", 0.01, 0.03, 0.8, 0.08), 220);
-    window.setTimeout(() => playTone(783.99, 0.18, 0.2, "sine", 0.01, 0.03, 0.8, 0.1), 380);
-    window.setTimeout(() => playTone(1046.50, 0.2, 0.22, "sine", 0.01, 0.03, 0.8, 0.12), 560); // C6
-  }
-
-  function playEmergencySound() {
-    // Modern uyarı sesi (daha belirgin ve profesyonel)
-    resumeAudioIfNeeded();
-    playTone(880, 0.12, 0.25, "square", 0.005, 0.02, 0.9, 0.05);
-    window.setTimeout(() => playTone(660, 0.14, 0.25, "square", 0.005, 0.02, 0.9, 0.05), 140);
-    window.setTimeout(() => playTone(880, 0.12, 0.28, "square", 0.005, 0.02, 0.9, 0.05), 280);
-    window.setTimeout(() => playTone(1100, 0.15, 0.3, "square", 0.005, 0.02, 0.9, 0.05), 420);
-  }
-
-  function testSound() {
-    // Modern test sesi
-    resumeAudioIfNeeded();
-    playTone(600, 0.12, 0.2, "sine", 0.01, 0.03, 0.8, 0.05);
-    window.setTimeout(() => playTone(900, 0.12, 0.2, "sine", 0.01, 0.03, 0.8, 0.05), 150);
-    window.setTimeout(() => playTone(1200, 0.15, 0.22, "sine", 0.01, 0.03, 0.8, 0.08), 300);
-  }
-
-  function playClickSound() {
-    // Modern hafif tık sesi
-    resumeAudioIfNeeded();
-    playTone(800, 0.04, 0.1, "sine", 0.001, 0.01, 0.6, 0.02);
-  }
-
-  function playAnnouncementSound() {
-    // Modern onay tonu (daha melodik)
-    resumeAudioIfNeeded();
-    playTone(784, 0.1, 0.16, "sine", 0.01, 0.02, 0.8, 0.05); // G5
-    window.setTimeout(() => playTone(988, 0.12, 0.18, "sine", 0.01, 0.02, 0.8, 0.06), 120); // B5
-    window.setTimeout(() => playTone(1175, 0.14, 0.2, "sine", 0.01, 0.02, 0.8, 0.08), 240); // D6
-  }
-
-  // === Duyuru gönder (admin): state'e ekle + tüm öğretmenlere Pushover bildirimi ===
+  // Audio logic moved to hooks/useAudio.ts
   async function sendAnnouncement() {
     const text = announcementText.trim();
     if (!text) return;
@@ -634,6 +318,7 @@ export default function DosyaAtamaApp() {
 
   const fetchPdfEntriesFromServer = React.useCallback(async (date?: Date) => {
     setPdfLoading(true);
+
     try {
       let url = "/api/pdf-import";
       if (date) {
@@ -682,50 +367,7 @@ export default function DosyaAtamaApp() {
 
 
 
-  function handlePdfFileChange(file: File | null) {
-    setPdfFile(file);
-    setPdfUploadError(null);
-  }
 
-  async function uploadPdfFromFile() {
-    if (!pdfFile) {
-      toast("Lütfen PDF seçin");
-      return;
-    }
-    const formData = new FormData();
-    formData.append("pdf", pdfFile);
-    setPdfUploading(true);
-    setPdfUploadError(null);
-    try {
-      // Eğer takvimden tarih seçilmişse, o tarihe yükle
-      let url = "/api/pdf-import";
-      if (selectedPdfUploadDate) {
-        url += `?overrideDate=${selectedPdfUploadDate}`;
-      }
-      const res = await fetch(url, {
-        method: "POST",
-        body: formData,
-      });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setPdfUploadError(json?.error || "PDF yüklenemedi.");
-        return;
-      }
-      setPdfEntries(Array.isArray(json.entries) ? json.entries : []);
-      setPdfDate(json?.date || null);
-      setPdfDateIso(json?.dateIso || null);
-      setSelectedPdfEntryId(null);
-      setPdfFile(null);
-      setSelectedPdfUploadDate(null); // Yükleme sonrası temizle
-      if (pdfInputRef.current) pdfInputRef.current.value = "";
-      toast("PDF başarıyla içe aktarıldı");
-    } catch (err) {
-      logger.warn("pdf upload failed", err);
-      setPdfUploadError("Sunucuya ulaşılamadı.");
-    } finally {
-      setPdfUploading(false);
-    }
-  }
 
   async function clearPdfEntries(confirmFirst = true, bypassAuth = false) {
     if (!pdfEntries.length) return;
@@ -744,10 +386,8 @@ export default function DosyaAtamaApp() {
       }
       setPdfEntries([]);
       setSelectedPdfEntryId(null);
-      setPdfFile(null);
       setPdfDate(null);
       setPdfDateIso(null);
-      if (pdfInputRef.current) pdfInputRef.current.value = "";
       toast("PDF kayıtları temizlendi");
     } catch (err) {
       logger.warn("pdf clear failed", err);
@@ -990,40 +630,8 @@ export default function DosyaAtamaApp() {
   // setLiveStatus is updated by hook, so we don't need manual setLive logic here except for fallback.
   // We can remove the setLive logic here as hook handles it.
 
-  // Tema ayarlarını Supabase'e senkronize et
-  useEffect(() => {
-    if (!isAdmin) return;
-    if (!hydrated) return;
-
-    // Supabase sync callback'i ayarla
-    setSupabaseSyncCallback((themeMode, colorScheme, customColors) => {
-      // Tema değişikliği olduğunda Supabase'e kaydet
-      const nowTs = new Date().toISOString();
-      fetch("/api/state", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          teachers,
-          cases,
-          history,
-          lastRollover,
-          lastAbsencePenalty,
-          announcements,
-          settings,
-          themeSettings: {
-            themeMode,
-            colorScheme,
-            customColors: colorScheme === "custom" ? customColors : undefined,
-          },
-          eArchive,
-          absenceRecords,
-          updatedAt: nowTs,
-        }),
-      }).catch((err) => {
-        logger.error("[theme sync] Failed:", err);
-      });
-    });
-  }, [isAdmin, hydrated, teachers, cases, history, lastRollover, lastAbsencePenalty, announcements, settings, eArchive, absenceRecords]);
+  // Theme sync logic removed - handled by hook (eventually) or bundled with other updates.
+  // TODO: Move theme state to store for real-time sync.
 
   async function doLogin(e?: React.FormEvent) {
     e?.preventDefault?.();
@@ -1068,108 +676,10 @@ export default function DosyaAtamaApp() {
     setIsAdmin(false);
   }
 
-  // ---- Bugün test alıp almadı kontrolü (kilit)
-  function hasTestToday(tid: string) {
-    const today = getTodayYmd();
-    return cases.some(c => c.isTest && !c.absencePenalty && c.assignedTo === tid && c.createdAt.slice(0, 10) === today);
-  }
-  // Bugün bu öğretmene kaç dosya atanmış (test/normal ayrımı gözetmeksizin)
-  function countCasesToday(tid: string) {
-    const today = getTodayYmd();
-    let n = 0;
-    for (const c of cases) {
-      if (c.absencePenalty) continue;
-      if (c.assignedTo === tid && c.createdAt.slice(0, 10) === today) n++;
-    }
-    return n;
-  }
-
-  // Bu ay bu öğretmene kaç dosya atanmış (Aylık Adet)
-  function countCasesThisMonth(tid: string): number {
-    const now = new Date();
-    const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-    const seenIds = new Set<string>();
-    let count = 0;
-
-    // History'den bu ayın dosyalarını say
-    Object.entries(history).forEach(([date, dayCases]) => {
-      if (date.startsWith(ym)) {
-        dayCases.forEach(c => {
-          if (c.assignedTo === tid && !c.absencePenalty && !c.backupBonus && c.id && !seenIds.has(c.id)) {
-            seenIds.add(c.id);
-            count++;
-          }
-        });
-      }
-    });
-
-    // Bugünün cases'lerinden de say
-    cases.forEach(c => {
-      if (c.assignedTo === tid && c.createdAt.startsWith(ym) && !c.absencePenalty && !c.backupBonus && c.id && !seenIds.has(c.id)) {
-        seenIds.add(c.id);
-        count++;
-      }
-    });
-
-    return count;
-  }
-
-  // Gerçek yıllık yükü hesapla (cases + history'den)
-  function getRealYearlyLoad(tid: string): number {
-    const currentYear = new Date().getFullYear();
-    const seenIds = new Set<string>();
-    let total = 0;
-
-    // History'den bu yılın puanlarını topla
-    Object.entries(history).forEach(([date, dayCases]) => {
-      if (date.startsWith(String(currentYear))) {
-        dayCases.forEach(c => {
-          if (c.assignedTo === tid && c.id && !seenIds.has(c.id)) {
-            seenIds.add(c.id);
-            total += c.score;
-          }
-        });
-      }
-    });
-
-    // Bugünün cases'lerinden de topla
-    cases.forEach(c => {
-      if (c.assignedTo === tid && c.createdAt.startsWith(String(currentYear)) && c.id && !seenIds.has(c.id)) {
-        seenIds.add(c.id);
-        total += c.score;
-      }
-    });
-
-    return total;
-  }
-
-  // SYNC: Öğretmenlerin kayıtlı yıllık yükünü, 2026 gerçek hesaplamasıyla eşitle
-  // (Yılbaşı sıfırlaması ve tutarlılık için)
-  React.useEffect(() => {
-    const timer = setTimeout(() => {
-      teachers.forEach(t => {
-        const real = getRealYearlyLoad(t.id);
-        // Eğer fark varsa güncelle (veritabanını düzelt)
-        if (t.yearlyLoad !== real) {
-          updateTeacher(t.id, { yearlyLoad: real });
-        }
-      });
-    }, 1000);
-    return () => clearTimeout(timer);
-  }, [cases, history, teachers]);
-
   // Günlük atama sınırı: bir öğretmene bir günde verilebilecek maksimum dosya
   const MAX_DAILY_CASES = 4;
-  // Bugün en son kime atama yapıldı? (liste en yeni başta olduğundan ilk uygun kaydı alır)
-  function lastAssignedTeacherToday(): string | undefined {
-    const today = getTodayYmd();
-    // Sıralama yap (yeni > eski) ve ilkini al
-    const todayCases = cases.filter(c => !c.absencePenalty && c.createdAt.slice(0, 10) === today && !!c.assignedTo);
-    if (!todayCases.length) return undefined;
 
-    todayCases.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-    return todayCases[0].assignedTo;
-  }
+  // Assignment helpers moved to hooks/useAssignment.ts
 
   // ---- Puanlama
   function calcScore() {
@@ -1184,214 +694,7 @@ export default function DosyaAtamaApp() {
     return score;
   }
 
-  // ---- Otomatik atama (test/normal ayrımı ve kilit)
-  // 🔄 ZORUNLU ROTASYON: Aynı kişiye art arda dosya VERİLMEZ (tek kişi kalmadıkça)
-  function autoAssign(newCase: CaseFile): Teacher | null {
-    const todayYmd = getTodayYmd();
-    const lastTid = lastAssignedTeacherToday();
-    const currentYear = new Date().getFullYear();
-    const previousYear = currentYear - 1;
-
-    // 🆕 YENİ YIL İLK ATAMA: Bu yıl hiç atama yoksa, geçen yılın en düşük puanlısına ver
-    // FIX (v2.2): isFirstOfYear kontrolü devre dışı bırakıldı çünkü tarih formatı uyuşmazlığında hatalı tetiklenebiliyor.
-    const isFirstOfYear = false; // !cases.some(c => c.createdAt.startsWith(String(currentYear)) && c.assignedTo);
-
-    // Geçen yılın toplam puanını hesapla
-    function getPreviousYearLoad(tid: string): number {
-      let total = 0;
-      Object.entries(history).forEach(([date, dayCases]) => {
-        if (date.startsWith(String(previousYear))) {
-          dayCases.forEach(c => {
-            if (c.assignedTo === tid) {
-              total += c.score;
-            }
-          });
-        }
-      });
-      return total;
-    }
-
-    // Test dosyasıysa: sadece testörler ve bugün test almamış olanlar (Fizyoterapistler hariç)
-    if (newCase.isTest) {
-      let testers = teachers.filter(
-        (t) => !t.isPhysiotherapist && !["Furkan Ata ADIYAMAN", "Furkan Ata"].includes(t.name) && t.isTester && !t.isAbsent && t.active && t.backupDay !== todayYmd && !hasTestToday(t.id) && countCasesToday(t.id) < MAX_DAILY_CASES
-      );
-      if (!testers.length) return null; // uygun testör yoksa atama yok
-
-      // 🔄 ZORUNLU ROTASYON: Son atanan kişiyi listeden ÇIKAR (birden fazla aday varsa)
-      if (testers.length > 1 && lastTid) {
-        testers = testers.filter(t => t.id !== lastTid);
-      }
-
-      // 🆕 YENİ YIL İLK ATAMA: Geçen yılın en düşük puanlısını seç
-      if (isFirstOfYear) {
-        testers.sort((a, b) => getPreviousYearLoad(a.id) - getPreviousYearLoad(b.id));
-      } else {
-        // Sıralama: 1) Yıllık yük, 2) Günlük dosya, 3) Aylık adet, 4) Rastgele
-        testers.sort((a, b) => {
-          // 1. Yıllık yük (en düşük önce)
-          const byLoad = a.yearlyLoad - b.yearlyLoad;
-          if (byLoad !== 0) return byLoad;
-          // 2. Günlük dosya sayısı (en düşük önce)
-          const byCount = countCasesToday(a.id) - countCasesToday(b.id);
-          if (byCount !== 0) return byCount;
-          // 3. Aylık adet (en düşük önce)
-          const byMonthly = countCasesThisMonth(a.id) - countCasesThisMonth(b.id);
-          if (byMonthly !== 0) return byMonthly;
-          // 4. Rastgele
-          return Math.random() - 0.5;
-        });
-      }
-
-      const chosen = testers[0];
-      const ym = ymOf(newCase.createdAt);
-
-      updateTeacher(chosen.id, {
-        yearlyLoad: chosen.yearlyLoad + newCase.score,
-        monthly: { ...(chosen.monthly || {}), [ym]: (chosen.monthly?.[ym] || 0) + newCase.score },
-      });
-
-      newCase.assignedTo = chosen.id;
-      notifyTeacher(chosen.pushoverKey || "", "Dosya Atandı (Test)", `Öğrenci: ${newCase.student}`, 0, chosen.id);
-      return chosen;
-    }
-
-    // Normal dosyada: bugün test almış olsa da normal dosya verilebilir (Fizyoterapistler hariç)
-    // FIX (v2.3): İsim bazlı engelleme de eklendi (Furkan Ata)
-    console.log("--- ATAMA VERSİYON 2.4 (Test Dialog) ---");
-    let available = teachers.filter(
-      (t) => !t.isPhysiotherapist && !["Furkan Ata ADIYAMAN", "Furkan Ata"].includes(t.name) && !t.isAbsent && t.active && t.backupDay !== todayYmd && countCasesToday(t.id) < settings.dailyLimit
-    );
-    if (!available.length) return null;
-
-    // 🔄 ZORUNLU ROTASYON: Aynı kişiye art arda dosya VERİLMEZ (tek kişi kalmadıkça)
-    if (available.length > 1 && lastTid) {
-      available = available.filter(t => t.id !== lastTid);
-    }
-
-    // İlk yıl ilk atama kontrolü
-    if (isFirstOfYear) {
-      available.sort((a, b) => getPreviousYearLoad(a.id) - getPreviousYearLoad(b.id));
-    } else {
-      // Sıralama: 1) Yıllık yük, 2) Günlük dosya, 3) Aylık adet, 4) Rastgele
-      available.sort((a, b) => {
-        // 1. Yıllık yük (en düşük önce)
-        const byLoad = getRealYearlyLoad(a.id) - getRealYearlyLoad(b.id);
-        if (byLoad !== 0) return byLoad;
-        // 2. Günlük dosya sayısı (en düşük önce)
-        const byCount = countCasesToday(a.id) - countCasesToday(b.id);
-        if (byCount !== 0) return byCount;
-        // 3. Aylık adet (en düşük önce)
-        const byMonthly = countCasesThisMonth(a.id) - countCasesThisMonth(b.id);
-        if (byMonthly !== 0) return byMonthly;
-        // 4. Rastgele
-        return Math.random() - 0.5;
-      });
-    }
-
-    const chosen = available[0];
-
-    // DEBUG: Canlı atama analizi (Kullanıcı ayarlarından açılabilir)
-    if (settings.debugMode) {
-      const debugInfo = available.slice(0, 3).map(t => `${t.name}: ${getRealYearlyLoad(t.id)} (Gün: ${countCasesToday(t.id)})`).join("\n");
-      const eray = teachers.find(t => t.name.toUpperCase().includes("ERAY"));
-      let erayLog = "Bulunamadı";
-      if (eray) {
-        erayLog = `Yük:${getRealYearlyLoad(eray.id)}, Fzt:${eray.isPhysiotherapist}, Abs:${eray.isAbsent}, Act:${eray.active}, Bak:${eray.backupDay}, Cnt:${countCasesToday(eray.id)}, Lim:${settings.dailyLimit}`;
-        if (lastTid === eray.id) erayLog += " [SON_ALAN/ROT_BLOCK]";
-        if (eray.backupDay === todayYmd) erayLog += " [YEDEK_BLOCK]";
-        if (countCasesToday(eray.id) >= settings.dailyLimit) erayLog += " [LIMIT_BLOCK]";
-        if (eray.isPhysiotherapist) erayLog += " [FZT_BLOCK]";
-        if (eray.isAbsent) erayLog += " [ABSENT_BLOCK]";
-        if (!eray.active) erayLog += " [INACTIVE_BLOCK]";
-      }
-      alert(`📢 ATAMA DETAYI (Debug Modu)\n\n🏆 KAZANAN: ${chosen.name}\n\n🕵️‍♂️ ERAY LOG:\n${erayLog}\nLastTID: ${lastTid}\nErayID: ${eray ? eray.id : "?"}\n\n📋 İLK 3 ADAY (Sıralı):\n${debugInfo}`);
-    }
-    const ym = ymOf(newCase.createdAt);
-
-    updateTeacher(chosen.id, {
-      yearlyLoad: chosen.yearlyLoad + newCase.score,
-      monthly: { ...(chosen.monthly || {}), [ym]: (chosen.monthly?.[ym] || 0) + newCase.score },
-    });
-
-    newCase.assignedTo = chosen.id;
-    notifyTeacher(chosen.pushoverKey || "", "Dosya Atandı", `Öğrenci: ${newCase.student}`, 0, chosen.id);
-    return chosen;
-  }
-
-  // 🆕 Test Bitti Mi Dialog ile Atama (skipTeacherIds: daha önce "bitmedi" denilen öğretmenler)
-  // 🆕 Testör Koruma: Normal dosya testöre gidecekse onay iste
-  function autoAssignWithTestCheck(newCase: CaseFile, skipTeacherIds: string[] = []): { chosen: Teacher | null; needsConfirm: boolean; pendingCase?: CaseFile; availableList?: Teacher[]; confirmType?: 'testNotFinished' | 'testerProtection' } {
-    const todayYmd = getTodayYmd();
-    const lastTid = lastAssignedTeacherToday();
-
-    // Test dosyası normal akışla gider
-    if (newCase.isTest) {
-      const chosen = autoAssign(newCase);
-      return { chosen, needsConfirm: false };
-    }
-
-    // Normal dosya için available listesi
-    let available = teachers.filter(
-      (t) => !t.isPhysiotherapist && !["Furkan Ata ADIYAMAN", "Furkan Ata"].includes(t.name) && !t.isAbsent && t.active && t.backupDay !== todayYmd && countCasesToday(t.id) < settings.dailyLimit && !skipTeacherIds.includes(t.id)
-    );
-    if (!available.length) return { chosen: null, needsConfirm: false };
-
-    // Rotasyon
-    if (available.length > 1 && lastTid) {
-      available = available.filter(t => t.id !== lastTid);
-    }
-
-    // Sıralama: 1) Yıllık yük, 2) Günlük dosya, 3) Aylık adet, 4) Rastgele
-    available.sort((a, b) => {
-      // 1. Yıllık yük (en düşük önce)
-      const byLoad = getRealYearlyLoad(a.id) - getRealYearlyLoad(b.id);
-      if (byLoad !== 0) return byLoad;
-      // 2. Günlük dosya sayısı (en düşük önce)
-      const byCount = countCasesToday(a.id) - countCasesToday(b.id);
-      if (byCount !== 0) return byCount;
-      // 3. Aylık adet (en düşük önce)
-      const byMonthly = countCasesThisMonth(a.id) - countCasesThisMonth(b.id);
-      if (byMonthly !== 0) return byMonthly;
-      // 4. Rastgele
-      return Math.random() - 0.5;
-    });
-
-    const chosen = available[0];
-
-    // 🆕 TESTÖR KORUMA: Seçilen öğretmen testör ise ve normal dosya verilecekse onay iste
-    // (Testör test dosyası bekliyor olabilir)
-    if (chosen.isTester && !newCase.isTest) {
-      return {
-        chosen,
-        needsConfirm: true,
-        pendingCase: newCase,
-        availableList: available,
-        confirmType: 'testerProtection'
-      };
-    }
-
-    // 🔔 TEST BİTTİ Mİ? Seçilen öğretmen bugün test aldıysa onay iste
-    if (hasTestToday(chosen.id)) {
-      return {
-        chosen,
-        needsConfirm: true,
-        pendingCase: newCase,
-        availableList: available,
-        confirmType: 'testNotFinished'
-      };
-    }
-
-    // Normal atama yap
-    const ym = ymOf(newCase.createdAt);
-    updateTeacher(chosen.id, {
-      yearlyLoad: chosen.yearlyLoad + newCase.score,
-      monthly: { ...(chosen.monthly || {}), [ym]: (chosen.monthly?.[ym] || 0) + newCase.score },
-    });
-    newCase.assignedTo = chosen.id;
-    notifyTeacher(chosen.pushoverKey || "", "Dosya Atandı", `Öğrenci: ${newCase.student}`, 0, chosen.id);
-    return { chosen, needsConfirm: false };
-  }
+  // AutoAssign logic moved to hooks/useAssignment.ts
 
   // Dialog'da "Bitti" seçildiğinde çağrılır
   function confirmTestFinished() {
@@ -1719,308 +1022,7 @@ export default function DosyaAtamaApp() {
 
 
 
-  // ---- Devamsızlar için dengeleme puanı (gün sonu, rollover öncesi)
-  const applyAbsencePenaltyForDay = React.useCallback((day: string) => {
-    // isAdmin kontrolü kaldırıldı - rollover sırasında admin olmasına gerek yok
-    if (!centralLoaded) return;
-    if (!hydrated) return;
-    if (lastAbsencePenaltyRef.current === day) return;
-
-    // Çalışan öğretmenler: aktif, o gün devamsız DEĞİL ve o gün yedek DEĞİL
-    // useAppStore.getState() kullanmak closure stale state sorununu önler
-    const currentTeachers = useAppStore.getState().teachers;
-    const currentCases = useAppStore.getState().cases;
-    const currentAbsenceRecords = useAppStore.getState().absenceRecords;
-    const settingsCurrent = useAppStore.getState().settings;
-
-    const workingTeachers = currentTeachers.filter((t) =>
-      t.active &&
-      !t.isPhysiotherapist &&
-      !currentAbsenceRecords.some(r => r.teacherId === t.id && r.date === day) &&
-      !t.isAbsent &&
-      t.backupDay !== day
-    );
-    const workingIds = new Set(workingTeachers.map((t) => t.id));
-    const dayWorkingCases = currentCases.filter(
-      (c) =>
-        !c.absencePenalty &&
-        c.assignedTo &&
-        c.createdAt.slice(0, 10) === day &&
-        workingIds.has(c.assignedTo)
-    );
-
-    const pointsByTeacher = new Map<string, number>();
-    workingTeachers.forEach((t) => pointsByTeacher.set(t.id, 0));
-    for (const c of dayWorkingCases) {
-      const tid = c.assignedTo as string;
-      pointsByTeacher.set(tid, (pointsByTeacher.get(tid) || 0) + c.score);
-    }
-
-    const minScore = pointsByTeacher.size ? Math.min(...pointsByTeacher.values()) : 0;
-    const { absencePenaltyAmount } = settingsCurrent;
-    const penaltyScore = Math.max(0, minScore - absencePenaltyAmount);
-
-    // Devamsız öğretmenler: o gün için devamsız işaretlenmiş VEYA şu an devamsız olan aktif öğretmenler
-    const absentTeachers = currentTeachers.filter((t) =>
-      t.active && (currentAbsenceRecords.some(r => r.teacherId === t.id && r.date === day) || t.isAbsent)
-    );
-    const absentIds = new Set(absentTeachers.map((t) => t.id));
-
-    if (!absentTeachers.length) {
-      setLastAbsencePenalty(day);
-      lastAbsencePenaltyRef.current = day;
-      return;
-    }
-
-    const existingPenaltyCases = currentCases.filter(
-      (c) => c.absencePenalty && c.createdAt.slice(0, 10) === day
-    );
-    const keepNonPenalty = currentCases.filter(
-      (c) => !(c.absencePenalty && c.createdAt.slice(0, 10) === day)
-    );
-
-    const loadDelta = new Map<string, number>();
-    const newPenaltyCases: CaseFile[] = [];
-    const reasonText = `Devamsızlık sonrası dengeleme puanı: en düşük ${minScore} - ${absencePenaltyAmount} = ${penaltyScore}`;
-
-    for (const t of absentTeachers) {
-      const existing = existingPenaltyCases.find((c) => c.assignedTo === t.id);
-      const prevScore = existing?.score ?? 0;
-      const score = penaltyScore;
-      const createdAt = existing?.createdAt ?? `${day}T23:59:00.000Z`;
-      const id = existing?.id ?? uid();
-      newPenaltyCases.push({
-        id,
-        student: `${t.name} - Devamsız`,
-        score,
-        createdAt,
-        assignedTo: t.id,
-        type: "DESTEK",
-        isNew: false,
-        diagCount: 0,
-        isTest: false,
-        assignReason: reasonText,
-        absencePenalty: true,
-      });
-      const delta = score - prevScore;
-      if (delta) loadDelta.set(t.id, (loadDelta.get(t.id) || 0) + delta);
-    }
-
-    for (const c of existingPenaltyCases) {
-      const tid = c.assignedTo;
-      if (!tid) continue;
-      if (!absentIds.has(tid)) {
-        const delta = -c.score;
-        if (delta) loadDelta.set(tid, (loadDelta.get(tid) || 0) + delta);
-      }
-    }
-
-    let changedCases = existingPenaltyCases.length !== newPenaltyCases.length;
-    if (!changedCases) {
-      for (const np of newPenaltyCases) {
-        const ex = existingPenaltyCases.find((c) => c.assignedTo === np.assignedTo);
-        if (!ex || ex.score !== np.score || ex.assignReason !== np.assignReason) {
-          changedCases = true;
-          break;
-        }
-      }
-    }
-
-    if (changedCases) {
-      const nextCases = [...newPenaltyCases, ...keepNonPenalty];
-      setCases(nextCases);
-      casesRef.current = nextCases; // Update Ref for doRollover
-    }
-
-    if (loadDelta.size > 0) {
-      const ym = day.slice(0, 7);
-      const nextTeachers = currentTeachers.map((t) => {
-        const delta = loadDelta.get(t.id) || 0;
-        if (!delta) return t;
-        const nextMonthly = { ...(t.monthly || {}) };
-        nextMonthly[ym] = Math.max(0, (nextMonthly[ym] || 0) + delta);
-        return {
-          ...t,
-          yearlyLoad: Math.max(0, t.yearlyLoad + delta),
-          monthly: nextMonthly,
-        };
-      });
-      setTeachers(nextTeachers);
-      teachersRef.current = nextTeachers; // Update Ref for doRollover
-    }
-
-    setLastAbsencePenalty(day);
-    lastAbsencePenaltyRef.current = day;
-  }, [centralLoaded, hydrated, setCases, setTeachers, setLastAbsencePenalty]);
-
-  // ---- Başkan yedek: bugün dosya alma, yarın bonusla başlat
-  const applyBackupBonusForDay = React.useCallback((day: string) => {
-    const currentTeachers = useAppStore.getState().teachers;
-    const currentCases = useAppStore.getState().cases;
-    const settingsCurrent = useAppStore.getState().settings;
-
-    const backups = currentTeachers.filter((t) => t.active && t.backupDay === day);
-    if (!backups.length) return;
-
-    const dayCases = currentCases.filter(
-      (c) => !c.absencePenalty && !c.backupBonus && c.assignedTo && c.createdAt.slice(0, 10) === day
-    );
-    const pointsByTeacher = new Map<string, number>();
-    for (const c of dayCases) {
-      const tid = c.assignedTo as string;
-      pointsByTeacher.set(tid, (pointsByTeacher.get(tid) || 0) + c.score);
-    }
-
-    // Ayarlardan bonus miktarını al
-    const { backupBonusAmount } = settingsCurrent;
-    const maxScore = pointsByTeacher.size ? Math.max(...pointsByTeacher.values()) : 0;
-
-    // Bonus hesapla (her zaman en yüksek + X)
-    const bonus = maxScore + backupBonusAmount;
-    const reasonText = `Başkan yedek bonusu: en yüksek ${maxScore} + ${backupBonusAmount} = ${bonus}`;
-    const ym = day.slice(0, 7);
-
-    // Bonus CaseFile'ları oluştur (günlük raporda görünsün)
-    const existingBonusCases = currentCases.filter(
-      (c) => c.backupBonus && c.createdAt.slice(0, 10) === day
-    );
-    const keepNonBonus = currentCases.filter(
-      (c) => !(c.backupBonus && c.createdAt.slice(0, 10) === day)
-    );
-
-    const newBonusCases: CaseFile[] = [];
-    const loadDelta = new Map<string, number>();
-
-    for (const t of backups) {
-      const existing = existingBonusCases.find((c) => c.assignedTo === t.id);
-      const prevScore = existing?.score ?? 0;
-      const score = bonus;
-      const createdAt = existing?.createdAt ?? `${day}T23:58:00.000Z`;
-      const id = existing?.id ?? uid();
-      newBonusCases.push({
-        id,
-        student: `${t.name} - Başkan Yedek`,
-        score,
-        createdAt,
-        assignedTo: t.id,
-        type: "DESTEK",
-        isNew: false,
-        diagCount: 0,
-        isTest: false,
-        assignReason: reasonText,
-        backupBonus: true,
-      });
-      const delta = score - prevScore;
-      if (delta) loadDelta.set(t.id, (loadDelta.get(t.id) || 0) + delta);
-    }
-
-    // Cases güncelle
-    const nextCases = [...newBonusCases, ...keepNonBonus];
-    setCases(nextCases);
-    casesRef.current = nextCases; // Update Ref for doRollover
-
-    // Teachers güncelle
-    const nextTeachers = currentTeachers.map((t) => {
-      // backupDay === day ise bonus alacak kişidir
-      if (t.backupDay !== day) return t;
-      const delta = loadDelta.get(t.id) || 0;
-      const nextMonthly = { ...(t.monthly || {}) };
-      nextMonthly[ym] = Math.max(0, (nextMonthly[ym] || 0) + delta);
-      return {
-        ...t,
-        backupDay: undefined,
-        yearlyLoad: Math.max(0, t.yearlyLoad + delta),
-        monthly: nextMonthly,
-      };
-    });
-    setTeachers(nextTeachers);
-    teachersRef.current = nextTeachers; // Update Ref for doRollover
-  }, [setTeachers, setCases]);
-
-  // ---- ROLLOVER: Gece 00:00 arşivle & sıfırla
-  function doRollover() {
-    // State'i en güncel haliyle al
-    const currentCases = useAppStore.getState().cases;
-    const currentHistory = useAppStore.getState().history;
-    const currentTeachers = useAppStore.getState().teachers;
-    const currentAbsenceRecords = useAppStore.getState().absenceRecords;
-
-    const dayOfCases = currentCases[0]?.createdAt.slice(0, 10) || getTodayYmd();
-
-    // ✅ GÜVENLIK: Rollover öncesi, şu an izinli olan öğretmenlerin absenceRecords'ta o gün için kaydı yoksa ekle
-    const updatedAbsenceRecords = [...currentAbsenceRecords];
-    let recordsChanged = false;
-
-    currentTeachers.forEach(t => {
-      if (t.active && t.isAbsent && !t.isPhysiotherapist) {
-        const hasRecord = updatedAbsenceRecords.some(r => r.teacherId === t.id && r.date === dayOfCases);
-        if (!hasRecord) {
-          updatedAbsenceRecords.push({ teacherId: t.id, date: dayOfCases });
-          recordsChanged = true;
-          console.log(`[doRollover] İzin kaydı eklendi: ${t.name} - ${dayOfCases}`);
-        }
-      }
-    });
-
-    if (recordsChanged) {
-      setAbsenceRecords(updatedAbsenceRecords);
-    }
-
-    // Puanları hesapla (Ref'ler güncellenir)
-    applyAbsencePenaltyForDay(dayOfCases);
-    applyBackupBonusForDay(dayOfCases);
-
-    // Not: apply... fonksiyonları casesRef.current ve teachersRef.current'ı güncelledi
-    const sourceCases = casesRef.current;
-    const nextHistory: Record<string, CaseFile[]> = { ...currentHistory };
-
-    for (const c of sourceCases) {
-      const day = c.createdAt.slice(0, 10);
-      const dayCases = nextHistory[day] || [];
-      // DEDUPE: Even if already in history (multiple rollover trigger), don't double add
-      if (!dayCases.some(ex => ex.id === c.id)) {
-        nextHistory[day] = [...dayCases, c];
-      }
-    }
-
-    setHistory(nextHistory);
-    setCases([]); // bugünkü liste sıfırlansın
-    setLastRollover(getTodayYmd());
-
-    // Yeni gün için durumları sıfırla
-    const latestTeachers = useAppStore.getState().teachers;
-    const resetTeachers = latestTeachers.map(t => ({ ...t, isAbsent: false, isTester: false }));
-    setTeachers(resetTeachers);
-    teachersRef.current = resetTeachers;
-  }
-
-  // Uygulama açıldığında kaçırılmış rollover varsa uygula, sonra bir sonraki gece için zamanla
-  useEffect(() => {
-    const today = getTodayYmd();
-    if (lastRollover && lastRollover !== today) {
-      doRollover();
-    } else if (!lastRollover) {
-      setLastRollover(today);
-    }
-
-    function msToNextMidnight() {
-      const now = new Date();
-      const next = new Date(now);
-      next.setHours(24, 0, 0, 0); // bugün 24:00 = yarın 00:00
-      return next.getTime() - now.getTime();
-    }
-
-    let timeoutId: number | undefined;
-    function schedule() {
-      timeoutId = window.setTimeout(() => {
-        doRollover();  // 00:00’da arşivle & sıfırla
-        schedule();    // ertesi gün için tekrar kur
-      }, msToNextMidnight());
-    }
-    schedule();
-    return () => { if (timeoutId) clearTimeout(timeoutId); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lastRollover, cases, history]);
+  // Rollover logic moved to hooks/useRollover.ts
 
   // ---- Liste filtreleme
   // "Dosyalar" sadece BUGÜN
@@ -3441,137 +2443,28 @@ export default function DosyaAtamaApp() {
       <div className="container mx-auto p-4 space-y-6 relative z-10">
         {/* Üst araç çubuğu: rapor ve giriş */}
         {/* ÜST BAR (sticky + cam) - MOBİL OPTİMİZE */}
-        <div className="sticky top-0 z-40 backdrop-blur bg-white/70 border-b border-slate-200/60">
-          <div className="container mx-auto px-2 sm:px-4 py-2 sm:py-3">
-
-            {/* Satır 1: Ana kontroller */}
-            <div className="flex items-center justify-between gap-2">
-              {/* Sol: Ana sayfa + Ay + Arama */}
-              <div className="flex items-center gap-1 sm:gap-2">
-                <Button size="sm" variant="outline" className="px-2 sm:px-3 text-xs sm:text-sm" onClick={() => setViewMode("landing")}>
-                  🏠 <span className="hidden sm:inline">Ana Sayfa</span>
-                </Button>
-                {isAdmin && (
-                  <Select value={filterYM} onValueChange={setFilterYM}>
-                    <SelectTrigger className="w-[90px] sm:w-[130px] text-xs sm:text-sm">
-                      <SelectValue placeholder="Ay" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {allMonths.map((m) => (
-                        <SelectItem key={m} value={m}>{m}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-                {/* Hızlı Arama Butonu */}
-                <QuickSearch
-                  teachers={teachers}
-                  cases={cases}
-                  history={history}
-                  onSelectTeacher={(id) => {
-                    const teacher = teachers.find(t => t.id === id);
-                    if (teacher) toast(`${teacher.name} seçildi`);
-                  }}
-                  onSelectCase={(caseFile) => {
-                    toast(`${caseFile.student} - ${caseFile.createdAt.split("T")[0]}`);
-                  }}
-                />
-              </div>
-
-              {/* Sağ: Canlı rozet + Admin/Giriş */}
-              <div className="flex items-center gap-1 sm:gap-2">
-                {/* CANLI ROZET - Kısa versiyon mobilde */}
-                <span
-                  className={
-                    "inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ring-1 " +
-                    (live === "online"
-                      ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
-                      : live === "connecting"
-                        ? "bg-amber-50 text-amber-700 ring-amber-200"
-                        : "bg-rose-50 text-rose-700 ring-rose-200")
-                  }
-                  title={live === "online" ? "Bağlı" : live === "connecting" ? "Bağlanıyor" : "Bağlı değil"}
-                >
-                  <span className="inline-block size-1.5 rounded-full bg-current animate-pulse" />
-                  <span className="hidden sm:inline">🔴 Canlı:</span> {live}
-                </span>
-
-                {isAdmin ? (
-                  <>
-                    <span className="hidden sm:inline text-xs sm:text-sm text-emerald-700 font-medium">👑 Admin</span>
-                    {/* Çıkış Butonu - HER ZAMAN GÖRÜNÜR */}
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      className="px-2 sm:px-3 text-xs sm:text-sm"
-                      onClick={doLogout}
-                    >
-                      🚪 <span className="hidden sm:inline">Çıkış</span>
-                    </Button>
-                  </>
-                ) : (
-                  <Button size="sm" className="px-2 sm:px-3 text-xs sm:text-sm" onClick={() => setLoginOpen(true)}>
-                    🔐 <span className="hidden sm:inline">Giriş</span>
-                  </Button>
-                )}
-              </div>
-            </div>
-
-            {/* Satır 2: Ek butonlar (mobilde kaydırılabilir) */}
-            <div className="flex items-center gap-1 sm:gap-2 mt-2 overflow-x-auto pb-1 no-scrollbar">
-              <Button size="sm" variant="outline" className="shrink-0 px-2 sm:px-3 text-xs sm:text-sm" onClick={() => setShowRules(true)}>
-                📖 <span className="hidden sm:inline">Kurallar</span>
-              </Button>
-              <Button size="sm" variant="outline" className="shrink-0 px-2 sm:px-3 text-xs sm:text-sm" onClick={() => setFeedbackOpen(true)}>
-                💬 <span className="hidden xs:inline">Öneri</span><span className="hidden sm:inline">/Şikayet</span>
-              </Button>
-
-              {isAdmin && (
-                <>
-                  {/* Ses Aç/Kapat */}
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="shrink-0 px-2"
-                    data-silent="true"
-                    title={soundOn ? "Sesi Kapat" : "Sesi Aç"}
-                    onClick={() => setSoundOn(!soundOn)}
-                  >
-                    {soundOn ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
-                  </Button>
-
-                  {/* Ayarlar */}
-                  <Button size="sm" variant="outline" className="shrink-0 px-2 sm:px-3 text-xs sm:text-sm" onClick={() => setSettingsOpen(true)}>
-                    ⚙️ <span className="hidden sm:inline">Ayarlar</span>
-                  </Button>
-
-                  {/* Simülasyon Modu */}
-                  {typeof window !== "undefined" && new URLSearchParams(window.location.search).get("simDate") && (
-                    <>
-                      <span className="shrink-0 text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded font-medium">
-                        📅 {new URLSearchParams(window.location.search).get("simDate")}
-                      </span>
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        className="shrink-0 px-2 sm:px-3 text-xs"
-                        onClick={() => {
-                          if (confirm("Günü bitir ve arşivle? (Devamsızlık cezası + Yedek bonusu uygulanacak)")) {
-                            doRollover();
-                            toast("Gün bitirildi! Devamsızlık/yedek puanları uygulandı.");
-                          }
-                        }}
-                      >
-                        🌙 <span className="hidden sm:inline">Günü Bitir</span>
-                      </Button>
-                    </>
-                  )}
-                </>
-              )}
-            </div>
-
-          </div>
-        </div>
+        {/* Üst araç çubuğu: Header Component */}
+        <Header
+          viewMode={viewMode}
+          setViewMode={setViewMode}
+          isAdmin={isAdmin}
+          filterYM={filterYM}
+          setFilterYM={setFilterYM}
+          allMonths={allMonths}
+          teachers={teachers}
+          cases={cases}
+          history={history}
+          live={live}
+          doLogout={doLogout}
+          setLoginOpen={setLoginOpen}
+          setShowRules={setShowRules}
+          setFeedbackOpen={setFeedbackOpen}
+          soundOn={soundOn}
+          setSoundOn={setSoundOn}
+          setSettingsOpen={setSettingsOpen}
+          doRollover={doRollover}
+          toast={toast}
+        />
 
         {/* 📊 DASHBOARD ÖZET KARTLARI */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -3614,6 +2507,7 @@ export default function DosyaAtamaApp() {
             <DailyAppointmentsCard
               pdfLoading={pdfLoading}
               onShowDetails={(date) => { if (date instanceof Date) { fetchPdfEntriesFromServer(date); } else { setShowPdfPanel(true); } }}
+              onRemoveEntry={(id) => removePdfEntry(id)}
               onPrint={handlePrintPdfList}
               onClearAll={() => clearPdfEntries(true, true)}
             />
@@ -3852,7 +2746,7 @@ export default function DosyaAtamaApp() {
                     <DailyAppointmentsCard
                       pdfLoading={pdfLoading}
                       onApplyEntry={applyPdfEntry}
-                      onRemoveEntry={removePdfEntry}
+                      onRemoveEntry={(id) => removePdfEntry(id)}
                       onPrint={handlePrintPdfList}
                       onClearAll={() => clearPdfEntries()}
                       onShowDetails={(date) => { if (date instanceof Date) { fetchPdfEntriesFromServer(date); } else { setShowPdfPanel(true); } }}
@@ -4284,259 +3178,31 @@ export default function DosyaAtamaApp() {
 
 
         {/* Öneri/Şikayet Modal */}
-        {feedbackOpen && (
-          <div className="fixed inset-0 h-screen w-screen bg-black/30 backdrop-blur-sm flex items-center justify-center z-[99999]" onClick={() => setFeedbackOpen(false)}>
-            <Card className="w-[420px] shadow-2xl border-0" onClick={(e) => e.stopPropagation()}>
-              <CardHeader className="bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-t-lg">
-                <CardTitle className="text-white flex items-center gap-2">
-                  <span className="text-2xl">💬</span>
-                  <span>Öneri / Şikayet</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="grid grid-cols-1 gap-3">
-                  <div>
-                    <Label>Ad Soyad</Label>
-                    <Input value={fbName} onChange={e => setFbName(e.target.value)} placeholder="Ad Soyad" />
-                  </div>
-                  <div>
-                    <Label>E‑posta</Label>
-                    <Input value={fbEmail} onChange={e => setFbEmail(e.target.value)} placeholder="ornek@eposta.com" />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Label className="whitespace-nowrap">Tür</Label>
-                    <Select value={fbType} onValueChange={(v) => setFbType(v as any)}>
-                      <SelectTrigger className="w-[160px]"><SelectValue placeholder="Tür seç" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="oneri">Öneri</SelectItem>
-                        <SelectItem value="sikayet">Şikayet</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label>Mesaj</Label>
-                    <textarea className="w-full border rounded-md p-2 text-sm min-h-28" value={fbMessage} onChange={e => setFbMessage(e.target.value)} placeholder="Mesajınızı yazın..." />
-                  </div>
-                </div>
-                <div className="flex justify-end gap-2 pt-1">
-                  <Button variant="outline" onClick={() => setFeedbackOpen(false)}>Kapat</Button>
-                  <Button onClick={async () => {
-                    const payload = { name: fbName.trim(), email: fbEmail.trim(), type: fbType, message: fbMessage.trim() } as any;
-                    if (!payload.name || !payload.email || payload.message.length < 10) { toast("Lütfen ad, e‑posta ve en az 10 karakterlik mesaj girin."); return; }
-                    try {
-                      const res = await fetch("/api/feedback", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-                      if (res.ok) { toast("Gönderildi. Teşekkür ederiz!"); setFeedbackOpen(false); setFbName(""); setFbEmail(""); setFbMessage(""); setFbType("oneri"); }
-                      else { const j = await res.json().catch(() => ({})); toast("Gönderilemedi: " + (j?.error || res.statusText)); }
-                    } catch { toast("Ağ hatası: Gönderilemedi"); }
-                  }}>Gönder</Button>
-                </div>
-                <div className="text-[11px] text-muted-foreground">Gönderimler <strong>ataafurkan@gmail.com</strong> adresine iletilir.</div>
-              </CardContent>
-            </Card>
-          </div>
-        )}
+        <FeedbackModal
+          open={feedbackOpen}
+          onClose={() => setFeedbackOpen(false)}
+        />
 
         {/* Settings Modal */}
-        {settingsOpen && (
-          <div className="fixed inset-0 h-screen w-screen bg-black/30 backdrop-blur-sm flex items-center justify-center z-[99999]" onClick={() => setSettingsOpen(false)}>
-            <Card className="w-[600px] max-h-[90vh] overflow-y-auto shadow-2xl border-0" onClick={(e) => e.stopPropagation()}>
-              <CardHeader className="bg-gradient-to-r from-emerald-600 to-emerald-700 text-white rounded-t-lg sticky top-0 z-10">
-                <CardTitle className="text-white flex items-center gap-2">
-                  <span className="text-2xl">⚙️</span>
-                  <span>Ayarlar</span>
-                </CardTitle>
-                {/* Tab Navigation */}
-                <div className="flex gap-2 mt-4">
-                  <Button
-                    variant={settingsTab === "general" ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setSettingsTab("general")}
-                    className="bg-white/20 hover:bg-white/30 text-white border-white/30"
-                  >
-                    Genel
-                  </Button>
-                  <Button
-                    variant={settingsTab === "theme" ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setSettingsTab("theme")}
-                    className="bg-white/20 hover:bg-white/30 text-white border-white/30"
-                  >
-                    🎨 Tema
-                  </Button>
-                  <Button
-                    variant={settingsTab === "widgets" ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setSettingsTab("widgets")}
-                    className="bg-white/20 hover:bg-white/30 text-white border-white/30"
-                  >
-                    📊 Widget'lar
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {settingsTab === "general" && (
-                  <>
-                    <div>
-                      <Label className="text-slate-900 font-semibold">Günlük Limit (öğretmen başına)</Label>
-                      <Input type="number" value={settings.dailyLimit} onChange={e => updateSettings({ dailyLimit: Math.max(1, Number(e.target.value) || 0) })} />
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <Label className="text-slate-900 font-semibold">Test Puanı</Label>
-                        <Input type="number" value={settings.scoreTest} onChange={e => updateSettings({ scoreTest: Number(e.target.value) || 0 })} />
-                      </div>
-                      <div>
-                        <Label className="text-slate-900 font-semibold">Yeni Bonus</Label>
-                        <Input type="number" value={settings.scoreNewBonus} onChange={e => updateSettings({ scoreNewBonus: Number(e.target.value) || 0 })} />
-                      </div>
-                      <div>
-                        <Label className="text-slate-900 font-semibold">Yönlendirme</Label>
-                        <Input type="number" value={settings.scoreTypeY} onChange={e => updateSettings({ scoreTypeY: Number(e.target.value) || 0 })} />
-                      </div>
-                      <div>
-                        <Label className="text-slate-900 font-semibold">Destek</Label>
-                        <Input type="number" value={settings.scoreTypeD} onChange={e => updateSettings({ scoreTypeD: Number(e.target.value) || 0 })} />
-                      </div>
-                      <div className="col-span-2">
-                        <Label className="text-slate-900 font-semibold">İkisi</Label>
-                        <Input type="number" value={settings.scoreTypeI} onChange={e => updateSettings({ scoreTypeI: Number(e.target.value) || 0 })} />
-                      </div>
-                    </div>
-                    {/* Yedek Başkan Bonus Ayarları */}
-                    <div className="border-t border-slate-200 pt-4 mt-4">
-                      <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-3">
-                        <Label className="text-sm font-semibold mb-2 block text-amber-900 flex items-center gap-2">
-                          <span>👑</span>
-                          <span>Yedek Başkan Bonus Ayarları</span>
-                        </Label>
-                        <div>
-                          <Label className="text-xs text-slate-900 font-semibold">Bonus Miktarı (En Yüksek + X)</Label>
-                          <Input type="number" min={0} value={settings.backupBonusAmount} onChange={e => updateSettings({ backupBonusAmount: Math.max(0, Number(e.target.value) || 0) })} />
-                        </div>
-                        <p className="text-[11px] text-amber-700 mt-1">
-                          Yedek başkan: O günün en yüksek puanına +{settings.backupBonusAmount} eklenir.
-                        </p>
-                      </div>
-                    </div>
-                    {/* Devamsızlık Cezası Ayarları */}
-                    <div className="border-t border-slate-200 pt-4 mt-4">
-                      <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-3">
-                        <Label className="text-sm font-semibold mb-2 block text-red-900 flex items-center gap-2">
-                          <span>🚫</span>
-                          <span>Devamsızlık Cezası Ayarları</span>
-                        </Label>
-                        <div>
-                          <Label className="text-xs text-slate-900 font-semibold">Puan Farkı (En Düşük - X)</Label>
-                          <Input type="number" min={0} value={settings.absencePenaltyAmount} onChange={e => updateSettings({ absencePenaltyAmount: Math.max(0, Number(e.target.value) || 0) })} />
-                        </div>
-                        <p className="text-[11px] text-red-700 mt-1">
-                          Devamsız öğretmen: O günün en düşük puanından -{settings.absencePenaltyAmount} çıkarılır.
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Geliştirici Ayarları (Debug Mode) */}
-                    <div className="border-t border-slate-200 pt-4 mt-4">
-                      <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 mb-3">
-                        <Label className="text-sm font-semibold mb-2 block text-slate-900 flex items-center gap-2">
-                          <span>🛠️</span>
-                          <span>Geliştirici Seçenekleri</span>
-                        </Label>
-                        <div className="flex items-center gap-3">
-                          <Checkbox
-                            id="debugMode"
-                            checked={!!settings.debugMode}
-                            onCheckedChange={(v) => updateSettings({ debugMode: !!v })}
-                            className="h-5 w-5 border-slate-400 data-[state=checked]:bg-slate-700 data-[state=checked]:border-slate-700"
-                          />
-                          <div className="flex-1">
-                            <Label htmlFor="debugMode" className="text-sm font-semibold cursor-pointer">Debug Modu (Detaylı Analiz)</Label>
-                            <p className="text-[11px] text-slate-600 mt-0.5">
-                              Her atama işleminden sonra; kazanan öğretmeni, adayları ve özellikle Eray ile ilgili engelleme nedenlerini gösteren bilgi penceresini açar.
-                            </p>
-                          </div>
-                        </div>
-
-                        {/* E-Arşiv Temizliği Butonu */}
-                        <div className="mt-3 pt-3 border-t border-slate-200">
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={cleanupEArchive}
-                            className="w-full flex items-center justify-center gap-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 shadow-sm"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                            E-Arşiv Temizliği (Hayalet Kayıtları Sil)
-                          </Button>
-                          <p className="text-[10px] text-slate-500 mt-1 text-center">
-                            Silinmiş ama listede kalan dosyaları temizler.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex justify-end gap-2 pt-1">
-                      <Button variant="outline" onClick={() => setSettings(DEFAULT_SETTINGS)}>Varsayılanlara Dön</Button>
-                      <Button onClick={() => setSettingsOpen(false)}>Kapat</Button>
-                    </div>
-                  </>
-                )}
-
-                {settingsTab === "theme" && (
-                  <div className="space-y-4">
-                    <ThemeSettings />
-                    <div className="flex justify-end gap-2 pt-1">
-                      <Button onClick={() => setSettingsOpen(false)}>Kapat</Button>
-                    </div>
-                  </div>
-                )}
-
-                {settingsTab === "widgets" && (
-                  <div className="space-y-4">
-                    <DashboardWidgets />
-                    <div className="flex justify-end gap-2 pt-1">
-                      <Button onClick={() => setSettingsOpen(false)}>Kapat</Button>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        )}
+        <SettingsModal
+          open={settingsOpen}
+          onClose={() => setSettingsOpen(false)}
+          settings={settings}
+          updateSettings={updateSettings}
+          onCleanupEArchive={cleanupEArchive}
+        />
         {/* Login Modal */}
-        {loginOpen && (
-          <div className="fixed inset-0 h-screen w-screen bg-black/30 backdrop-blur-sm flex items-center justify-center z-[99999]">
-            <Card className="w-[400px] shadow-2xl border-0">
-              <CardHeader className="bg-gradient-to-r from-slate-700 to-slate-800 text-white rounded-t-lg">
-                <CardTitle className="text-white flex items-center gap-2">
-                  <span className="text-2xl">🔐</span>
-                  <span>Admin Girişi</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="space-y-1">
-                  <Label>E-posta</Label>
-                  <Input value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} placeholder="admin@example.com" />
-                </div>
-                <div className="space-y-1">
-                  <Label>Parola</Label>
-                  <Input type="password" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} />
-                </div>
-                <div className="flex items-center gap-2 pt-1">
-                  <Checkbox id="remember" checked={loginRemember} onCheckedChange={(v) => setLoginRemember(Boolean(v))} />
-                  <Label htmlFor="remember" className="text-sm font-normal">Beni Hatırla</Label>
-                </div>
-                <div className="flex justify-end gap-2">
-                  <Button variant="outline" onClick={() => setLoginOpen(false)}>İptal</Button>
-                  <Button onClick={doLogin}>Giriş Yap</Button>
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  Sadece yetkili admin işlem yapabilir; diğer kullanıcılar raporları görüntüler.
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        )}
+        <LoginModal
+          open={loginOpen}
+          onClose={() => setLoginOpen(false)}
+          email={loginEmail}
+          onEmailChange={setLoginEmail}
+          password={loginPassword}
+          onPasswordChange={setLoginPassword}
+          remember={loginRemember}
+          onRememberChange={setLoginRemember}
+          onLogin={doLogin}
+        />
         {/* Dosya Atama Bildirimi - Büyük Animasyonlu Popup */}
         {assignmentPopup && (
           <div className="fixed inset-0 flex items-center justify-center z-[200] pointer-events-none">
@@ -4556,46 +3222,10 @@ export default function DosyaAtamaApp() {
           </div>
         )}
         {/* Versiyon Güncelleme Bildirimi - Admin olmayan kullanıcılar için */}
-        {showVersionPopup && !isAdmin && (
-          <div className="fixed top-3 right-3 z-[150] max-w-md animate-slide-in-right">
-            <div className="bg-gradient-to-br from-teal-500 to-teal-600 text-white rounded-xl shadow-2xl border border-teal-400/30 overflow-hidden">
-              <div className="flex items-start justify-between p-4">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="text-2xl">✨</span>
-                    <h3 className="font-bold text-lg">Uygulama Güncellendi</h3>
-                  </div>
-                  <div className="text-sm font-semibold mb-3 opacity-90">
-                    Versiyon {APP_VERSION}
-                  </div>
-                  <div className="text-sm space-y-1 mb-3">
-                    <div className="font-medium mb-1">Yapılan Değişiklikler:</div>
-                    <ul className="list-disc list-inside space-y-0.5 text-xs opacity-90">
-                      {CHANGELOG[APP_VERSION]?.map((change, idx) => (
-                        <li key={idx}>{change}</li>
-                      ))}
-                    </ul>
-                  </div>
-                  <div className="text-xs font-medium bg-white/20 rounded px-2 py-1 inline-block mt-2">
-                    🔄 Sayfayı yenileyin
-                  </div>
-                </div>
-                <button
-                  onClick={() => {
-                    setShowVersionPopup(false);
-                    try {
-                      localStorage.setItem(LS_LAST_SEEN_VERSION, APP_VERSION);
-                    } catch { }
-                  }}
-                  className="ml-3 text-white/80 hover:text-white hover:bg-white/20 rounded p-1 transition-colors"
-                  aria-label="Kapat"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        <VersionPopup
+          open={showVersionPopup && !isAdmin}
+          onClose={() => setShowVersionPopup(false)}
+        />
         {/* Toast Container - Renkli */}
         {toasts.length > 0 && (
           <div className="fixed top-3 right-3 z-[100] space-y-2">
@@ -4638,531 +3268,46 @@ export default function DosyaAtamaApp() {
       </div>
       {(showPdfPanel || showRules) && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
-          <div className="relative w-full max-w-5xl max-h-[90vh] overflow-y-auto bg-white rounded-3xl shadow-2xl border border-emerald-100 p-6 space-y-5">
-            <button
-              className="absolute top-4 right-4 text-slate-600 hover:text-slate-900 z-10"
-              onClick={() => { setShowPdfPanel(false); setShowRules(false); }}
-              title="Kapat"
-            >
-              <X className="h-6 w-6" />
-            </button>
-            {showPdfPanel && (
-              <>
-                <Card className="border border-dashed border-emerald-300 bg-white/90">
-                  <CardHeader>
-                    <CardTitle>RAM Randevu PDF Yükle</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                      <label
-                        className={`sm:flex-1 flex flex-col items-center justify-center p-6 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${isDragging
-                          ? "border-emerald-500 bg-emerald-50"
-                          : "border-emerald-300 hover:bg-emerald-50/50"
-                          }`}
-                        onDragEnter={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          if (e.dataTransfer.items && e.dataTransfer.items.length > 0) {
-                            setIsDragging(true);
-                          }
-                        }}
-                        onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); setIsDragging(false); }}
-                        onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
-                        onDrop={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          setIsDragging(false);
-                          if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-                            const file = e.dataTransfer.files[0];
-                            if (file.type === "application/pdf") {
-                              handlePdfFileChange(file);
-                            } else {
-                              toast("Lütfen sadece PDF dosyası sürükleyin.");
-                            }
-                          }
-                        }}
-                      >
-                        <input
-                          type="file"
-                          accept="application/pdf"
-                          ref={pdfInputRef}
-                          onChange={(e) => handlePdfFileChange(e.target.files?.[0] || null)}
-                          className="hidden"
-                        />
-                        <div className="text-center text-slate-600">
-                          {pdfFile ? <span className="font-semibold text-emerald-800">{pdfFile.name}</span> : "PDF dosyasını buraya sürükleyin veya tıklayıp seçin"}
-                        </div>
-                      </label>
-                      <Button onClick={uploadPdfFromFile} disabled={pdfUploading || !pdfFile}>
-                        {pdfUploading ? "Yükleniyor..." : "PDF Ekle"}
-                      </Button>
-                    </div>
-                    <p className="text-xs text-slate-600">
-                      Sistem, PDF başlığındaki tarihi (örn: "21.11.2025 Tarihli Randevu Listesi") otomatik olarak okur. Yükleme, o tarihe ait mevcut listeyi siler ve yenisiyle değiştirir.
-                    </p>
-                    {pdfUploadError && <p className="text-sm text-red-600">{pdfUploadError}</p>}
-                    {!pdfUploadError && pdfEntries.length > 0 && (
-                      <p className="text-sm text-emerald-700">
-                        Son yüklemede {pdfEntries.length} randevu bulundu
-                        {pdfDate ? ` (${pdfDate})` : ""}. Bu liste tüm kullanıcılarla paylaşılır.
-                      </p>
-                    )}
-                  </CardContent>
-                </Card>
-                <Card className="border border-emerald-200 bg-emerald-50/60">
-                  <CardHeader className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-                    <CardTitle>
-                      Yüklenen PDF Randevuları
-                      {pdfDate && <span className="ml-2 text-sm text-emerald-700 font-normal">({pdfDate})</span>}
-                    </CardTitle>
-                    {isAdmin ? (
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          data-silent="true"
-                          onClick={() => clearPdfEntries()}
-                          disabled={!pdfEntries.length || pdfLoading}
-                        >
-                          PDF'yi Temizle
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          data-silent="true"
-                          onClick={() => setSelectedPdfEntryId(null)}
-                          disabled={!selectedPdfEntryId}
-                        >
-                          Seçimi Temizle
-                        </Button>
-                      </div>
-                    ) : null}
-                  </CardHeader>
-                  <CardContent>
-                    {pdfLoading ? (
-                      <p className="text-sm text-slate-600">Randevular yükleniyor...</p>
-                    ) : pdfEntries.length === 0 ? (
-                      <p className="text-sm text-slate-600">Henüz PDF içe aktarılmadı. İlk sayfadaki panelden PDF yükleyebilirsiniz.</p>
-                    ) : (
-                      <div className="overflow-auto border rounded-md">
-                        <table className="min-w-full text-xs md:text-sm">
-                          <thead className="bg-emerald-100 text-emerald-900">
-                            <tr>
-                              <th className="p-2 text-left">Saat</th>
-                              <th className="p-2 text-left">Ad Soyad</th>
-                              <th className="p-2 text-left">Dosya No</th>
-                              <th className="p-2 text-left">Açıklama</th>
-                              {isAdmin && <th className="p-2 text-right">İşlem</th>}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {pdfEntries.map((entry) => (
-                              <tr
-                                key={entry.id}
-                                className={`border-b last:border-b-0 ${selectedPdfEntryId === entry.id ? "bg-emerald-50" : "bg-white"}`}
-                              >
-                                <td className="p-2 font-semibold">{entry.time}</td>
-                                <td className="p-2">{entry.name}</td>
-                                <td className="p-2">{entry.fileNo || "-"}</td>
-                                <td className="p-2 text-xs text-slate-600">{entry.extra || "-"}</td>
-                                {isAdmin && (
-                                  <td className="p-2 flex flex-col gap-1 items-end">
-                                    <Button size="sm" onClick={() => applyPdfEntry(entry)}>Forma Aktar</Button>
-                                    <Button
-                                      size="sm"
-                                      variant="ghost"
-                                      className="text-red-600 hover:text-red-700"
-                                      onClick={() => removePdfEntry(entry.id)}
-                                    >
-                                      <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                  </td>
-                                )}
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </>
-            )}
-            {showRules && (
-              <div className="w-full max-w-4xl mx-auto">
-                <div className="bg-gradient-to-br from-emerald-50 via-white to-blue-50 rounded-2xl shadow-xl border border-emerald-100/50 overflow-hidden">
-                  {/* Header */}
-                  <div className="bg-gradient-to-r from-emerald-600 to-emerald-700 px-6 py-5 border-b border-emerald-800/20">
-                    <h2 className="text-2xl font-bold text-white flex items-center gap-3">
-                      <span className="text-3xl">📋</span>
-                      <span>Dosya Atama Kuralları</span>
-                    </h2>
-                    <p className="text-emerald-100 text-sm mt-1">Sistemin otomatik dosya atama mantığı ve puanlama kuralları</p>
-                  </div>
+          {showPdfPanel && (
+            <PdfPanel
+              open={true} // Wrapper handles visibility
+              onClose={() => { setShowPdfPanel(false); setShowRules(false); }}
+              pdfEntries={pdfEntries}
+              pdfDate={pdfDate}
+              isAdmin={isAdmin}
+              activePdfEntryId={selectedPdfEntryId}
+              onApplyEntry={applyPdfEntry}
+              onRemoveEntry={(id) => removePdfEntry(id)}
+              onClearAll={clearPdfEntries}
+              onClearSelection={() => setSelectedPdfEntryId(null)}
+            />
+          )}
 
-                  {/* Content */}
-                  <div className="p-6 md:p-8">
-                    <div className="grid gap-4 md:gap-5">
-                      {/* Rule 1 */}
-                      <div className="bg-white rounded-xl p-5 border-l-4 border-purple-500 shadow-sm hover:shadow-md transition-shadow">
-                        <div className="flex items-start gap-4">
-                          <div className="flex-shrink-0 w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center text-purple-700 font-bold text-sm">
-                            1
-                          </div>
-                          <div className="flex-1">
-                            <h3 className="font-bold text-slate-900 mb-1.5">Test Dosyaları</h3>
-                            <p className="text-slate-700 text-sm leading-relaxed">Sadece testör öğretmenlere gider; aynı gün ikinci test verilmez.</p>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Rule 2 */}
-                      <div className="bg-white rounded-xl p-5 border-l-4 border-blue-500 shadow-sm hover:shadow-md transition-shadow">
-                        <div className="flex items-start gap-4">
-                          <div className="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center text-blue-700 font-bold text-sm">
-                            2
-                          </div>
-                          <div className="flex-1">
-                            <h3 className="font-bold text-slate-900 mb-1.5">Normal Dosya Uygunluk</h3>
-                            <p className="text-slate-700 text-sm leading-relaxed">
-                              Aktif olmalı, devamsız olmamalı, yedek değilse ve günlük sınır (<span className="font-semibold text-blue-600">{settings.dailyLimit}</span>) aşılmamış olmalı. Testörler test almış olsa da normal dosya alabilir.
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Rule 3 */}
-                      <div className="bg-white rounded-xl p-5 border-l-4 border-indigo-500 shadow-sm hover:shadow-md transition-shadow">
-                        <div className="flex items-start gap-4">
-                          <div className="flex-shrink-0 w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center text-indigo-700 font-bold text-sm">
-                            3
-                          </div>
-                          <div className="flex-1">
-                            <h3 className="font-bold text-slate-900 mb-1.5">Sıralama</h3>
-                            <p className="text-slate-700 text-sm leading-relaxed">
-                              Yıllık yük az → Bugün aldığı dosya az → Rastgele; mümkünse son atanan öğretmene arka arkaya verilmez.
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Rule 4 */}
-                      <div className="bg-white rounded-xl p-5 border-l-4 border-cyan-500 shadow-sm hover:shadow-md transition-shadow">
-                        <div className="flex items-start gap-4">
-                          <div className="flex-shrink-0 w-8 h-8 bg-cyan-100 rounded-lg flex items-center justify-center text-cyan-700 font-bold text-sm">
-                            4
-                          </div>
-                          <div className="flex-1">
-                            <h3 className="font-bold text-slate-900 mb-1.5">Günlük Sınır</h3>
-                            <p className="text-slate-700 text-sm leading-relaxed">
-                              Öğretmen başına günde en fazla <span className="font-semibold text-cyan-600">{settings.dailyLimit}</span> dosya.
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Rule 5 */}
-                      <div className="bg-white rounded-xl p-5 border-l-4 border-teal-500 shadow-sm hover:shadow-md transition-shadow">
-                        <div className="flex items-start gap-4">
-                          <div className="flex-shrink-0 w-8 h-8 bg-teal-100 rounded-lg flex items-center justify-center text-teal-700 font-bold text-sm">
-                            5
-                          </div>
-                          <div className="flex-1">
-                            <h3 className="font-bold text-slate-900 mb-1.5">Manuel Atama</h3>
-                            <p className="text-slate-700 text-sm leading-relaxed">Admin manuel öğretmen seçerse otomatik seçim devre dışı kalır.</p>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Rule 6 */}
-                      <div className="bg-white rounded-xl p-5 border-l-4 border-orange-500 shadow-sm hover:shadow-md transition-shadow">
-                        <div className="flex items-start gap-4">
-                          <div className="flex-shrink-0 w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center text-orange-700 font-bold text-sm">
-                            6
-                          </div>
-                          <div className="flex-1">
-                            <h3 className="font-bold text-slate-900 mb-1.5">Devamsız</h3>
-                            <p className="text-slate-700 text-sm leading-relaxed">
-                              Devamsız olan öğretmene dosya verilmez; gün sonunda devamsızlar için o gün en düşük puanın <span className="font-semibold text-orange-600">{settings.absencePenaltyAmount}</span> eksiği "denge puanı" eklenir.
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Rule 7 */}
-                      <div className="bg-white rounded-xl p-5 border-l-4 border-amber-500 shadow-sm hover:shadow-md transition-shadow">
-                        <div className="flex items-start gap-4">
-                          <div className="flex-shrink-0 w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center text-amber-700 font-bold text-sm">
-                            7
-                          </div>
-                          <div className="flex-1">
-                            <h3 className="font-bold text-slate-900 mb-1.5">Başkan Yedek</h3>
-                            <p className="text-slate-700 text-sm leading-relaxed">
-                              Yedek işaretli öğretmen o gün dosya almaz; gün sonunda diğerlerinin en yüksek günlük puanına <span className="font-semibold text-amber-600">+{settings.backupBonusAmount}</span> eklenir.
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Rule 8 */}
-                      <div className="bg-white rounded-xl p-5 border-l-4 border-emerald-500 shadow-sm hover:shadow-md transition-shadow">
-                        <div className="flex items-start gap-4">
-                          <div className="flex-shrink-0 w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center text-emerald-700 font-bold text-sm">
-                            8
-                          </div>
-                          <div className="flex-1">
-                            <h3 className="font-bold text-slate-900 mb-1.5">Puanlama</h3>
-                            <p className="text-slate-700 text-sm leading-relaxed">
-                              TEST = <span className="font-semibold text-emerald-600">{settings.scoreTest}</span>; YÖNLENDİRME = <span className="font-semibold text-emerald-600">{settings.scoreTypeY}</span>; DESTEK = <span className="font-semibold text-emerald-600">{settings.scoreTypeD}</span>; İKİSİ = <span className="font-semibold text-emerald-600">{settings.scoreTypeI}</span>; YENİ = <span className="font-semibold text-emerald-600">+{settings.scoreNewBonus}</span>; TANI = 0–6 (üst sınır 6).
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Rule 9 */}
-                      <div className="bg-white rounded-xl p-5 border-l-4 border-green-500 shadow-sm hover:shadow-md transition-shadow">
-                        <div className="flex items-start gap-4">
-                          <div className="flex-shrink-0 w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center text-green-700 font-bold text-sm">
-                            9
-                          </div>
-                          <div className="flex-1">
-                            <h3 className="font-bold text-slate-900 mb-1.5">Bildirim</h3>
-                            <p className="text-slate-700 text-sm leading-relaxed">Atama sonrası öğretmene bildirim gönderilir.</p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* GÖRSEL ÖRNEK BÖLÜMÜ */}
-                    <div className="mt-8 pt-6 border-t-2 border-emerald-200">
-                      <h3 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
-                        <span className="text-2xl">📊</span>
-                        <span>Örnek Senaryo</span>
-                      </h3>
-
-                      {/* Örnek Tablo */}
-                      <div className="bg-white rounded-xl p-5 shadow-md border border-slate-200 mb-6">
-                        <h4 className="font-semibold text-slate-700 mb-3">Öğretmen Durumu:</h4>
-                        <div className="overflow-x-auto">
-                          <table className="w-full text-sm">
-                            <thead className="bg-slate-100">
-                              <tr>
-                                <th className="px-3 py-2 text-left font-semibold">Öğretmen</th>
-                                <th className="px-3 py-2 text-center font-semibold">Yıllık</th>
-                                <th className="px-3 py-2 text-center font-semibold">Günlük</th>
-                                <th className="px-3 py-2 text-center font-semibold">Aylık</th>
-                                <th className="px-3 py-2 text-left font-semibold">Durum</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100">
-                              <tr className="bg-emerald-50">
-                                <td className="px-3 py-2 font-medium">A</td>
-                                <td className="px-3 py-2 text-center font-bold text-emerald-600">10</td>
-                                <td className="px-3 py-2 text-center">0</td>
-                                <td className="px-3 py-2 text-center">5</td>
-                                <td className="px-3 py-2"><span className="text-emerald-600">✅ Hazır</span></td>
-                              </tr>
-                              <tr>
-                                <td className="px-3 py-2 font-medium">B</td>
-                                <td className="px-3 py-2 text-center">11</td>
-                                <td className="px-3 py-2 text-center">1</td>
-                                <td className="px-3 py-2 text-center">6</td>
-                                <td className="px-3 py-2"><span className="text-emerald-600">✅ Hazır</span></td>
-                              </tr>
-                              <tr>
-                                <td className="px-3 py-2 font-medium">C</td>
-                                <td className="px-3 py-2 text-center">12</td>
-                                <td className="px-3 py-2 text-center">0</td>
-                                <td className="px-3 py-2 text-center">7</td>
-                                <td className="px-3 py-2"><span className="text-amber-600">⏭️ Son aldı</span></td>
-                              </tr>
-                              <tr className="bg-red-50">
-                                <td className="px-3 py-2 font-medium">D</td>
-                                <td className="px-3 py-2 text-center">8</td>
-                                <td className="px-3 py-2 text-center">0</td>
-                                <td className="px-3 py-2 text-center">4</td>
-                                <td className="px-3 py-2"><span className="text-red-600">❌ Devamsız</span></td>
-                              </tr>
-                              <tr>
-                                <td className="px-3 py-2 font-medium">E</td>
-                                <td className="px-3 py-2 text-center">15</td>
-                                <td className="px-3 py-2 text-center">2</td>
-                                <td className="px-3 py-2 text-center">10</td>
-                                <td className="px-3 py-2"><span className="text-purple-600">🧪 Testör</span></td>
-                              </tr>
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-
-                      {/* Eleme Süreci */}
-                      <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-5 shadow-md border border-blue-200 mb-6">
-                        <h4 className="font-semibold text-slate-700 mb-3">🔄 Eleme Süreci:</h4>
-                        <div className="space-y-2 text-sm">
-                          <div className="flex items-center gap-2">
-                            <span className="w-6 h-6 rounded-full bg-slate-200 flex items-center justify-center text-xs font-bold">1</span>
-                            <span>A, B, C, D, E başlangıç (5 kişi)</span>
-                          </div>
-                          <div className="flex items-center gap-2 text-red-600">
-                            <span className="w-6 h-6 rounded-full bg-red-100 flex items-center justify-center text-xs font-bold">2</span>
-                            <span>D elendi → Devamsız ❌</span>
-                          </div>
-                          <div className="flex items-center gap-2 text-amber-600">
-                            <span className="w-6 h-6 rounded-full bg-amber-100 flex items-center justify-center text-xs font-bold">3</span>
-                            <span>C bu tur atlandı → Son alan (rotasyon) ⏭️</span>
-                          </div>
-                          <div className="flex items-center gap-2 text-emerald-600">
-                            <span className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center text-xs font-bold">4</span>
-                            <span>Kalan: A, B, E (3 kişi) ✅</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Sıralama */}
-                      <div className="bg-gradient-to-br from-emerald-50 to-teal-50 rounded-xl p-5 shadow-md border border-emerald-200 mb-6">
-                        <h4 className="font-semibold text-slate-700 mb-3">📈 Sıralama (En Uygun → En Son):</h4>
-                        <div className="space-y-3">
-                          <div className="bg-white rounded-lg p-3 border-2 border-emerald-400 shadow-sm">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <span className="text-2xl">🏆</span>
-                                <span className="font-bold text-emerald-700">1. A</span>
-                              </div>
-                              <span className="text-sm bg-emerald-100 px-2 py-1 rounded text-emerald-700">Yıllık: 10 (en düşük)</span>
-                            </div>
-                          </div>
-                          <div className="bg-white rounded-lg p-3 border border-slate-200">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <span className="text-xl">🥈</span>
-                                <span className="font-medium text-slate-700">2. B</span>
-                              </div>
-                              <span className="text-sm bg-slate-100 px-2 py-1 rounded text-slate-600">Yıllık: 11</span>
-                            </div>
-                          </div>
-                          <div className="bg-white rounded-lg p-3 border border-slate-200">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <span className="text-xl">🥉</span>
-                                <span className="font-medium text-slate-700">3. E</span>
-                              </div>
-                              <span className="text-sm bg-slate-100 px-2 py-1 rounded text-slate-600">Yıllık: 15</span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Sonuç */}
-                      <div className="bg-gradient-to-r from-emerald-500 to-teal-500 rounded-xl p-5 shadow-lg text-white">
-                        <div className="flex items-center gap-4">
-                          <div className="text-5xl">🎉</div>
-                          <div>
-                            <h4 className="font-bold text-xl mb-1">Sonuç: A Kazandı!</h4>
-                            <p className="text-emerald-100 text-sm">
-                              D devamsız olduğu için elendi. C son aldığı için bu tur atlandı.
-                              Kalan 3 kişi arasında A'nın yıllık puanı en düşük (10) olduğu için dosya A'ya atandı.
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Eşitlik Durumu */}
-                      <div className="mt-6 bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl p-5 shadow-md border border-amber-200">
-                        <h4 className="font-semibold text-slate-700 mb-3">⚖️ Eşitlik Olursa Ne Olur?</h4>
-                        <div className="space-y-2 text-sm text-slate-700">
-                          <div className="flex items-start gap-2">
-                            <span className="font-bold text-amber-600">1.</span>
-                            <span>Yıllık puan eşitse → <strong>Günlük dosya sayısına</strong> bakılır (az olan önce)</span>
-                          </div>
-                          <div className="flex items-start gap-2">
-                            <span className="font-bold text-amber-600">2.</span>
-                            <span>Günlük de eşitse → <strong>Aylık dosya sayısına</strong> bakılır (az olan önce)</span>
-                          </div>
-                          <div className="flex items-start gap-2">
-                            <span className="font-bold text-amber-600">3.</span>
-                            <span>O da eşitse → <strong>Rastgele</strong> seçilir</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
+          {showRules && (
+            <div className="relative w-full max-w-4xl">
+              <button
+                className="absolute -top-10 right-0 text-white hover:text-emerald-100 z-10"
+                onClick={() => { setShowPdfPanel(false); setShowRules(false); }}
+                title="Kapat"
+              >
+                <X className="h-8 w-8" />
+              </button>
+              <RulesModal open={true} onClose={() => { setShowPdfPanel(false); setShowRules(false); }} />
+            </div>
+          )}
         </div>
       )}
 
       {/* 🆕 Test Bitti Mi? / Testör Koruma Dialog */}
-      {testNotFinishedDialog.open && testNotFinishedDialog.chosenTeacher && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[99999]" onClick={() => setTestNotFinishedDialog({ open: false, pendingCase: null, chosenTeacher: null, skipTeacherIds: [] })}>
-          <Card className="w-[420px] shadow-2xl border-0 animate-in fade-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
-            <CardHeader className={`text-white rounded-t-lg ${testNotFinishedDialog.confirmType === 'testerProtection' ? 'bg-gradient-to-r from-purple-500 to-indigo-500' : 'bg-gradient-to-r from-amber-500 to-orange-500'}`}>
-              <CardTitle className="text-white flex items-center gap-2">
-                <span className="text-2xl">{testNotFinishedDialog.confirmType === 'testerProtection' ? '🛡️' : '⏱️'}</span>
-                <span>{testNotFinishedDialog.confirmType === 'testerProtection' ? 'Testör Koruma' : 'Test Bitti Mi?'}</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-6 space-y-4">
-              <div className="text-center">
-                <div className={`inline-flex items-center justify-center w-16 h-16 rounded-full mb-4 ${testNotFinishedDialog.confirmType === 'testerProtection' ? 'bg-purple-100' : 'bg-amber-100'}`}>
-                  <span className="text-3xl">{testNotFinishedDialog.confirmType === 'testerProtection' ? '👨‍🏫' : '🧪'}</span>
-                </div>
-                <p className="text-lg font-medium text-slate-900 mb-2">
-                  <span className={`font-bold ${testNotFinishedDialog.confirmType === 'testerProtection' ? 'text-purple-600' : 'text-amber-600'}`}>{testNotFinishedDialog.chosenTeacher.name}</span>
-                </p>
-                {testNotFinishedDialog.confirmType === 'testerProtection' ? (
-                  <p className="text-slate-600 text-sm">
-                    Bu öğretmen <strong>testör</strong> olarak seçili.
-                    <br />
-                    Normal dosya mı verilsin, yoksa test dosyası için mi beklesin?
-                  </p>
-                ) : (
-                  <p className="text-slate-600 text-sm">
-                    Bu öğretmen bugün test dosyası aldı.
-                    <br />
-                    Yeni dosya atanacak ama test henüz bitmemiş olabilir.
-                  </p>
-                )}
-              </div>
-
-              <div className="bg-slate-50 rounded-lg p-3 text-sm">
-                <div className="flex items-center gap-2 text-slate-700">
-                  <span>📁</span>
-                  <span className="font-medium">Atanacak Dosya:</span>
-                  <span>{testNotFinishedDialog.pendingCase?.student}</span>
-                </div>
-                <div className="flex items-center gap-2 text-slate-700 mt-1">
-                  <span>⭐</span>
-                  <span className="font-medium">Puan:</span>
-                  <span>{testNotFinishedDialog.pendingCase?.score}</span>
-                </div>
-              </div>
-
-              <div className="flex gap-3 pt-2">
-                <Button
-                  className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white"
-                  onClick={confirmTestFinished}
-                >
-                  {testNotFinishedDialog.confirmType === 'testerProtection' ? '✅ Verilsin' : '✅ Test Bitti, Ata'}
-                </Button>
-                <Button
-                  className={`flex-1 text-white ${testNotFinishedDialog.confirmType === 'testerProtection' ? 'bg-purple-600 hover:bg-purple-700' : 'bg-amber-600 hover:bg-amber-700'}`}
-                  onClick={skipTestNotFinished}
-                >
-                  {testNotFinishedDialog.confirmType === 'testerProtection' ? '🛡️ Atlansın, Test Beklesin' : '⏭️ Bitmedi, Atla'}
-                </Button>
-              </div>
-
-              <p className="text-xs text-center text-slate-500">
-                {testNotFinishedDialog.confirmType === 'testerProtection'
-                  ? '"Atlansın" seçerseniz dosya sıradaki öğretmene verilir, testör test için bekler'
-                  : '"Atla" seçerseniz dosya sıradaki uygun öğretmene verilecek'}
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+      <TestDialog
+        open={testNotFinishedDialog.open}
+        chosenTeacher={testNotFinishedDialog.chosenTeacher}
+        pendingCase={testNotFinishedDialog.pendingCase}
+        confirmType={testNotFinishedDialog.confirmType}
+        onClose={() => setTestNotFinishedDialog({ open: false, pendingCase: null, chosenTeacher: null, skipTeacherIds: [] })}
+        onConfirm={confirmTestFinished}
+        onSkip={skipTestNotFinished}
+      />
 
       {/* Duyuru Popup Modal */}
       <AnnouncementPopupModal

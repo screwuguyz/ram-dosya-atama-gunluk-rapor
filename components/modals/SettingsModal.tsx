@@ -1,170 +1,204 @@
-// ============================================
-// Ayarlar Modalı
-// ============================================
-
-"use client";
 
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { X, Settings, Save, RotateCcw } from "lucide-react";
-import type { Settings as SettingsType } from "@/types";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Trash2, X } from "lucide-react";
+import ThemeSettings from "@/components/ThemeSettings";
+import DashboardWidgets from "@/components/DashboardWidgets";
+import { Settings } from "@/types";
 import { DEFAULT_SETTINGS } from "@/lib/constants";
 
 interface SettingsModalProps {
-    isOpen: boolean;
+    open: boolean;
     onClose: () => void;
-    settings: SettingsType;
-    onSave: (settings: SettingsType) => void;
+    settings: Settings;
+    updateSettings: (updates: Partial<Settings>) => void;
+    onCleanupEArchive: () => void;
 }
 
 export default function SettingsModal({
-    isOpen,
+    open,
     onClose,
     settings,
-    onSave,
+    updateSettings,
+    onCleanupEArchive,
 }: SettingsModalProps) {
-    const [localSettings, setLocalSettings] = useState<SettingsType>(settings);
+    const [activeTab, setActiveTab] = useState<"general" | "theme" | "widgets">("general");
 
-    if (!isOpen) return null;
-
-    const handleChange = (key: keyof SettingsType, value: number | boolean | string) => {
-        setLocalSettings((prev) => ({ ...prev, [key]: value }));
-    };
-
-    const handleSave = () => {
-        onSave(localSettings);
-        onClose();
-    };
-
-    const handleReset = () => {
-        setLocalSettings(DEFAULT_SETTINGS);
-    };
-
-    const settingGroups = [
-        {
-            title: "Genel Ayarlar",
-            items: [
-                { key: "dailyLimit" as const, label: "Günlük Limit", desc: "Öğretmen başına günlük maksimum dosya", min: 1, max: 20 },
-            ],
-        },
-        {
-            title: "Puan Ayarları",
-            items: [
-                { key: "scoreTypeY" as const, label: "Yönlendirme", desc: "Yönlendirme dosyası puanı", min: 0, max: 10 },
-                { key: "scoreTypeD" as const, label: "Destek", desc: "Destek dosyası puanı", min: 0, max: 10 },
-                { key: "scoreTypeI" as const, label: "İkisi", desc: "İkisi dosyası puanı", min: 0, max: 10 },
-                { key: "scoreNewBonus" as const, label: "Yeni Bonus", desc: "Yeni dosya ek puanı", min: 0, max: 5 },
-                { key: "scoreTest" as const, label: "Test Puanı", desc: "Test dosyası sabit puanı", min: 0, max: 20 },
-            ],
-        },
-        {
-            title: "Özel Durumlar",
-            items: [
-                { key: "backupBonusAmount" as const, label: "Yedek Bonus", desc: "Yedekleme sonrası ek puan", min: 0, max: 10 },
-                { key: "absencePenaltyAmount" as const, label: "Devamsızlık Cezası", desc: "Devamsızlık sonrası düşürülen puan", min: 0, max: 10 },
-            ],
-        },
-        {
-            title: "Geliştirici",
-            items: [
-                { key: "debugMode" as const, label: "Debug Modu (Analiz)", desc: "Her atamadan sonra detaylı analiz popup'ı göster", type: "boolean" },
-            ],
-        },
-    ];
+    if (!open) return null;
 
     return (
-        <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
-            onClick={onClose}
-        >
-            <div
-                className="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 max-h-[90vh] overflow-hidden animate-slide-in-up"
-                onClick={(e) => e.stopPropagation()}
-            >
-                {/* Header */}
-                <div className="flex items-center justify-between p-4 border-b border-slate-100 bg-slate-50">
-                    <div className="flex items-center gap-2">
-                        <Settings className="h-5 w-5 text-slate-600" />
-                        <h2 className="text-lg font-semibold text-slate-800">Ayarlar</h2>
+        <div className="fixed inset-0 h-screen w-screen bg-black/30 backdrop-blur-sm flex items-center justify-center z-[99999]" onClick={onClose}>
+            <Card className="w-[600px] max-h-[90vh] overflow-y-auto shadow-2xl border-0" onClick={(e) => e.stopPropagation()}>
+                <CardHeader className="bg-gradient-to-r from-emerald-600 to-emerald-700 text-white rounded-t-lg sticky top-0 z-10">
+                    <div className="flex items-center justify-between">
+                        <CardTitle className="text-white flex items-center gap-2">
+                            <span className="text-2xl">⚙️</span>
+                            <span>Ayarlar</span>
+                        </CardTitle>
+                        <Button variant="ghost" size="icon" onClick={onClose} className="text-white hover:bg-white/20">
+                            <X className="h-5 w-5" />
+                        </Button>
                     </div>
-                    <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={onClose}
-                        className="text-slate-500 hover:text-slate-700"
-                    >
-                        <X className="h-5 w-5" />
-                    </Button>
-                </div>
-
-                {/* Content */}
-                <div className="p-4 overflow-y-auto max-h-[60vh] space-y-6">
-                    {settingGroups.map((group) => (
-                        <div key={group.title}>
-                            <h3 className="text-sm font-semibold text-slate-700 mb-3">
-                                {group.title}
-                            </h3>
-                            <div className="space-y-3">
-                                {group.items.map((item) => (
-                                    <div
-                                        key={item.key}
-                                        className="flex items-center justify-between gap-4 p-3 bg-slate-50 rounded-lg"
-                                    >
-                                        <div className="flex-1">
-                                            <Label className="text-sm font-medium">{item.label}</Label>
-                                            <p className="text-xs text-slate-500">{item.desc}</p>
-                                        </div>
-                                        {/* @ts-ignore */}
-                                        {item.type === "boolean" ? (
-                                            <input
-                                                type="checkbox"
-                                                checked={!!localSettings[item.key as keyof SettingsType]}
-                                                onChange={(e) => handleChange(item.key as keyof SettingsType, e.target.checked)}
-                                                className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                                            />
-                                        ) : (
-                                            <Input
-                                                type="number"
-                                                min={(item as any).min}
-                                                max={(item as any).max}
-                                                value={localSettings[item.key as keyof SettingsType] as number}
-                                                onChange={(e) =>
-                                                    handleChange(item.key as keyof SettingsType, parseInt(e.target.value) || 0)
-                                                }
-                                                className="w-20 text-center"
-                                            />
-                                        )}
+                    {/* Tab Navigation */}
+                    <div className="flex gap-2 mt-4">
+                        <Button
+                            variant={activeTab === "general" ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setActiveTab("general")}
+                            className="bg-white/20 hover:bg-white/30 text-white border-white/30"
+                        >
+                            Genel
+                        </Button>
+                        <Button
+                            variant={activeTab === "theme" ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setActiveTab("theme")}
+                            className="bg-white/20 hover:bg-white/30 text-white border-white/30"
+                        >
+                            🎨 Tema
+                        </Button>
+                        <Button
+                            variant={activeTab === "widgets" ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setActiveTab("widgets")}
+                            className="bg-white/20 hover:bg-white/30 text-white border-white/30"
+                        >
+                            📊 Widget'lar
+                        </Button>
+                    </div>
+                </CardHeader>
+                <CardContent className="space-y-3 pt-4">
+                    {activeTab === "general" && (
+                        <>
+                            <div>
+                                <Label className="text-slate-900 font-semibold">Günlük Limit (öğretmen başına)</Label>
+                                <Input type="number" value={settings.dailyLimit} onChange={e => updateSettings({ dailyLimit: Math.max(1, Number(e.target.value) || 0) })} />
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <Label className="text-slate-900 font-semibold">Test Puanı</Label>
+                                    <Input type="number" value={settings.scoreTest} onChange={e => updateSettings({ scoreTest: Number(e.target.value) || 0 })} />
+                                </div>
+                                <div>
+                                    <Label className="text-slate-900 font-semibold">Yeni Bonus</Label>
+                                    <Input type="number" value={settings.scoreNewBonus} onChange={e => updateSettings({ scoreNewBonus: Number(e.target.value) || 0 })} />
+                                </div>
+                                <div>
+                                    <Label className="text-slate-900 font-semibold">Yönlendirme</Label>
+                                    <Input type="number" value={settings.scoreTypeY} onChange={e => updateSettings({ scoreTypeY: Number(e.target.value) || 0 })} />
+                                </div>
+                                <div>
+                                    <Label className="text-slate-900 font-semibold">Destek</Label>
+                                    <Input type="number" value={settings.scoreTypeD} onChange={e => updateSettings({ scoreTypeD: Number(e.target.value) || 0 })} />
+                                </div>
+                                <div className="col-span-2">
+                                    <Label className="text-slate-900 font-semibold">İkisi</Label>
+                                    <Input type="number" value={settings.scoreTypeI} onChange={e => updateSettings({ scoreTypeI: Number(e.target.value) || 0 })} />
+                                </div>
+                            </div>
+                            {/* Yedek Başkan Bonus Ayarları */}
+                            <div className="border-t border-slate-200 pt-4 mt-4">
+                                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-3">
+                                    <Label className="text-sm font-semibold mb-2 block text-amber-900 flex items-center gap-2">
+                                        <span>👑</span>
+                                        <span>Yedek Başkan Bonus Ayarları</span>
+                                    </Label>
+                                    <div>
+                                        <Label className="text-xs text-slate-900 font-semibold">Bonus Miktarı (En Yüksek + X)</Label>
+                                        <Input type="number" min={0} value={settings.backupBonusAmount} onChange={e => updateSettings({ backupBonusAmount: Math.max(0, Number(e.target.value) || 0) })} />
                                     </div>
-                                ))}
+                                    <p className="text-[11px] text-amber-700 mt-1">
+                                        Yedek başkan: O günün en yüksek puanına +{settings.backupBonusAmount} eklenir.
+                                    </p>
+                                </div>
+                            </div>
+                            {/* Devamsızlık Cezası Ayarları */}
+                            <div className="border-t border-slate-200 pt-4 mt-4">
+                                <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-3">
+                                    <Label className="text-sm font-semibold mb-2 block text-red-900 flex items-center gap-2">
+                                        <span>🚫</span>
+                                        <span>Devamsızlık Cezası Ayarları</span>
+                                    </Label>
+                                    <div>
+                                        <Label className="text-xs text-slate-900 font-semibold">Puan Farkı (En Düşük - X)</Label>
+                                        <Input type="number" min={0} value={settings.absencePenaltyAmount} onChange={e => updateSettings({ absencePenaltyAmount: Math.max(0, Number(e.target.value) || 0) })} />
+                                    </div>
+                                    <p className="text-[11px] text-red-700 mt-1">
+                                        Devamsız öğretmen: O günün en düşük puanından -{settings.absencePenaltyAmount} çıkarılır.
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Geliştirici Ayarları (Debug Mode) */}
+                            <div className="border-t border-slate-200 pt-4 mt-4">
+                                <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 mb-3">
+                                    <Label className="text-sm font-semibold mb-2 block text-slate-900 flex items-center gap-2">
+                                        <span>🛠️</span>
+                                        <span>Geliştirici Seçenekleri</span>
+                                    </Label>
+                                    <div className="flex items-center gap-3">
+                                        <Checkbox
+                                            id="debugMode"
+                                            checked={!!settings.debugMode}
+                                            onCheckedChange={(v) => updateSettings({ debugMode: !!v })}
+                                            className="h-5 w-5 border-slate-400 data-[state=checked]:bg-slate-700 data-[state=checked]:border-slate-700"
+                                        />
+                                        <div className="flex-1">
+                                            <Label htmlFor="debugMode" className="text-sm font-semibold cursor-pointer">Debug Modu (Detaylı Analiz)</Label>
+                                            <p className="text-[11px] text-slate-600 mt-0.5">
+                                                Her atama işleminden sonra; kazanan öğretmeni, adayları ve özellikle Eray ile ilgili engelleme nedenlerini gösteren bilgi penceresini açar.
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {/* E-Arşiv Temizliği Butonu */}
+                                    <div className="mt-3 pt-3 border-t border-slate-200">
+                                        <Button
+                                            variant="destructive"
+                                            size="sm"
+                                            onClick={onCleanupEArchive}
+                                            className="w-full flex items-center justify-center gap-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 shadow-sm"
+                                        >
+                                            <Trash2 className="h-4 w-4" />
+                                            E-Arşiv Temizliği (Hayalet Kayıtları Sil)
+                                        </Button>
+                                        <p className="text-[10px] text-slate-500 mt-1 text-center">
+                                            Silinmiş ama listede kalan dosyaları temizler.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="flex justify-end gap-2 pt-1">
+                                <Button variant="outline" onClick={() => updateSettings(DEFAULT_SETTINGS)}>Varsayılanlara Dön</Button>
+                                <Button onClick={onClose}>Kapat</Button>
+                            </div>
+                        </>
+                    )}
+
+                    {activeTab === "theme" && (
+                        <div className="space-y-4">
+                            <ThemeSettings />
+                            <div className="flex justify-end gap-2 pt-1">
+                                <Button onClick={onClose}>Kapat</Button>
                             </div>
                         </div>
-                    ))}
-                </div>
+                    )}
 
-                {/* Footer */}
-                <div className="flex items-center justify-between p-4 border-t border-slate-100 bg-slate-50">
-                    <Button
-                        type="button"
-                        variant="ghost"
-                        onClick={handleReset}
-                        className="text-slate-600"
-                    >
-                        <RotateCcw className="h-4 w-4 mr-2" />
-                        Varsayılana Dön
-                    </Button>
-                    <div className="flex gap-2">
-                        <Button type="button" variant="outline" onClick={onClose}>
-                            İptal
-                        </Button>
-                        <Button type="button" onClick={handleSave}>
-                            <Save className="h-4 w-4 mr-2" />
-                            Kaydet
-                        </Button>
-                    </div>
-                </div>
-            </div>
+                    {activeTab === "widgets" && (
+                        <div className="space-y-4">
+                            <DashboardWidgets />
+                            <div className="flex justify-end gap-2 pt-1">
+                                <Button onClick={onClose}>Kapat</Button>
+                            </div>
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
         </div>
     );
 }
