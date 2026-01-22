@@ -567,7 +567,15 @@ export default function DosyaAtamaApp() {
     if (!hydrated) return;
     try { localStorage.setItem(LS_E_ARCHIVE, JSON.stringify(eArchive)); } catch { }
   }, [eArchive, hydrated]);
-
+  // FIX: Ensure Furkan Ata ADIYAMAN is marked as physiotherapist (Data Repair)
+  useEffect(() => {
+    if (!hydrated || !teachers.length || !isAdmin) return;
+    const target = teachers.find(t => ["Furkan Ata ADIYAMAN", "Furkan Ata"].includes(t.name) && !t.isPhysiotherapist);
+    if (target) {
+      updateTeacher(target.id, { isPhysiotherapist: true });
+      console.log("Fixed physiotherapist flag for:", target.name);
+    }
+  }, [teachers, updateTeacher, hydrated, isAdmin]);
 
 
   // ---- Merkezi durum: açılışta Supabase'den oku (LS olsa bile override et)
