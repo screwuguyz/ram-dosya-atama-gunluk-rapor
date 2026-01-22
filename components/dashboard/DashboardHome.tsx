@@ -175,7 +175,7 @@ export default function DashboardHome({
                             onClick={onNewFile}
                         >
                             <FilePlus className="w-8 h-8" />
-                            <span>Yeni Dosya Ekle</span>
+                            <span>Dosya Atama</span>
                         </Button>
 
                         <Button

@@ -36,6 +36,7 @@ import MiniWidgets from "@/components/dashboard/MiniWidgets";
 import DailyAppointmentsCard from "@/components/appointments/DailyAppointmentsCard";
 import Header from "@/components/dashboard/Header";
 import DashboardHome from "@/components/dashboard/DashboardHome";
+import TeacherDashboard from "@/components/dashboard/TeacherDashboard";
 import TestDialog from "@/components/modals/TestDialog";
 import RulesModal from "@/components/modals/RulesModal";
 import PdfPanel from "@/components/modals/PdfPanel";
@@ -2520,6 +2521,15 @@ export default function DosyaAtamaApp() {
                 <div className="text-xs text-amber-800 mt-1">Bu duyurular gün sonunda temizlenir.</div>
               </div>
             )}
+
+            {/* Teacher Dashboard - Non-admin overview */}
+            <TeacherDashboard
+              cases={cases}
+              teachers={teachers}
+              history={history}
+              announcements={announcements}
+            />
+
             <DailyAppointmentsCard
               pdfLoading={pdfLoading}
               onShowDetails={(date) => { if (date instanceof Date) { fetchPdfEntriesFromServer(date); } else { setShowPdfPanel(true); } }}
